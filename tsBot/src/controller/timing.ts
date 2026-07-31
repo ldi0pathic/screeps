@@ -1,11 +1,7 @@
+import * as defenceController from "./defence";
 import * as memoryController from "./memory";
 import * as rebuildController from "./rebuild";
 import * as spawnController from "./spawn";
-
-interface DefenceController {
-  check(): void;
-  tower(): void;
-}
 
 interface TerminalMarket extends StructureTerminal {
   sell(): void;
@@ -17,7 +13,6 @@ type BotMemory = Memory & {
 };
 
 const botMemory = Memory as BotMemory;
-const defenceController: DefenceController = require("../legacy/controller.defence.cts");
 
 export function controll(): void {
   const tick = Game.time;

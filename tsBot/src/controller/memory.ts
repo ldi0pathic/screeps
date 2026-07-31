@@ -88,7 +88,9 @@ export function findAndSaveRoomWalls(): void {
   botMemory.rooms ??= {};
   for (const name in botGlobal.room) {
     const config = botGlobal.room[name];
-    if (!config || (config.maxwallRepairer ?? 0) < 1) continue;
+    // Ohne `maxwallRepairer` greift der Vergleich wie in prod nicht
+    // (`undefined < 1` ist false), der Raum wird also nicht übersprungen.
+    if (!config || config.maxwallRepairer! < 1) continue;
 
     const room = Game.rooms[config.room];
     if (!room) continue;
@@ -144,6 +146,9 @@ export function findAndSaveTerminals(): void {
 }
 
 export function findAndSaveRoads(): void {
+  // Wie die drei Schwesterfunktionen: prod legt `Memory.rooms` hier zur
+  // Sicherheit an, bevor geschrieben wird.
+  botMemory.rooms ??= {};
   for (const name in botGlobal.room) {
     const config = botGlobal.room[name];
     if (!config || !config.saveRoads) continue;

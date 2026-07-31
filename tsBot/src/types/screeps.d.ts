@@ -1,6 +1,13 @@
 export {};
 
 declare global {
+  /**
+   * lodash ist im Screeps-Runtime global verfügbar. `prod/` nutzt es an
+   * einigen Stellen (`_.filter`, `_.sum`); die migrierten Module behalten
+   * diese Aufrufe bei. Kein `@types/lodash` im Projekt, daher bewusst `any`.
+   */
+  const _: any;
+
   interface CreepMemory {
     [key: string]: any;
   }

@@ -1,5 +1,12 @@
+/**
+ * Creep-Prototypen: Zustandsprüfungen, die alle Rollen benutzen.
+ *
+ * Inhaltlich identisch zu `prod/prototype.creep.checks.js`. Die
+ * Nicht-null-Assertions bedienen nur `noUncheckedIndexedAccess`; esbuild
+ * entfernt sie, der erzeugte Code ist derselbe wie in prod/.
+ */
+
 export function installCreepChecks(): void {
-    const roomMemory = Memory.rooms as Record<string, any>;
     Creep.prototype.checkHarvest = function (action, action2) {
         if (!this.memory.harvest && this.store.getUsedCapacity() === 0) {
             if (typeof (action) == "function")
@@ -32,12 +39,12 @@ export function installCreepChecks(): void {
     };
 
     Creep.prototype.checkInvasion = function () {
-        if (roomMemory[this.memory.workroom].needDefence ||
-            (roomMemory[this.memory.workroom].invaderCore &&
+        if (Memory.rooms[this.memory.workroom]!.needDefence ||
+            (Memory.rooms[this.memory.workroom]!.invaderCore &&
                 Game.rooms[this.memory.workroom] &&
-                Game.rooms[this.memory.workroom].controller && 
-                Game.rooms[this.memory.workroom].controller.reservation &&
-                Game.rooms[this.memory.workroom].controller.reservation.username != this.owner.username)) {
+                Game.rooms[this.memory.workroom]!.controller &&
+                Game.rooms[this.memory.workroom]!.controller!.reservation &&
+                Game.rooms[this.memory.workroom]!.controller!.reservation!.username != this.owner.username)) {
             this.say('☎');
             return true;
         }
@@ -45,7 +52,7 @@ export function installCreepChecks(): void {
     };
 
     Creep.prototype.checkWorkroomPrioSpawn = function () {
-        if (roomMemory[this.memory.workroom].aktivPrioSpawn) {
+        if (Memory.rooms[this.memory.workroom]!.aktivPrioSpawn) {
             this.say('🚨');
             return true;
         }
@@ -71,7 +78,7 @@ export function installCreepChecks(): void {
         }
         return false;
     };
-    
+
     Creep.prototype.checkRuins = function(min = 100)
     {
         const ruin = this.pos.findClosestByPath(FIND_RUINS, { filter: (d) => d.store.getUsedCapacity() > min});
@@ -88,35 +95,35 @@ export function installCreepChecks(): void {
         {
             min = this.store.getFreeCapacity() * 0.25;
         }
-        var container;
-        if(roomMemory[this.room.name] && roomMemory[this.room.name].container) {
+        var container: AnyStoreStructure | undefined;
+        if(Memory.rooms[this.room.name] && Memory.rooms[this.room.name]!.container) {
             var distance = Infinity;
-            for(var id of roomMemory[this.room.name].container)
+            for(var id of Memory.rooms[this.room.name]!.container as Id<AnyStoreStructure>[])
             {
-                var c = Game.getObjectById(id) as AnyStoreStructure | null;
-                if(c && c.store.getUsedCapacity() > min)
+                var c = Game.getObjectById(id);
+                if(c && c.store.getUsedCapacity()! > min)
                 {
                     var d = Math.sqrt(Math.pow(this.pos.x - c.pos.x, 2) + Math.pow(this.pos.y - c.pos.y, 2));
                     if(d < distance)
                     {
                         distance = d;
-                        container = c; 
-                    }         
+                        container = c;
+                    }
                 }
-            }  
+            }
         }
-        else if(roomMemory[this.room.name] && !roomMemory[this.room.name].container)
+        else if(Memory.rooms[this.room.name] && !Memory.rooms[this.room.name]!.container)
         {
-            var containers = this.room.find(FIND_STRUCTURES,  {filter: (structure) => 
+            var containers = this.room.find(FIND_STRUCTURES,  {filter: (structure) =>
             {
-                return  structure.structureType === STRUCTURE_CONTAINER 
+                return  structure.structureType === STRUCTURE_CONTAINER
             }});
-           
-            roomMemory[this.room.name].container = containers.map( c => {
-                return c.id
-            });   
 
-            return (containers.length > 0);    
+            Memory.rooms[this.room.name]!.container = containers.map( c => {
+                return c.id
+            });
+
+            return (containers.length > 0);
         }
 
         if(container)

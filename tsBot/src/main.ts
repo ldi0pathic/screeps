@@ -1,8 +1,14 @@
 /** Der TypeScript-Einstieg des Bots. */
 
+// Muss als erstes geladen werden: das Modul füllt `global.*` per Seiteneffekt.
+import "./config";
+
 import * as controllerMemory from "./controller/memory";
 import * as timer from "./controller/timing";
+import { bot } from "./globals";
 import { installCreepChecks } from "./prototypes/creep-checks";
+import { installTerminalMarket } from "./prototypes/terminal-market";
+import { jobs } from "./roles";
 
 type VisualRoomMemory = RoomMemory & {
   nuke?: boolean;
@@ -13,28 +19,17 @@ type BotCreepMemory = CreepMemory & {
   role?: string;
 };
 
-interface CreepJob {
-  doJob(creep: Creep): void;
-}
-
-const botGlobal = global as typeof global & {
-  room: Record<string, unknown>;
-};
-
 const botMemory = Memory as Memory & {
   init?: boolean;
 };
 
-// Die Controller und Rollen werden in den folgenden Schritten einzeln aus
-// `legacy/` migriert. Bis dahin behalten sie ihre CommonJS-Schnittstelle.
-const jobs: Record<string, CreepJob> = require("./legacy/creep.jobs.cts");
-
 // Registriert die Prototyp-Erweiterungen vor dem ersten Tick.
+// Reihenfolge wie in `prod/prototype.js`: erst die Creep-Checks, dann der Markt.
 installCreepChecks();
-require("./legacy/prototype.terminal.market.cts");
+installTerminalMarket();
 
 export function loop(): void {
-  for (const name in botGlobal.room) {
+  for (const name in bot.room) {
     const room = Game.rooms[name];
 
     try {
