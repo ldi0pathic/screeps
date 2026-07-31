@@ -1,6 +1,12 @@
 // builder.ts - Updated to support server selection
 import * as esbuild from "esbuild";
 import { spawn } from "child_process";
+import { dirname, resolve } from "path";
+import { fileURLToPath } from "url";
+
+// `tsBot` und der Output-Ordner liegen beide direkt im Repository-Root.
+// Der absolute Pfad macht den Watcher unabhängig vom aktuellen Arbeitsordner.
+const TSPROD_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "..", "tsProd");
 
 async function startWatch() {
   const serverName = process.argv[2] || "main"; // default to main server
@@ -8,7 +14,7 @@ async function startWatch() {
   const ctx = await esbuild.context({
     entryPoints: ["src/main.ts"],
     bundle: true,
-    outdir: "dist",
+    outdir: TSPROD_DIR,
     format: "cjs",
     platform: "node",
     sourcemap: false,
@@ -31,7 +37,9 @@ async function startWatch() {
   });
 
   await ctx.watch();
-  console.log(`👀 Watching for changes... (uploading to '${serverName}')`);
+  console.log(
+    `👀 Watching for changes in tsBot/src... (writing to '${TSPROD_DIR}', uploading to '${serverName}')`
+  );
 }
 
 function runUpload(serverName: string) {

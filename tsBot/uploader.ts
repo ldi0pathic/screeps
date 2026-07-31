@@ -3,7 +3,8 @@ import path from "path";
 import fetch from "node-fetch";
 import { loadConfig, type ServerConfig } from "./config.ts";
 
-const DIST_DIR = "dist";
+// `builder.ts` and `pnpm run build` bundle the TypeScript bot here.
+const DIST_DIR = "../tsProd";
 
 export async function uploadToServer(
   serverName: string,
