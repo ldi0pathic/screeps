@@ -17,18 +17,7 @@ bot.const = bot.const || ({} as typeof bot.const);
 bot.const = {
   maxRepairs: 5,
   logroom: "", //E59N3',//'E56N2'//'E59N4',
-};
-
-bot.minSalePrice = {
-  H: 95,
-  O: 5,
-  U: 45,
-  L: 18,
-  X: 120,
-};
-
-bot.maxOrderPrice = {
-  pixel: 45000,
+  showPaths: false,
 };
 
 bot.transfer = {
@@ -392,8 +381,12 @@ bot.prio = {
     [STRUCTURE_ROAD]: 5,
   },
   repair: {
-    [STRUCTURE_RAMPART]: 7,
-    [STRUCTURE_WALL]: 1,
+    // Ramparts zerfallen dauerhaft (300 Hits je 100 Ticks) und schützen die
+    // Strukturen darunter; Walls zerfallen überhaupt nicht. Deshalb steht der
+    // Rampart vor der Wall — vorher war er mit 7 die schlechteste Priorität,
+    // schlechter noch als die Straße.
+    [STRUCTURE_RAMPART]: 1,
+    [STRUCTURE_WALL]: 2,
     [STRUCTURE_EXTENSION]: 2,
     [STRUCTURE_SPAWN]: 2,
     [STRUCTURE_TOWER]: 3,

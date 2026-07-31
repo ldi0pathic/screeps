@@ -1,4 +1,4 @@
-// Build: 2026-08-01 00:04:24 +02:00
+// Build: 2026-08-01 00:49:36 +02:00
 "use strict";
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
@@ -35,18 +35,9 @@ bot.prio = bot.prio || {};
 bot.const = bot.const || {};
 bot.const = {
   maxRepairs: 5,
-  logroom: ""
+  logroom: "",
   //E59N3',//'E56N2'//'E59N4',
-};
-bot.minSalePrice = {
-  H: 95,
-  O: 5,
-  U: 45,
-  L: 18,
-  X: 120
-};
-bot.maxOrderPrice = {
-  pixel: 45e3
+  showPaths: false
 };
 bot.transfer = {
   /*E59N7:
@@ -366,8 +357,12 @@ bot.prio = {
     [STRUCTURE_ROAD]: 5
   },
   repair: {
-    [STRUCTURE_RAMPART]: 7,
-    [STRUCTURE_WALL]: 1,
+    // Ramparts zerfallen dauerhaft (300 Hits je 100 Ticks) und schützen die
+    // Strukturen darunter; Walls zerfallen überhaupt nicht. Deshalb steht der
+    // Rampart vor der Wall — vorher war er mit 7 die schlechteste Priorität,
+    // schlechter noch als die Straße.
+    [STRUCTURE_RAMPART]: 1,
+    [STRUCTURE_WALL]: 2,
     [STRUCTURE_EXTENSION]: 2,
     [STRUCTURE_SPAWN]: 2,
     [STRUCTURE_TOWER]: 3,
@@ -560,23 +555,45 @@ function tower() {
     if (Memory.rooms[name].needDefence) {
       var hostileCreeps = room.find(FIND_HOSTILE_CREEPS);
       if (hostileCreeps.length > 0) {
-        var strongHealers = hostileCreeps.filter((creep) => {
-          var healParts = creep.body.filter((part) => part.type === HEAL).length;
-          return healParts >= 5;
+        hostileCreeps.sort(function(a, b) {
+          var costA = a.body.reduce(function(total, part) {
+            return total + BODYPART_COST[part.type];
+          }, 0);
+          var costB = b.body.reduce(function(total, part) {
+            return total + BODYPART_COST[part.type];
+          }, 0);
+          return costB - costA;
         });
-        if (strongHealers.length === 0) {
-          hostileCreeps.sort(function(a, b) {
-            var costA = a.body.reduce(function(total, part) {
-              return total + BODYPART_COST[part.type];
-            }, 0);
-            var costB = b.body.reduce(function(total, part) {
-              return total + BODYPART_COST[part.type];
-            }, 0);
-            return costB - costA;
-          });
+        var totalHealPower = 0;
+        for (var healer of hostileCreeps) {
+          var healParts = healer.body.filter((part) => part.type === HEAL).length;
+          totalHealPower += healParts * HEAL_POWER;
+        }
+        var target = null;
+        for (var candidate of hostileCreeps) {
+          var towerDamage = 0;
+          for (var towerid of Memory.rooms[name].tower) {
+            var t = Game.getObjectById(towerid);
+            if (!t || t.store.getUsedCapacity(RESOURCE_ENERGY) < TOWER_ENERGY_COST) continue;
+            var range = t.pos.getRangeTo(candidate.pos);
+            if (range <= TOWER_OPTIMAL_RANGE) {
+              towerDamage += TOWER_POWER_ATTACK;
+            } else if (range >= TOWER_FALLOFF_RANGE) {
+              towerDamage += TOWER_POWER_ATTACK * (1 - TOWER_FALLOFF);
+            } else {
+              var fallOffShare = (range - TOWER_OPTIMAL_RANGE) / (TOWER_FALLOFF_RANGE - TOWER_OPTIMAL_RANGE);
+              towerDamage += TOWER_POWER_ATTACK * (1 - TOWER_FALLOFF * fallOffShare);
+            }
+          }
+          if (towerDamage > totalHealPower) {
+            target = candidate;
+            break;
+          }
+        }
+        if (target) {
           for (var towerid of Memory.rooms[name].tower) {
             var tower2 = Game.getObjectById(towerid);
-            if (tower2) tower2.attack(hostileCreeps[0]);
+            if (tower2) tower2.attack(target);
           }
         } else {
           if (!Memory.rooms[name].structureHP) {
@@ -617,11 +634,10 @@ function tower() {
         damagedStructures.sort((a, b) => {
           const priorityA = bot.prio.repair[a.structureType] || 10;
           const priorityB = bot.prio.repair[b.structureType] || 10;
-          const damageA = a.hitsMax - a.hits;
-          const damageB = b.hitsMax - b.hits;
-          const scoreA = priorityA * damageA;
-          const scoreB = priorityB * damageB;
-          return scoreA - scoreB;
+          if (priorityA !== priorityB) return priorityA - priorityB;
+          const damageShareA = 1 - a.hits / a.hitsMax;
+          const damageShareB = 1 - b.hits / b.hitsMax;
+          return damageShareB - damageShareA;
         });
         for (var towerid of Memory.rooms[name].tower) {
           var tower2 = Game.getObjectById(towerid);
@@ -705,14 +721,15 @@ function moveByMemory(creep, target) {
     return false;
   }
   var deserializePath;
+  var serializedPath;
   if (creep.memory.dontMove > 3) {
     deserializePath = creep.pos.findPathTo(target, { ignoreCreeps: false });
     serializedPath = Room.serializePath(deserializePath);
     creep.memory.path = serializedPath;
     creep.memory.dontMove = 0;
+    creep.moveByPath(serializedPath);
     return true;
   }
-  var serializedPath;
   var t = creep.memory.pathTarget;
   var p = creep.memory.path;
   if (p && t && t.roomName && target.isEqualTo(new RoomPosition(t.x, t.y, t.roomName))) {
@@ -727,29 +744,32 @@ function moveByMemory(creep, target) {
     creep.memory.pathTarget.roomName = target.roomName;
   }
   var state = creep.moveByPath(serializedPath);
-  if (!deserializePath)
-    deserializePath = Room.deserializePath(serializedPath);
-  const currentPos = creep.pos;
-  const index = deserializePath.findIndex((pos) => pos.x === currentPos.x && pos.y === currentPos.y);
-  if (index > 0) {
-    const visual = new RoomVisual(creep.room.name);
-    for (let i = index + 1; i < deserializePath.length; i++) {
-      visual.circle(
-        deserializePath[i].x,
-        deserializePath[i].y,
-        { fill: "transparent", radius: 0.25, stroke: "red" }
-      );
+  if (bot.const.showPaths) {
+    if (!deserializePath)
+      deserializePath = Room.deserializePath(serializedPath);
+    const currentPos = creep.pos;
+    const index = deserializePath.findIndex((pos) => pos.x === currentPos.x && pos.y === currentPos.y);
+    if (index > 0) {
+      const visual = new RoomVisual(creep.room.name);
+      for (let i = index + 1; i < deserializePath.length; i++) {
+        visual.circle(
+          deserializePath[i].x,
+          deserializePath[i].y,
+          { fill: "transparent", radius: 0.25, stroke: "red" }
+        );
+      }
     }
   }
   switch (state) {
     case OK:
     case ERR_TIRED: {
       if (creep.memory.lastPos && creep.memory.lastPos.x == creep.pos.x && creep.memory.lastPos.y == creep.pos.y) {
-        creep.memory.dontMove = creep.memory.dontMove + 1;
+        creep.memory.dontMove = (creep.memory.dontMove || 0) + 1;
       } else {
         creep.memory.lastPos = {};
         creep.memory.lastPos.x = creep.pos.x;
         creep.memory.lastPos.y = creep.pos.y;
+        creep.memory.dontMove = 0;
       }
       return true;
     }
@@ -1862,6 +1882,14 @@ function _clearMemory(creep) {
   delete creep.memory.dontMove;
 }
 function doJob6(creep) {
+  if (creep.memory.notfall) {
+    var replacement = _.find(Game.creeps, (c) => c.name != creep.name && c.memory.role == role6 && c.memory.workroom == creep.memory.workroom && c.memory.source == creep.memory.source && !c.memory.notfall && !c.spawning);
+    if (replacement) {
+      bot.logWorkroom(creep.memory.workroom, "Notfallminer " + creep.name + " durch " + replacement.name + " ersetzt, beende mich.");
+      creep.suicide();
+      return;
+    }
+  }
   if (creep.body.length > 30 && creep.memory.onPosition && Game.time % 2 == 1) return;
   if (!creep.memory.onPosition) {
     if (goToWorkroom2(creep)) return;
@@ -2094,6 +2122,9 @@ function _getProfil5(spawn13, workroom) {
   const totalCost = 3 * BODYPART_COST[WORK] + BODYPART_COST[CARRY] + 2 * BODYPART_COST[MOVE];
   var maxEnergy = spawn13.room.energyCapacityAvailable;
   var numberOfSets = Math.min(8, Math.floor(maxEnergy / totalCost));
+  if (numberOfSets == 0) {
+    return [WORK, WORK, CARRY, MOVE];
+  }
   return Array(numberOfSets * 3).fill(WORK).concat(Array(numberOfSets).fill(CARRY).concat(Array(numberOfSets * 2).fill(MOVE)));
 }
 function spawn7(spawn13, workroom) {
@@ -2127,7 +2158,7 @@ function _spawn2(spawn13, workroom, source, mineEnergy) {
   }
   var count = _.filter(
     Game.creeps,
-    (creep) => creep.memory.role == role6 && creep.memory.workroom == workroom && creep.memory.source == source && (creep.ticksToLive > time || creep.spawning)
+    (creep) => creep.memory.role == role6 && creep.memory.workroom == workroom && creep.memory.source == source && !creep.memory.notfall && (creep.ticksToLive > time || creep.spawning)
   ).length;
   if (1 <= count) {
     Memory.rooms[spawn13.room.name].aktivPrioSpawn = false;
@@ -2196,6 +2227,7 @@ function _repairPrio(creep) {
     for (var id in bot.room[creep.memory.workroom].prioBuildings) {
       var buildingId = bot.room[creep.memory.workroom].prioBuildings[id];
       var building = Game.getObjectById(buildingId);
+      if (!building) continue;
       if (building.hits < building.hitsMax * 0.9) {
         creep.memory.prioId = buildingId;
         return true;
@@ -2225,11 +2257,11 @@ function _repair(creep) {
     if (structuresToRepair.length > 0) {
       var structs = structuresToRepair.map((site) => ({
         site,
-        progress: site.progress,
+        damage: site.hitsMax - site.hits,
         priority: _getPriority2(site.structureType)
       })).sort((a, b) => {
         if (a.priority === b.priority) {
-          return b.progress - a.progress;
+          return b.damage - a.damage;
         }
         return a.priority - b.priority;
       });
@@ -2843,40 +2875,6 @@ function installTerminalMarket() {
       }
     }
   };
-  StructureTerminal.prototype.buy = function() {
-    if (this.cooldown > 1) return;
-    var terminalEnergy = this.store.getUsedCapacity(RESOURCE_ENERGY);
-    if (terminalEnergy < 1e3 || this.store.getFreeCapacity() <= 10) return;
-    for (var resource in bot.maxOrderPrice) {
-      const orders = Game.market.getAllOrders({
-        type: ORDER_SELL,
-        resourceType: resource
-      });
-      const valid = orders.filter((o) => o.roomName).map((o) => {
-        const energyCost = Game.market.calcTransactionCost(
-          1,
-          this.room.name,
-          o.roomName
-        );
-        return { o, energyCost };
-      }).filter(
-        (x) => x.o.price <= bot.maxOrderPrice[resource] && x.energyCost <= 5e3
-      ).sort((a, b) => a.o.price - b.o.price);
-      if (!valid.length) return;
-      const order = valid[0].o;
-      const amount = Math.min(
-        50,
-        order.amount,
-        Math.floor(Game.market.credits / order.price)
-      );
-      if (amount <= 0) return;
-      if (OK === Game.market.deal(order.id, amount, this.room.name)) {
-        console.log(
-          `[${this.room.name}] Pixel gekauft: ${amount} zu ${order.price}`
-        );
-      }
-    }
-  };
   StructureTerminal.prototype.buyPixel = function() {
     if (this.cooldown > 1) return;
     const terminalEnergy = this.store.getUsedCapacity("energy");
@@ -2924,10 +2922,17 @@ function installTerminalMarket() {
 
 // src/main.ts
 var botMemory4 = Memory;
+var reportedErrors = /* @__PURE__ */ new Set();
+function reportError(kind, message) {
+  console.log(message);
+  if (reportedErrors.has(kind)) return;
+  reportedErrors.add(kind);
+  Game.notify(message, 180);
+}
 installCreepChecks();
 installTerminalMarket();
 function loop() {
-  var _a;
+  var _a, _b, _c;
   for (const name in bot.room) {
     const room = Game.rooms[name];
     try {
@@ -2970,14 +2975,33 @@ function loop() {
     if (creep.spawning) {
       continue;
     }
+    const job = jobs[creepMemory.role];
+    if (!job) {
+      reportError(
+        `rolle-unbekannt:${creepMemory.role}`,
+        `Creep ${name}: unbekannte Rolle "${creepMemory.role}"`
+      );
+      continue;
+    }
     try {
-      jobs[creepMemory.role].doJob(creep);
+      job.doJob(creep);
     } catch (error) {
-      console.log(`Job: ${creepMemory.role}`);
-      throw error;
+      reportError(
+        `rolle:${creepMemory.role}`,
+        `Job: ${creepMemory.role} (${name})
+${(_b = error == null ? void 0 : error.stack) != null ? _b : String(error)}`
+      );
     }
   }
-  controll();
+  try {
+    controll();
+  } catch (error) {
+    reportError(
+      "timing",
+      `controller/timing
+${(_c = error == null ? void 0 : error.stack) != null ? _c : String(error)}`
+    );
+  }
 }
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {

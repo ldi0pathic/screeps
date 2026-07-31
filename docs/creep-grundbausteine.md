@@ -24,7 +24,9 @@ Terminaltransport ist erst ab RCL 6 möglich und merkt sich die Terminal-ID unte
 
 ## Bewegung
 
-`moveByMemory(creep, target)` serialisiert einen Pfad in `memory.path` und verwendet ihn wieder, solange `memory.pathTarget` unverändert ist. Bei wiederholtem Nichtfortbewegen wird nach mehr als drei gezählten Stillständen ein neuer Pfad unter Berücksichtigung von Creeps gesucht. Erreicht der Creep das Ziel oder ist der Pfad ungültig, werden Pfad- und Stillstands-Memory gelöscht. Die Methode zeichnet den verbleibenden Pfad rot als `RoomVisual`.
+`moveByMemory(creep, target)` serialisiert einen Pfad in `memory.path` und verwendet ihn wieder, solange `memory.pathTarget` unverändert ist. `memory.dontMove` zählt mit, wie oft der Creep in Folge auf derselben Position stehen geblieben ist, und wird bei jeder tatsächlichen Bewegung wieder auf `0` zurückgesetzt. Bei mehr als drei gezählten Stillständen in Folge wird ein neuer Pfad unter Berücksichtigung von Creeps (`ignoreCreeps: false`) gesucht und im selben Tick per `moveByPath` sofort genutzt. Erreicht der Creep das Ziel oder ist der Pfad ungültig, werden Pfad- und Stillstands-Memory gelöscht.
+
+Die Methode zeichnet den verbleibenden Pfad nur, wenn `bot.const.showPaths` in `config.ts` auf `true` steht (Standard `false`) — der Schalter ist ausschließlich für die Fehlersuche gedacht, weil das Zeichnen jeden Tick den gecachten Pfad erneut deserialisiert und durchsucht.
 
 `goToMyHome()`, `goToWorkroom()` und `goToRoomFlag()` sind darauf aufbauende Ortswechsel. Räume werden jeweils über die Mittelpunktposition `(25,25)` angesteuert.
 
@@ -36,6 +38,6 @@ Terminaltransport ist erst ab RCL 6 möglich und merkt sich die Terminal-ID unte
 
 ## Prototypen
 
-`prod/prototype.js` aktiviert beim Laden `prototype.creep.checks.js` und `prototype.terminal.market.js`. Dadurch stehen Creeps u. a. `checkHarvest`, `checkInvasion` und `checkWorkroomPrioSpawn` zur Verfügung. Terminal-Objekte erhalten `sell()`, `buy()` und `buyPixel()`.
+`prod/prototype.js` aktiviert beim Laden `prototype.creep.checks.js` und `prototype.terminal.market.js`. Dadurch stehen Creeps u. a. `checkHarvest`, `checkInvasion` und `checkWorkroomPrioSpawn` zur Verfügung. Terminal-Objekte erhalten `sell()` und `buyPixel()`.
 
-Die Marktlogik verkauft keine Energie, Power, Pixel oder X-/T3-Boosts. Für übrige Ressourcen ermittelt sie einen Fallback-Mindestpreis aus der Markthistorie (T1-Boosts und -Zwischenprodukte praktisch kostenlos), berücksichtigt Transaktionsenergie und führt maximal einen Deal aus. `buy()` nutzt `global.maxOrderPrice`; `buyPixel()` vergleicht den effektiven Preis mit 110 % des historischen Durchschnitts und kauft höchstens 50 Pixel.
+Die Marktlogik verkauft keine Energie, Power, Pixel oder X-/T3-Boosts. Für übrige Ressourcen ermittelt sie einen Fallback-Mindestpreis aus der Markthistorie (T1-Boosts und -Zwischenprodukte praktisch kostenlos), berücksichtigt Transaktionsenergie und führt maximal einen Deal aus. `buyPixel()` vergleicht den effektiven Preis mit 110 % des historischen Durchschnitts und kauft höchstens 50 Pixel.

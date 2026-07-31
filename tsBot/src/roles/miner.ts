@@ -23,6 +23,25 @@ export function _clearMemory(creep: Creep) {
 /** @param {Creep} creep **/
 export function doJob(creep: Creep) {
 
+    if(creep.memory.notfall)
+    {
+        // Notfallminer beendet sich selbst, sobald ein regulärer Miner für dieselbe
+        // Quelle bereit ist – sonst stehen zwei Miner auf der Containerkachel und die
+        // Notfallsperre in controller/spawn.ts bleibt bis zum natürlichen Tod bestehen.
+        var replacement: any = _.find(Game.creeps, (c: Creep) => c.name != creep.name &&
+                                                    c.memory.role == role &&
+                                                    c.memory.workroom == creep.memory.workroom &&
+                                                    c.memory.source == creep.memory.source &&
+                                                    !c.memory.notfall &&
+                                                    !c.spawning);
+        if(replacement)
+        {
+            bot.logWorkroom(creep.memory.workroom, 'Notfallminer '+creep.name+' durch '+replacement.name+' ersetzt, beende mich.');
+            creep.suicide();
+            return;
+        }
+    }
+
     if(creep.body.length > 30 && creep.memory.onPosition && Game.time % 2 == 1) return;
 
    /* if(creep.checkInvasion()) {
@@ -385,6 +404,16 @@ export function _getProfil(spawn: StructureSpawn, workroom: string): BodyPartCon
     var maxEnergy = spawn.room.energyCapacityAvailable;
     var numberOfSets = Math.min(8,Math.floor(maxEnergy / totalCost));
 
+    if(numberOfSets == 0)
+    {
+        // Minimalprofil für 300 Energie (RCL1 bzw. frühes RCL2 ohne Extensions):
+        // [WORK,WORK,CARRY,MOVE] = 100+100+50+50 = 300. 2 WORK sättigen die Quelle
+        // nicht voll (energy-economy.md: 5 WORK nötig für 10 e/t bei eigener Quelle),
+        // liefern aber Energie — vorher kam hier ein leeres Body-Array heraus,
+        // mit dem spawnCreep grundsätzlich fehlschlägt.
+        return [WORK,WORK,CARRY,MOVE];
+    }
+
     return Array((numberOfSets*3)).fill(WORK).concat(Array((numberOfSets)).fill(CARRY).concat(Array((numberOfSets*2)).fill(MOVE)));
 }
 
@@ -444,6 +473,7 @@ export function _spawn(spawn: StructureSpawn, workroom: string, source: string, 
     var count = _.filter(Game.creeps, (creep: Creep) => creep.memory.role == role &&
                                                 creep.memory.workroom == workroom &&
                                                 creep.memory.source == source &&
+                                                !creep.memory.notfall &&
                                                 (creep.ticksToLive! > time || creep.spawning)
                                                 ).length;
 

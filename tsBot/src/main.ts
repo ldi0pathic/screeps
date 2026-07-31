@@ -23,6 +23,26 @@ const botMemory = Memory as Memory & {
   init?: boolean;
 };
 
+/**
+ * Bereits per Mail gemeldete Fehler, damit ein Dauerfehler nicht jeden Tick
+ * eine Benachrichtigung auslöst. Die Menge lebt nur bis zum nächsten
+ * Global-Reset — danach darf derselbe Fehler erneut melden, sonst würde ein
+ * über Stunden bestehendes Problem irgendwann stillschweigend übergangen.
+ */
+const reportedErrors = new Set<string>();
+
+/**
+ * Meldet einen Fehler, ohne den Tick abzubrechen: Konsole bei jedem Auftreten,
+ * Mail nur beim ersten Mal je Fehlerart.
+ */
+function reportError(kind: string, message: string): void {
+  console.log(message);
+
+  if (reportedErrors.has(kind)) return;
+  reportedErrors.add(kind);
+  Game.notify(message, 180);
+}
+
 // Registriert die Prototyp-Erweiterungen vor dem ersten Tick.
 // Reihenfolge wie in `prod/prototype.js`: erst die Creep-Checks, dann der Markt.
 installCreepChecks();
@@ -78,13 +98,37 @@ export function loop(): void {
       continue;
     }
 
+    // Eine Rolle, die es nicht gibt (z. B. nach einer Umbenennung im Code),
+    // darf den Tick nicht abbrechen. Der Creep wird übersprungen und nicht
+    // suizidiert — sonst löscht eine Umbenennung die ganze Population.
+    const job = jobs[creepMemory.role];
+    if (!job) {
+      reportError(
+        `rolle-unbekannt:${creepMemory.role}`,
+        `Creep ${name}: unbekannte Rolle "${creepMemory.role}"`,
+      );
+      continue;
+    }
+
+    // Fehler bleiben auf diesen Creep begrenzt. Vorher brach ein einzelner
+    // defekter Creep den ganzen Tick ab, inklusive Türmen, Spawncontroller
+    // und Verteidigungsscan.
     try {
-      jobs[creepMemory.role]!.doJob(creep);
+      job.doJob(creep);
     } catch (error) {
-      console.log(`Job: ${creepMemory.role}`);
-      throw error;
+      reportError(
+        `rolle:${creepMemory.role}`,
+        `Job: ${creepMemory.role} (${name})\n${(error as Error)?.stack ?? String(error)}`,
+      );
     }
   }
 
-  timer.controll();
+  try {
+    timer.controll();
+  } catch (error) {
+    reportError(
+      "timing",
+      `controller/timing\n${(error as Error)?.stack ?? String(error)}`,
+    );
+  }
 }

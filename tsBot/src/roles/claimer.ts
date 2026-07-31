@@ -16,7 +16,6 @@ export function sayJob(this: any) { this.creep.say('📌') }
 
 export function doJob(creep: Creep) {
 
-   // if(creepBase.checkInvasion(creep)) return;
     if(creepBase.goToWorkroom(creep)) return;
 
     var room = Game.rooms[creep.memory.workroom];

@@ -16,7 +16,6 @@ export function sayJob(this: any) { this.creep.say('⚔') }
 
 export function doJob(creep: Creep) {
 
-    //creep.suicide();
     if(creepBase.goToWorkroom(creep)) return;
     if(_defend(creep)) return;
 

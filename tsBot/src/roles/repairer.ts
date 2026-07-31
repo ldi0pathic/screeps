@@ -60,6 +60,11 @@ export function _repairPrio(creep: Creep): boolean {
             var buildingId: any = (bot.room[creep.memory.workroom]!.prioBuildings as any)[id];
             var building: any = Game.getObjectById(buildingId);
 
+            // Fest verdrahtete IDs aus prioBuildings können verschwinden (Struktur
+            // zerstört/abgerissen); ohne diesen Guard würde der Zugriff auf building.hits
+            // eine Exception werfen und main.ts würde jeden Tick erneut abbrechen.
+            if(!building) continue;
+
             if(building.hits < building.hitsMax*0.9)
             {
                 creep.memory.prioId = buildingId;
@@ -101,12 +106,12 @@ export function _repair(creep: Creep): boolean {
         {
             var structs = structuresToRepair.map((site: any) => ({
                 site,
-                progress: site.progress,
+                damage: site.hitsMax - site.hits,
                 priority: _getPriority(site.structureType)
             }))
             .sort((a: any, b: any) => {
                 if (a.priority === b.priority) {
-                    return b.progress - a.progress;
+                    return b.damage - a.damage;
                 }
                 return a.priority - b.priority;
             });

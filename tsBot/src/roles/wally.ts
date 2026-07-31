@@ -38,7 +38,6 @@ export function doJob(creep: Creep) {
 
         creep.memory.wall = null;
 
-      //  if(creepBase.harvestRoomContainer(creep, RESOURCE_ENERGY))return;
         creepBase.harvest(creep);
         return;
     }

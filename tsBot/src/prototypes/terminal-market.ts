@@ -1,10 +1,8 @@
 /**
- * Marktlogik als Terminal-Prototypen: `sell()`, `buy()` und `buyPixel()`.
+ * Marktlogik als Terminal-Prototypen: `sell()` und `buyPixel()`.
  *
  * Inhaltlich identisch zu `prod/prototype.terminal.market.js`.
  */
-
-import { bot } from "../globals";
 
 const T1_BOOSTS: Record<string, boolean> = {
   UH2O: true,
@@ -130,54 +128,6 @@ export function installTerminalMarket(): void {
     }
   };
 
-  StructureTerminal.prototype.buy = function (this: StructureTerminal): void {
-    if (this.cooldown > 1) return;
-
-    var terminalEnergy = this.store.getUsedCapacity(RESOURCE_ENERGY);
-
-    if (terminalEnergy < 1000 || this.store.getFreeCapacity() <= 10) return;
-
-    for (var resource in bot.maxOrderPrice) {
-      const orders = Game.market.getAllOrders({
-        type: ORDER_SELL,
-        resourceType: resource as MarketResourceConstant,
-      });
-
-      const valid = orders
-        .filter((o) => o.roomName)
-        .map((o) => {
-          const energyCost = Game.market.calcTransactionCost(
-            1,
-            this.room.name,
-            o.roomName!,
-          );
-          return { o, energyCost };
-        })
-        .filter(
-          (x) =>
-            x.o.price <= bot.maxOrderPrice[resource]! && x.energyCost <= 5000,
-        )
-        .sort((a, b) => a.o.price - b.o.price);
-
-      if (!valid.length) return;
-
-      const order = valid[0]!.o;
-      const amount = Math.min(
-        50,
-        order.amount,
-        Math.floor(Game.market.credits / order.price),
-      );
-
-      if (amount <= 0) return;
-
-      if (OK === Game.market.deal(order.id, amount, this.room.name)) {
-        console.log(
-          `[${this.room.name}] Pixel gekauft: ${amount} zu ${order.price}`,
-        );
-      }
-    }
-  };
-
   StructureTerminal.prototype.buyPixel = function (
     this: StructureTerminal,
   ): void {
@@ -197,7 +147,7 @@ export function installTerminalMarket(): void {
     const avgPrice =
       marketHistory.reduce((sum, h) => sum + h.avgPrice, 0) /
       marketHistory.length;
-    const fairPrice = Math.floor(avgPrice * 1.1); // 5% über Marktavg
+    const fairPrice = Math.floor(avgPrice * 1.1); // 10% über Marktavg (Historie)
 
     const orders = Game.market.getAllOrders({
       type: ORDER_SELL,

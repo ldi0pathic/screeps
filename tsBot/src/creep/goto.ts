@@ -4,6 +4,8 @@
  * Inhaltlich identisch zu `prod/creep.base.goto.js`.
  */
 
+import { bot } from "../globals";
+
 export function goToMyHome(creep: Creep): boolean {
     if (creep.memory.home && creep.room.name !== creep.memory.home)
     {
@@ -45,6 +47,7 @@ export function moveByMemory(creep: Creep, target: RoomPosition): boolean {
     }
 
     var deserializePath: PathStep[] | undefined;
+    var serializedPath: string;
     if( creep.memory.dontMove > 3 )
     {
         deserializePath = creep.pos.findPathTo(target, { ignoreCreeps: false });
@@ -53,10 +56,10 @@ export function moveByMemory(creep: Creep, target: RoomPosition): boolean {
 
         creep.memory.dontMove = 0;
 
+        creep.moveByPath(serializedPath);
         return true;
     }
 
-    var serializedPath: string;
     var t = creep.memory.pathTarget;
     var p = creep.memory.path;
 
@@ -77,24 +80,24 @@ export function moveByMemory(creep: Creep, target: RoomPosition): boolean {
     }
     var state = creep.moveByPath(serializedPath);
 
-   if(!deserializePath)
-        deserializePath = Room.deserializePath(serializedPath);
+    if (bot.const.showPaths)
+    {
+        if(!deserializePath)
+            deserializePath = Room.deserializePath(serializedPath);
 
-    const currentPos = creep.pos;
+        const currentPos = creep.pos;
 
-    const index = deserializePath.findIndex(pos => pos.x === currentPos.x && pos.y === currentPos.y);
+        const index = deserializePath.findIndex(pos => pos.x === currentPos.x && pos.y === currentPos.y);
 
-    if(index > 0)
-    {   const visual = new RoomVisual(creep.room.name);
-        for (let i = index+1; i < deserializePath.length; i++) {
-            visual.circle(deserializePath[i]!.x, deserializePath[i]!.y,
-                { fill: 'transparent', radius: 0.25, stroke: 'red' });
+        if(index > 0)
+        {   const visual = new RoomVisual(creep.room.name);
+            for (let i = index+1; i < deserializePath.length; i++) {
+                visual.circle(deserializePath[i]!.x, deserializePath[i]!.y,
+                    { fill: 'transparent', radius: 0.25, stroke: 'red' });
+            }
         }
     }
 
-
-
-    //creep.say(state);
     switch(state)
     {
         case OK:
@@ -102,13 +105,14 @@ export function moveByMemory(creep: Creep, target: RoomPosition): boolean {
         {
             if(creep.memory.lastPos && creep.memory.lastPos.x == creep.pos.x && creep.memory.lastPos.y == creep.pos.y )
             {
-                creep.memory.dontMove = creep.memory.dontMove +1;
+                creep.memory.dontMove = (creep.memory.dontMove || 0) + 1;
             }
             else
             {
                 creep.memory.lastPos = {};
                 creep.memory.lastPos.x = creep.pos.x;
                 creep.memory.lastPos.y = creep.pos.y;
+                creep.memory.dontMove = 0;
             }
 
             return true;

@@ -33,7 +33,6 @@ declare global {
 
   interface StructureTerminal {
     sell(): void;
-    buy(): void;
     buyPixel(): void;
   }
 
@@ -42,8 +41,6 @@ declare global {
       room: Record<string, unknown>;
       prio: Record<string, unknown>;
       const: Record<string, unknown>;
-      minSalePrice: Record<string, number>;
-      maxOrderPrice: Record<string, number>;
       transfer: Record<string, unknown>;
       log(enabled: boolean, message: unknown): void;
       logWorkroom(room: string, message: string): void;

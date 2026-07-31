@@ -69,14 +69,14 @@ export interface ConstConfig {
   maxRepairs: number;
   /** Optionaler Filter für `logWorkroom`; leer heißt kein Logging. */
   logroom: string;
+  /** Zeichnet den Restpfad jedes bewegten Creeps. Nur zur Fehlersuche. */
+  showPaths: boolean;
 }
 
 export interface BotGlobal {
   room: Record<string, RoomConfig>;
   prio: PrioConfig;
   const: ConstConfig;
-  minSalePrice: Partial<Record<ResourceConstant, number>>;
-  maxOrderPrice: Record<string, number>;
   transfer: Record<string, TransferConfig>;
   log(condition: boolean, message: unknown): void;
   logWorkroom(room: string, message: string): void;

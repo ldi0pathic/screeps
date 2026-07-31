@@ -100,28 +100,62 @@ export function tower(): void {
       var hostileCreeps = room.find(FIND_HOSTILE_CREEPS);
 
       if (hostileCreeps.length > 0) {
-        var strongHealers = hostileCreeps.filter((creep: any) => {
-          var healParts = creep.body.filter((part: any) => part.type === HEAL).length;
-          return healParts >= 5;
+        // Sortiere die feindlichen Creeps nach ihren Bodypart-Kosten in absteigender Reihenfolge
+        hostileCreeps.sort(function (a: any, b: any) {
+          var costA = a.body.reduce(function (total: any, part: any) {
+            return total + BODYPART_COST[part.type as BodyPartConstant]!;
+          }, 0);
+
+          var costB = b.body.reduce(function (total: any, part: any) {
+            return total + BODYPART_COST[part.type as BodyPartConstant]!;
+          }, 0);
+
+          return costB - costA;
         });
 
-        if (strongHealers.length === 0) {
-          // Sortiere die feindlichen Creeps nach ihren Bodypart-Kosten in absteigender Reihenfolge
-          hostileCreeps.sort(function (a: any, b: any) {
-            var costA = a.body.reduce(function (total: any, part: any) {
-              return total + BODYPART_COST[part.type as BodyPartConstant]!;
-            }, 0);
+        // Konservative Heilleistung des Gegners: HEAL_POWER (12/Tick, adjacent
+        // heal - die höhere der beiden Heilraten) pro HEAL-Teil, summiert über
+        // alle feindlichen Creeps im Raum. Boosts werden nicht berücksichtigt,
+        // dadurch wird zugunsten des Gegners gerechnet (eher zu viel Heilung
+        // angenommen als zu wenig).
+        var totalHealPower = 0;
+        for (var healer of hostileCreeps) {
+          var healParts = healer.body.filter((part: any) => part.type === HEAL).length;
+          totalHealPower += healParts * HEAL_POWER;
+        }
 
-            var costB = b.body.reduce(function (total: any, part: any) {
-              return total + BODYPART_COST[part.type as BodyPartConstant]!;
-            }, 0);
+        // Erster Gegner (nach Bauteilkosten sortiert), für den der summierte
+        // Turmschaden aller schussfähigen Türme die Heilleistung übersteigt.
+        var target: any = null;
+        for (var candidate of hostileCreeps) {
+          var towerDamage = 0;
+          for (var towerid of Memory.rooms[name]!.tower) {
+            var t: any = Game.getObjectById(towerid);
+            // Unter TOWER_ENERGY_COST kann der Turm nicht schießen, sein
+            // Schaden darf also nicht mitgerechnet werden.
+            if (!t || t.store.getUsedCapacity(RESOURCE_ENERGY) < TOWER_ENERGY_COST) continue;
 
-            return costB - costA;
-          });
+            var range = t.pos.getRangeTo(candidate.pos);
+            if (range <= TOWER_OPTIMAL_RANGE) {
+              towerDamage += TOWER_POWER_ATTACK;
+            } else if (range >= TOWER_FALLOFF_RANGE) {
+              towerDamage += TOWER_POWER_ATTACK * (1 - TOWER_FALLOFF);
+            } else {
+              var fallOffShare = (range - TOWER_OPTIMAL_RANGE) / (TOWER_FALLOFF_RANGE - TOWER_OPTIMAL_RANGE);
+              towerDamage += TOWER_POWER_ATTACK * (1 - TOWER_FALLOFF * fallOffShare);
+            }
+          }
 
+          if (towerDamage > totalHealPower) {
+            target = candidate;
+            break;
+          }
+        }
+
+        if (target) {
           for (var towerid of Memory.rooms[name]!.tower) {
             var tower: any = Game.getObjectById(towerid);
-            if (tower) tower.attack(hostileCreeps[0]);
+            if (tower) tower.attack(target);
           }
         } else {
           if (!Memory.rooms[name]!.structureHP) {
@@ -172,12 +206,15 @@ export function tower(): void {
           const priorityA = bot.prio.repair[a.structureType as StructureConstant] || 10;
           const priorityB = bot.prio.repair[b.structureType as StructureConstant] || 10;
 
-          const damageA = a.hitsMax - a.hits;
-          const damageB = b.hitsMax - b.hits;
+          if (priorityA !== priorityB) return priorityA - priorityB;
 
-          const scoreA = priorityA * damageA;
-          const scoreB = priorityB * damageB;
-          return scoreA - scoreB;
+          // Bei gleicher Priorität nach anteiligem Schaden absteigend, nicht nach
+          // absoluten Hits: die sind zwischen Strukturtypen nicht vergleichbar
+          // (Rampart bis zu 300 Mio. hitsMax gegen deutlich kleinere Werte bei
+          // Straßen). Konsistent mit der Sortierung in roles/repairer.ts.
+          const damageShareA = 1 - a.hits / a.hitsMax;
+          const damageShareB = 1 - b.hits / b.hitsMax;
+          return damageShareB - damageShareA;
         });
 
         for (var towerid of Memory.rooms[name]!.tower) {

@@ -12,7 +12,23 @@ Der Bot ist ein **Screeps-Bot in TypeScript**. Die Migration vom alten JavaScrip
 - `docs/` — deutsche Wissensdatenbank zum Verhalten des Bots. Schnellster Einstieg in die Spiellogik; vor dem Reverse-Engineering einer Rolle oder eines Controllers zuerst dort lesen. `docs/aenderungen.md` ist das Änderungsprotokoll, `docs/knowledge/` die Screeps-Wissensbasis (siehe unten).
 - `.sync` gehört zum GitHub-Sync des Spiels und muss im Repo bleiben, obwohl kein Code im Repo sie liest. Nicht löschen, nicht in `.gitignore` aufnehmen. Gleiches gilt für `tsProd/main.js` — das ist die Datei, die das Spiel zieht.
 
-Sprachkonvention: Kommentare, Logausgaben, Doku und viele Identifier bzw. Memory-Schlüssel sind deutsch (`notfall`, `aktivPrioSpawn`, `wally`, `debitor`, `reparier`). Neuen Code und neue Doku ebenfalls deutsch halten.
+## Sprach- und Codekonvention
+
+**Bezeichner englisch, Text deutsch.** Funktionsnamen, Variablen, Parameter und Typen werden **englisch** benannt — auch wenn der Bot historisch anders aussieht. Deutsch bleiben:
+
+- **Kommentare, Logausgaben, Doku und Commit-Nachrichten.**
+- **Bestehende Memory- und Konfigurationsschlüssel** (`notfall`, `aktivPrioSpawn`, `harvest`, `fromId`, `wally`, `debitor`, …). Die stehen im laufenden Spiel im Creep- und Raum-Memory; sie umzubenennen würde den Bestand entwerten. Neue Schlüssel dagegen englisch.
+- **Rollennamen** in `roles/index.ts` (`wally`, `debitor`, `extupgrader`): stehen ebenfalls im Memory und sind zugleich die Spawn-Priorität.
+
+Wer eine Stelle mit deutschem Bezeichner ohnehin anfasst, benennt sie mit um — aber nicht in derselben Änderung wie einen Verhaltensfix.
+
+**Clean Code**, soweit es ohne Verhaltensänderung geht:
+
+- Sprechende Namen statt `a`, `x`, `tmp`, `state2`. Keine Abkürzungen, die man nachschlagen muss.
+- Eine Funktion tut eine Sache. Wird eine Bedingung dreifach verschachtelt, ist meist eine benannte Hilfsfunktion die Antwort.
+- Kein toter Code, kein auskommentierter Code, keine Konfiguration, die niemand liest — weg damit, Git ist das Archiv.
+- Früh aussteigen (`return`) statt tief verschachteln.
+- Kein flächiges Umformatieren fremder Dateien: aufgeräumt wird, was man ohnehin bearbeitet. `==` → `===` ist **kein** mechanischer Fix (bei `null`/`undefined` nicht bedeutungsgleich) und braucht jeweils einen Blick auf die Stelle.
 
 ## Arbeitsweise: Aufteilen auf Subagenten
 

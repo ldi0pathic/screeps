@@ -8,7 +8,9 @@ Alle Rollen exportieren `doJob(creep)` und meist `spawn(spawn, workroom)`. Die S
 
 Ein Miner wird pro Quellen-ID erzeugt. Er sucht oder baut zuerst einen Container direkt neben der Quelle und stellt sich darauf. Bei Energiequellen baut/nutzt er ab RCL 4 zusätzlich einen Link; bei Mineralen nutzt er einen benachbarten Terminal, sofern vorhanden, und berücksichtigt den Extractor-Cooldown. Volle Links werden an den Controller-Link oder zufällig an einen konfigurierten Ziel-Link weitergeleitet. Das Standardprofil besteht aus Gruppen von `3 WORK, 1 CARRY, 2 MOVE`, maximal acht Gruppen.
 
-Die Spawnlogik plant beim Ausfall lokal früher nach (TTL-Grenze 150 statt 300). Fehlende Miner setzen `aktivPrioSpawn`; nach mehr als 25 fehlgeschlagenen Prioritätsversuchen versucht sie einen Notfallminer `[WORK,CARRY,MOVE]`.
+Die Spawnlogik plant beim Ausfall lokal früher nach (TTL-Grenze 150 statt 300). Fehlende Miner setzen `aktivPrioSpawn`; nach mehr als 25 fehlgeschlagenen Prioritätsversuchen versucht sie einen Notfallminer `[WORK,CARRY,MOVE]`. Unterhalb einer Raum-Energiekapazität von 450 (RCL1 oder ein Raum, der nach einem Angriff darunterfällt) fällt das reguläre Profil auf `[WORK,WORK,CARRY,MOVE]` für 300 Energie zurück, statt ein leeres Body-Array zu liefern, mit dem `spawnCreep` grundsätzlich fehlschlägt.
+
+Der Notfallminer zählt nicht als regulärer Miner für seine Quelle und blockiert deshalb nicht den Nachzug eines regulär dimensionierten Miners. Sobald für dieselbe Quelle ein fertiger regulärer Miner existiert, beendet sich der Notfallminer selbst (`suicide()`) — ohne das würde er bis zu 1500 Ticks lang zusammen mit dem Notfallzustand in `controller/spawn.ts` das Spawnen in allen Nachbarräumen desselben Spawns blockieren.
 
 ### `debitor`
 
@@ -32,7 +34,7 @@ Builder beschaffen Energie mit `base.harvest()`, pausieren bei Invasion und vers
 
 ### `repairer`
 
-Repairer arbeiten analog, nutzen aber `global.prio.repair` für die Auswahl und `global.prio.hits` als Mindest-Hitquote (Standard 50 %). Explizite `prioBuildings` werden bis 90 % zuerst behandelt. Nach `global.const.maxRepairs` Arbeitszyklen wird das Ziel neu gewählt. Ohne Reparaturziel wird geupgradet.
+Repairer arbeiten analog, nutzen aber `global.prio.repair` für die Auswahl und `global.prio.hits` als Mindest-Hitquote (Standard 50 %). Explizite `prioBuildings` werden bis 90 % zuerst behandelt; ein zwischenzeitlich zerstörter `prioBuildings`-Eintrag wird übersprungen statt die Rolle abstürzen zu lassen. Innerhalb derselben Priorität wird nach absolutem Schaden (`hitsMax - hits`) absteigend sortiert, sodass die am stärksten beschädigte Struktur zuerst drankommt. Nach `global.const.maxRepairs` Arbeitszyklen wird das Ziel neu gewählt. Ohne Reparaturziel wird geupgradet.
 
 ### `wally`
 

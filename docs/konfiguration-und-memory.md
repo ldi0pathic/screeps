@@ -6,16 +6,16 @@ Die Datei definiert globale Werte. Wichtig ist, dass sie `global.room` vollstän
 
 Globale Gruppen:
 
-- `global.const`: allgemeine Einstellungen, derzeit u. a. `maxRepairs` und ein optionaler Log-Raum.
-- `global.minSalePrice`: Mindestverkaufspreise nach Ressource für die Marktlogik.
-- `global.maxOrderPrice`: Preisobergrenzen, derzeit für Pixel.
+- `global.const`: allgemeine Einstellungen, derzeit u. a. `maxRepairs`, ein optionaler Log-Raum und der Debug-Schalter `showPaths` (Standard `false`).
 - `global.transfer`: konfigurierte Terminal-Transferziele mit Quellen.
 - `global.room`: Raumdefinitionen.
 - `global.prio`: Prioritätswerte für Bauen, Reparaturen und zulässige Hitquoten.
 
 Eine Raumdefinition enthält typischerweise `room`, `spawnRoom`, Flags zum Entsenden von Rollen (`sendMiner`, `sendDebitor`, `sendBuilder`, `sendDefender`, `sendClaimer`), Quellen-IDs, Link-IDs, Baulimits und Upgrader-Anzahl. Nicht jeder Raum muss sichtbar oder selbst besessen sein; `spawnRoom` kann die Produktion aus einem anderen Raum anfordern.
 
-Die Prioritätstabellen verwenden kleinere Werte als höhere Priorität. `build` bevorzugt u. a. Extensions, Spawns, Links und Storage; `repair` bevorzugt Walls, danach kritische Gebäudetypen. `hits` definiert die Reparaturschwelle als Anteil der Maximalhits (Wände `0,0005`, Ramparts `0,001`).
+Die Prioritätstabellen verwenden kleinere Werte als höhere Priorität. `build` bevorzugt u. a. Extensions, Spawns, Links und Storage; `repair` bevorzugt Ramparts vor Walls, danach kritische Gebäudetypen — Ramparts stehen vor Walls, weil sie dauerhaft 300 Hits je 100 Ticks verlieren, während Walls gar nicht zerfallen. `hits` definiert die Reparaturschwelle als Anteil der Maximalhits (Wände `0,0005`, Ramparts `0,001`).
+
+`showPaths` schaltet die Pfad-Visualisierung in `creep/goto.ts::moveByMemory` frei (roter `RoomVisual`-Restpfad je bewegtem Creep); im Normalbetrieb bleibt sie aus, weil sie jeden Tick den gecachten Pfad erneut deserialisiert und durchsucht.
 
 `global.log(bool, msg)` loggt nur bei wahrer Bedingung. `global.logWorkroom(room, msg)` verwendet dafür den optionalen Filter `global.const.logroom` und ermöglicht gezieltes Spawn-Debugging pro Arbeitsraum.
 

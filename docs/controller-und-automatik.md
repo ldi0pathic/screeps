@@ -1,5 +1,11 @@
 # Controller und Automatik
 
+## Tick-Ablauf und Fehlerbehandlung (`main.ts`)
+
+`loop()` zeichnet zuerst Raum-Visuals und initialisiert Raum-Memory bei Bedarf neu, dann arbeitet es `Memory.creeps` ab: Creeps ohne Rolle werden suizidiert, Creeps mit einer im Code nicht mehr existierenden Rolle (`jobs[role]` liefert nichts, z. B. nach einer Umbenennung) werden gemeldet und **übersprungen, nicht suizidiert** — sonst würde eine Rollenumbenennung die ganze betroffene Population löschen. Für jeden verbleibenden Creep läuft `jobs[role].doJob(creep)` einzeln in `try`/`catch`; ein Fehler bleibt auf diesen Creep begrenzt, die Schleife läuft weiter. `controller/timing.ts::controll()` wird danach in jedem Fall ausgeführt, ebenfalls in `try`/`catch` abgesichert.
+
+Jede gefangene Fehlerart (unbekannte Rolle, Rollenfehler je Rollenname, Fehler in `controll()`) wird bei jedem Auftreten in die Konsole geloggt; zusätzlich löst das erste Auftreten je Fehlerart bis zum nächsten Global-Reset eine `Game.notify()`-Mail aus — so bleibt ein Dauerfehler auch außerhalb der Konsole sichtbar, ohne eine Mailflut zu erzeugen.
+
 ## Zeitsteuerung (`controller.timing.js`)
 
 `controll()` wird am Ende jedes Hauptticks ausgeführt. Es initialisiert Raum-Memory und führt die Towersteuerung in jedem Tick aus. Anschließend bearbeitet es einen Terminal, ausgewählt per `Game.time % Memory.terminals.length`: bei über 80 % Füllstand wird dessen `sell()` dreimal aufgerufen, sonst einmal; danach versucht es `buyPixel()`.
@@ -30,7 +36,7 @@ Während ein Invader Core gemeldet ist, werden für diesen Arbeitsraum keine nor
 
 `check()` setzt für sichtbare, verteidigungsfähige Räume `needDefence` anhand feindlicher Creeps, `invaderCore` anhand feindlicher Invader Cores und `nuke` anhand anfliegender Nukes. Bei Nukes wird einmalig eine Screeps-Benachrichtigung ausgelöst und die Einschlagpositionen werden als `nukepos` gespeichert.
 
-`tower()` greift während `needDefence` den teuersten feindlichen Creep an, solange kein starker Heiler (mindestens fünf `HEAL`-Teile) vorhanden ist. Gegen starke Heiler werden Türme defensiv verwendet: Sie vergleichen die aktuellen Struktur-Hits mit einem Snapshot und reparieren die erste beschädigte Struktur. Außerhalb der Verteidigung reparieren sie alle drei Ticks beschädigte Strukturen nach Reparaturpriorität, wenn sie ausreichend Energie haben.
+`tower()` sortiert während `needDefence` die feindlichen Creeps nach Bauteilkosten absteigend und prüft der Reihe nach, ob sich ein Angriff lohnt: Für jeden Kandidaten wird der summierte Schaden aller schussfähigen Türme (Türme mit weniger als `TOWER_ENERGY_COST` Energie zählen nicht mit) über die offizielle Abstandsformel (`TOWER_POWER_ATTACK`, `TOWER_OPTIMAL_RANGE`, `TOWER_FALLOFF`, `TOWER_FALLOFF_RANGE`) gegen die konservativ summierte Heilleistung aller feindlichen Creeps (`HEAL_POWER` je `HEAL`-Teil, Boosts unberücksichtigt) verglichen. Übersteigt der Turmschaden die Heilleistung, wird dieser Gegner angegriffen. Erfüllt kein Gegner das, wechseln die Türme in den defensiven Reparaturmodus: Sie vergleichen die aktuellen Struktur-Hits mit einem zu Beginn der Verteidigung angelegten Snapshot und reparieren die erste beschädigte Struktur. Außerhalb der Verteidigung reparieren sie alle drei Ticks beschädigte Strukturen, sortiert nach `prio.repair` aufsteigend und bei Gleichstand nach anteiligem Schaden (`1 - hits/hitsMax`) absteigend — dieselbe Regel wie beim Repairer-Creep —, wenn sie ausreichend Energie haben.
 
 ## Straßenwiederaufbau (`controller.rebuild.js`)
 

@@ -185,8 +185,6 @@ export function doJob(creep: Creep) {
 
     }
 
-    //if(creepBase.TransportToHomeContainer(creep, creep.memory.mineral))return;
-
     return;
 }
 
