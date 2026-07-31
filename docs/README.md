@@ -1,29 +1,57 @@
 # Screeps-Wissensdatenbank
 
-Diese Dokumentation beschreibt den aktuellen JavaScript-Code in `prod/`. Sie wird als technische Orientierung für Wartung und Erweiterungen geführt; die Laufzeitdaten liegen in Screeps `Memory` und sind daher nicht Teil des Repositories.
+Diese Dokumentation beschreibt das Verhalten des Bots in `tsBot/src/`. Sie wird als technische Orientierung für Wartung und Erweiterungen geführt; die Laufzeitdaten liegen in Screeps `Memory` und sind daher nicht Teil des Repositories.
 
-## TypeScript-Migration
+Die Seiten zu Rollen, Controllern und Creep-Grundbausteinen sind während der
+Migration aus dem alten JavaScript-Bot entstanden und beschreiben weiterhin das
+gültige Verhalten. Wo der TypeScript-Bot inzwischen abweicht, steht es in
+[aenderungen.md](aenderungen.md). Bei einer Verhaltensänderung gehören beide
+Stellen mitgepflegt.
 
-Der erste lauffähige Migrationsstand liegt in `tsBot/src/legacy/`. Dort ist jedes
-Modul aus `prod/` als CommonJS-TypeScript-Datei (`.cts`) abgelegt. Der Einstieg
-`tsBot/src/main.ts` exportiert dessen unveränderte `loop()`-Funktion, sodass der
-gebündelte Bot dasselbe Laufzeitverhalten hat wie `prod/main.js`.
+## Herkunft: TypeScript-Migration
 
-Die Dateien tragen in diesem Übergangsstand `@ts-nocheck`: Die Konvertierung
-ändert weder Steuerfluss noch Screeps-Memory-Schema. Die schrittweise
-Neuentwicklung kann nun Modul für Modul erfolgen; dabei werden jeweils der
-`@ts-nocheck`-Kommentar, CommonJS-`require` und untypisierte globale Zugriffe
-durch echte TypeScript-Module und Typen ersetzt.
+Die Migration ist **abgeschlossen** und `prod/` ist nur noch Historie — der
+Code muss nicht mehr damit übereinstimmen. `tsBot/src/` besteht ausschließlich
+aus echten TypeScript-Modulen, der Zwischenstand `src/legacy/` (wörtliche
+`.cts`-Kopien mit `@ts-nocheck`) existiert nicht mehr.
 
-Bereits migriert sind der Einstieg `src/main.ts` sowie die Controller für
-Memory (`src/controller/memory.ts`) und Timing (`src/controller/timing.ts`).
-Die Rollen, Verteidigung, Spawnsteuerung, Straßenbau und Prototypen bleiben
-vorerst in `src/legacy/` und werden in kleinen, einzeln testbaren Schritten
-ersetzt.
+Aufteilung:
 
-Der Builder schreibt den gebündelten Einstieg nach `tsProd/main.js` neben den
-bisherigen `prod/`-Ordner. Dadurch kann die neue Variante getrennt vom
-laufenden JavaScript-Bot bereitgestellt und getestet werden.
+| Verzeichnis | Inhalt | Herkunft in `prod/` |
+| --- | --- | --- |
+| `src/main.ts` | Tick-Schleife | `main.js` |
+| `src/config.ts` | statische Konfiguration (`global.*`) | `config.js` |
+| `src/globals.ts` | typisierter Zugriff auf `global.*` | – (neu) |
+| `src/controller/` | `memory`, `timing`, `spawn`, `rebuild`, `defence` | `controller.*.js` |
+| `src/creep/` | `base`, `goto`, `transport` | `creep.base*.js` |
+| `src/roles/` | zehn Rollen plus `index.ts` (Rollentabelle) | `creep.<rolle>.js`, `creep.jobs.js` |
+| `src/prototypes/` | `creep-checks`, `terminal-market` | `prototype.creep.checks.js`, `prototype.terminal.market.js` |
+
+Nicht übernommen wurden `profiler.js` und `prototype.creep.override.js`: Beide
+sind schon in `prod/` nicht aktiv. Sie bleiben dort als Referenz liegen.
+
+Beim Übertragen wurden nur Umformungen vorgenommen, die der Bundler ohnehin
+wieder einzieht: `module.exports`-Objekt zu `export function`, interne
+`this.foo()`-Aufrufe zu direkten Aufrufen, `global.foo` zu `bot.foo` sowie
+TypeScript-Annotationen und `!`/`as`-Zusicherungen. Belegt wurde das, indem
+beide Fassungen mit esbuild gebündelt und die Funktionsquelltexte normalisiert
+verglichen wurden — 105 Funktionen in 16 Modulen stimmten zeichengenau
+überein. Danach wurden die in [aenderungen.md](aenderungen.md) protokollierten
+Fehler behoben; seitdem ist `prod/` kein Vergleichsmaßstab mehr.
+
+Die vier Controller `memory`, `timing`, `spawn` und `rebuild` stammen aus einer
+früheren Migrationsstufe und sind idiomatisch statt wortgleich geschrieben.
+Sie wurden gegen `prod/` reviewt und gelten als verhaltensgleich; die einzige
+bewusst abweichende Stelle ist `rebuild.ts`, das einen Raum ohne Controller
+überspringt, wo `prod/controller.rebuild.js` eine Ausnahme wirft.
+
+Der Builder schreibt den gebündelten Einstieg nach `tsProd/main.js`. Das ist die
+Datei, die das Spiel über GitHub synct.
+
+## Wissensbasis und Änderungsprotokoll
+
+- [Screeps-Wissensbasis](knowledge/README.md) — Zusammenfassungen der offiziellen Doku und von Community-Wissen (CPU, Pathfinding, Energiewirtschaft, RCL, Kampf, Markt, Boosts, Spielphasen). Der Index nennt pro Fragestellung genau eine Datei; vor inhaltlichen Änderungen an Rollen, Bewegung, Spawn-Profilen oder Marktlogik dort nachlesen statt schätzen.
+- [Änderungen am TypeScript-Bot](aenderungen.md) — Protokoll aller Änderungen, die das Spielverhalten betreffen, samt der nach der Migration behobenen Fehler.
 
 ## Einstieg
 

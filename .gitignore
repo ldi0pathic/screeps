@@ -1,0 +1,29 @@
+# Abhängigkeiten (werden mit `pnpm install` in tsBot/ erzeugt)
+node_modules/
+
+# Zugangsdaten und lokale Serverkonfiguration
+# Vorlagen liegen als *.example im Repo und bleiben versioniert.
+.env
+.env.local
+tsBot/.screeps.json
+
+# Build-Artefakte
+# Hinweis: tsProd/main.js bleibt bewusst versioniert – das ist der im Spiel
+# laufende Stand. Alles andere aus einem Buildlauf gehört nicht ins Repo.
+*.tsbuildinfo
+tsBot/src/**/*.js
+tsBot/src/**/*.js.map
+tsBot/src/**/*.d.ts
+!tsBot/src/types/*.d.ts
+
+# Editor und Betriebssystem
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*

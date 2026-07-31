@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "build": "esbuild src/main.ts --bundle --outdir=../tsProd --format=cjs --platform=node --target=node10",
+    "build": "node --loader ts-node/esm build.ts",
     "upload": "node --loader ts-node/esm upload.ts",
     "push": "pnpm run build && pnpm run upload",
     "push:local": "pnpm run build && pnpm run upload local",

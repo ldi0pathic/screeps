@@ -1,24 +1,13 @@
 // builder.ts - Updated to support server selection
 import * as esbuild from "esbuild";
 import { spawn } from "child_process";
-import { dirname, resolve } from "path";
-import { fileURLToPath } from "url";
-
-// `tsBot` und der Output-Ordner liegen beide direkt im Repository-Root.
-// Der absolute Pfad macht den Watcher unabhängig vom aktuellen Arbeitsordner.
-const TSPROD_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "..", "tsProd");
+import { ESBUILD_OPTIONS, TSPROD_DIR, stampBuild } from "./build-common.ts";
 
 async function startWatch() {
   const serverName = process.argv[2] || "main"; // default to main server
 
   const ctx = await esbuild.context({
-    entryPoints: ["src/main.ts"],
-    bundle: true,
-    outdir: TSPROD_DIR,
-    format: "cjs",
-    platform: "node",
-    sourcemap: false,
-    target: "node10",
+    ...ESBUILD_OPTIONS,
     plugins: [
       {
         name: "rebuild-notifier",
@@ -27,7 +16,10 @@ async function startWatch() {
             if (result.errors.length > 0) {
               console.error("❌ Build failed", result.errors);
             } else {
-              console.log("✅ Build succeeded, uploading...");
+              // Zuerst den Zeitstempel schreiben, danach erst hochladen -
+              // der Upload liest main.js von der Platte.
+              const timestamp = stampBuild();
+              console.log(`✅ Build succeeded (${timestamp}), uploading...`);
               runUpload(serverName);
             }
           });
