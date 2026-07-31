@@ -2,7 +2,8 @@
  * Rolle "claimer": beansprucht oder reserviert den Controller eines
  * Arbeitsraums.
  *
- * Inhaltlich identisch zu `prod/creep.claimer.js`.
+ * Ursprünglich aus `prod/creep.claimer.js` übernommen. Diese Datei enthält
+ * Fehlerkorrekturen gegenüber dem alten Bot, siehe `docs/aenderungen.md`.
  */
 
 import { bot } from "../globals";
@@ -33,7 +34,7 @@ export function doJob(creep: Creep) {
             }
             if(s === OK)
             {
-                Memory.rooms[creep.room.name]!.claimed = true;
+                Memory.rooms[creep.memory.workroom]!.claimed = true;
             }
             return;
         }
@@ -74,7 +75,7 @@ export function spawn(spawn: StructureSpawn, workroom: string)
                                                 (creep.ticksToLive! > 100 || creep.spawning)).length;
     var room: any = Game.rooms[workroom];
 
-    if(room && room.controller && (room.controller.sign && ((spawn.owner as any) != ''  && (room.controller.sign.username == spawn.owner.username)) || room.controller.sign.username == 'Screeps' ) && room.controller.reservation && room.controller.reservation.ticksToEnd > 3000)
+    if(room && room.controller && room.controller.sign && (room.controller.sign.username == spawn.owner.username || room.controller.sign.username == 'Screeps') && room.controller.reservation && room.controller.reservation.ticksToEnd > 3000)
         return false;
 
     if ( 1 <= count)

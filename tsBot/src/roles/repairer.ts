@@ -3,7 +3,8 @@
  * priorisierte Bauten (`prioBuildings`) und danach um alle beschädigten
  * Strukturen, sortiert nach Priorität und Baufortschritt.
  *
- * Inhaltlich identisch zu `prod/creep.reparier.js` (Dateiname hier bewusst
+ * Ursprünglich aus `prod/creep.reparier.js` übernommen. Diese Datei enthält
+ * Fehlerkorrekturen gegenüber dem alten Bot, siehe `docs/aenderungen.md`. (Dateiname hier bewusst
  * korrigiert auf `repairer.ts`; der Rollenschlüssel bleibt `repairer`).
  */
 
@@ -22,7 +23,7 @@ export function doJob(creep: Creep) {
     });
 
     if (creep.memory.harvest) {
-        if(creepBase.harvest(creep) as any) return;
+        creepBase.harvest(creep);
 
         return;
     }
@@ -164,7 +165,14 @@ export function spawn(spawn: StructureSpawn, workroom: string): boolean
     if ( minRepairer <= count)
         return false;
 
-        let structuresToRepair = Game.rooms[workroom]!.find(FIND_STRUCTURES, {
+        // Ohne Sicht im Arbeitsraum ist Game.rooms[workroom] undefined; ohne
+        // diesen Guard würde find() eine Exception werfen und den kompletten
+        // Spawn-Durchlauf dieses Ticks abbrechen.
+        const workroomVisible = Game.rooms[workroom];
+        if(!workroomVisible)
+            return false;
+
+        let structuresToRepair = workroomVisible.find(FIND_STRUCTURES, {
             filter: (structure: any) => {
                 return (structure.hits < _getMinHitRange(structure.structureType) * structure.hitsMax)
         }});

@@ -2,7 +2,8 @@
  * Rolle "defender": greift Feinde und Invader-Cores an, zerstört auf Befehl
  * markierte Strukturen bzw. Wände und spawnt bei Verteidigungsbedarf.
  *
- * Inhaltlich identisch zu `prod/creep.defender.js`.
+ * Ursprünglich aus `prod/creep.defender.js` übernommen. Diese Datei enthält
+ * Fehlerkorrekturen gegenüber dem alten Bot, siehe `docs/aenderungen.md`.
  */
 
 import { bot } from "../globals";
@@ -118,11 +119,16 @@ export function _defend(creep: Creep) {
     }
     else
     {
+        // Fix ggü. prod/creep.defender.js: dort wird ohne break das destroyDone des
+        // aktuellen (falschen) Workrooms geprüft, sodass immer der letzte Raum mit
+        // destroy-Liste gewinnt. Hier: ersten Raum mit destroy-Liste nehmen, dessen
+        // eigenes destroyDone nicht gesetzt ist, und dann abbrechen.
         for(var room in bot.room)
         {
-            if(bot.room[room]!.destroy &&!Memory.rooms[creep.memory.workroom]!.destroyDone)
+            if(bot.room[room]!.destroy &&!Memory.rooms[room]?.destroyDone)
             {
                 creep.memory.workroom = room;
+                break;
             }
         }
     }

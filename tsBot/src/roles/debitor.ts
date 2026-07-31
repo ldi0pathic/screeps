@@ -4,7 +4,8 @@
  * (Spawn, Turm, Terminal, Storage, Lab). Kümmert sich außerdem um das eigene
  * Spawnen inklusive Notfallspawn und Freelancer-Modus.
  *
- * Inhaltlich identisch zu `prod/creep.debitor.js`.
+ * Ursprünglich aus `prod/creep.debitor.js` übernommen. Diese Datei enthält
+ * Fehlerkorrekturen gegenüber dem alten Bot, siehe `docs/aenderungen.md`.
  */
 
 import { bot } from "../globals";
@@ -128,8 +129,8 @@ export function doJob(creep: Creep) {
 
             if (resources.length > 0) {
 
-                const resource = resources[0]!; // nimm erstes gefundenes
-                creep.memory.mineral = resource[0];
+                const resource = resources[0]!; // nimm erstes gefundenes (nicht wie prod/creep.debitor.js nur resource[0])
+                creep.memory.mineral = resource;
                 if (creepBase.harvestRoomStorage(creep, resource)) return;
             }
         }

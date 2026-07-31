@@ -1,7 +1,8 @@
 /**
  * Creep-Prototypen: Zustandsprüfungen, die alle Rollen benutzen.
  *
- * Inhaltlich identisch zu `prod/prototype.creep.checks.js`. Die
+ * Ursprünglich aus `prod/prototype.creep.checks.js` übernommen. Diese Datei enthält
+ * Fehlerkorrekturen gegenüber dem alten Bot, siehe `docs/aenderungen.md`. Die
  * Nicht-null-Assertions bedienen nur `noUncheckedIndexedAccess`; esbuild
  * entfernt sie, der erzeugte Code ist derselbe wie in prod/.
  */
@@ -133,24 +134,4 @@ export function installCreepChecks(): void {
         }
         return false;
     };
-
-    Creep.prototype.checkSource = function()
-    {
-
-    };
-
-    Creep.prototype.checkSavedAction = function()
-    {
-        if((this as any).creep.harvest)
-        {
-            if((this as any).withdraw()) return true;
-            if((this as any).pickup()) return true;
-            if((this as any).harvest()) return true;
-        }
-        else
-        {
-
-        }
-        return false;
-    }
 }

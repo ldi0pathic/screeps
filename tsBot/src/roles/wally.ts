@@ -3,7 +3,8 @@
  * Energie dabei wie üblich und weicht bei Invasion auf Turm-Nachschub bzw.
  * Energiebeschaffung aus. Ohne Reparaturziel wird der Controller geupgradet.
  *
- * Inhaltlich identisch zu `prod/creep.wallbuilder.js`.
+ * Ursprünglich aus `prod/creep.wallbuilder.js` übernommen. Diese Datei enthält
+ * Fehlerkorrekturen gegenüber dem alten Bot, siehe `docs/aenderungen.md`.
  */
 
 import { bot } from "../globals";
@@ -38,7 +39,7 @@ export function doJob(creep: Creep) {
         creep.memory.wall = null;
 
       //  if(creepBase.harvestRoomContainer(creep, RESOURCE_ENERGY))return;
-        if(creepBase.harvest(creep) as any) return;
+        creepBase.harvest(creep);
         return;
     }
 

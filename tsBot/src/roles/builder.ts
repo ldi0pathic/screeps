@@ -2,7 +2,8 @@
  * Rolle "builder": baut Baustellen ab Priorität und wechselt bei Bedarf ins
  * Sammeln von Energie bzw. Upgraden des Controllers.
  *
- * Inhaltlich identisch zu `prod/creep.builder.js`.
+ * Ursprünglich aus `prod/creep.builder.js` übernommen. Diese Datei enthält
+ * Fehlerkorrekturen gegenüber dem alten Bot, siehe `docs/aenderungen.md`.
  */
 
 import { bot } from "../globals";
@@ -19,14 +20,16 @@ export function doJob(creep: Creep) {
     if(creepBase.goToWorkroom(creep)) return;
     if (creep.memory.harvest) {
         creep.memory.repId = null;
-        if(creepBase.harvest(creep) as any) return;
+        creepBase.harvest(creep);
 
         if(creep.store.getUsedCapacity() > creep.store.getFreeCapacity())
         {
             creep.memory.harvest = false;
         }
 
-        if(creepBase.harvestSpawnLink(creep,creep.memory.mineral))return;
+        // Fix ggü. prod/creep.builder.js: dort creep.memory.mineral, das bei Buildern nie gesetzt wird
+        // (creepBase.spawn setzt nur role/workroom/home) - korrekt ist RESOURCE_ENERGY.
+        if(creepBase.harvestSpawnLink(creep,RESOURCE_ENERGY))return;
 
         return;
     }

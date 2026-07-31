@@ -2,7 +2,8 @@
  * Wiederverwendbare Creep-Aktionen: Energiebeschaffung, Bewegung, Transport,
  * Controller-Upgrade und Spawnen.
  *
- * Inhaltlich identisch zu `prod/creep.base.js`. Die Wrapper am Ende
+ * Ursprünglich aus `prod/creep.base.js` übernommen. Diese Datei enthält
+ * Fehlerkorrekturen gegenüber dem alten Bot, siehe `docs/aenderungen.md`. Die Wrapper am Ende
  * delegieren wie im Original an `creep/goto` und `creep/transport`.
  */
 
@@ -414,27 +415,28 @@ export function checkWorkroomPrioSpawn(creep: Creep): boolean {
     return false;
 }
 
+// Fix gegenüber prod/creep.base.js: dort `&&` statt `||` – bei Räumen ohne Controller warf die Prüfung einen TypeError.
 export function upgradeController(creep: Creep): boolean | void {
 
     var controller = creep.room.controller;
-    if (!controller && !controller!.my)
+    if (!controller || !controller.my)
         return;
 
-    const state = creep.upgradeController(controller!);
+    const state = creep.upgradeController(controller);
 
     if (state === ERR_NOT_IN_RANGE ||
-        (state === ERR_INVALID_TARGET && controller!.upgradeBlocked > 0)) {
-        creepBaseGoTo.moveByMemory(creep,controller!.pos);
+        (state === ERR_INVALID_TARGET && controller.upgradeBlocked > 0)) {
+        creepBaseGoTo.moveByMemory(creep,controller.pos);
 
     }
 
-    if (!controller!.sign ||
-        controller!.sign!.username == undefined ||
-        controller!.sign!.username != creep.owner.username) {
+    if (!controller.sign ||
+        controller.sign!.username == undefined ||
+        controller.sign!.username != creep.owner.username) {
 
-        var c = creep.signController(controller!, '⚔')
+        var c = creep.signController(controller, '⚔')
         if (c === ERR_NOT_IN_RANGE) {
-            creepBaseGoTo.moveByMemory(creep,controller!.pos);
+            creepBaseGoTo.moveByMemory(creep,controller.pos);
         }
 
     }

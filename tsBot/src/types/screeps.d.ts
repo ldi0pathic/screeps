@@ -29,8 +29,6 @@ declare global {
     checkDrops(min?: number): boolean;
     checkRuins(min?: number): boolean;
     checkAllContainer(min?: number): boolean;
-    checkSource(): void;
-    checkSavedAction(): boolean;
   }
 
   interface StructureTerminal {

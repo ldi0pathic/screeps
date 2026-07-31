@@ -3,7 +3,8 @@
  * (Controller-Link, Storage, Container, Drops, Tombstones, Ruins, Quelle)
  * und "Sparmodus" bei hohem Controller-Level.
  *
- * Inhaltlich identisch zu `prod/creep.upgrader.js`.
+ * Ursprünglich aus `prod/creep.upgrader.js` übernommen. Diese Datei enthält
+ * Fehlerkorrekturen gegenüber dem alten Bot, siehe `docs/aenderungen.md`.
  */
 
 import { bot } from "../globals";
@@ -93,7 +94,7 @@ export function spawn(spawn: StructureSpawn, workroom: string): boolean
     if(spawn.room.name != workroom)
         return false;
 
-    if(spawn.room.controller!.level > 7 && spawn.room.controller!.ticksToDowngrade > 100000 && spawn.room.storage!.store.getUsedCapacity(RESOURCE_ENERGY) < 250000)
+    if(spawn.room.controller!.level > 7 && spawn.room.controller!.ticksToDowngrade > 100000 && spawn.room.storage && spawn.room.storage.store.getUsedCapacity(RESOURCE_ENERGY) < 250000)
         return false;
 
     var count = _.filter(Game.creeps, (creep: Creep) => creep.memory.role == role &&
