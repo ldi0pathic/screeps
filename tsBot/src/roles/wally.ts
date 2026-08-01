@@ -44,7 +44,9 @@ export function doJob(creep: Creep) {
 
 
     if(creepBase.goToWorkroom(creep)) return;
+
     if(creepBase.checkWorkroomPrioSpawn(creep)) return;
+
     if(_repair(creep)) return;
 
     creepBase.upgradeController(creep);
@@ -54,7 +56,6 @@ export function _repair(creep: Creep): boolean {
     var targetWall: any;
     if(!creep.memory.wall)
     {
-
         var wall: any;
         for(var wallId in Memory.rooms[creep.memory.workroom]!.wally)
         {
@@ -78,11 +79,17 @@ export function _repair(creep: Creep): boolean {
     else
     {
         targetWall = Game.getObjectById(creep.memory.wall);
+
+        if(targetWall.hits >= targetWall.hitsMax){
+            creep.memory.wall = null;
+            return false;
+        }
     }
 
     if(targetWall)
     {
         const repairResult = creep.repair(targetWall);
+        creep.say(repairResult)
 
         if (repairResult === ERR_NOT_IN_RANGE) {
             creepBase.moveByMemory(creep, targetWall.pos);
@@ -94,7 +101,7 @@ export function _repair(creep: Creep): boolean {
     else
     {
         creep.memory.wall = null;
-        return true;
+        return false;
     }
 }
 

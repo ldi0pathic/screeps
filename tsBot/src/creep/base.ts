@@ -426,6 +426,7 @@ export function upgradeController(creep: Creep): boolean | void {
 
     if (state === ERR_NOT_IN_RANGE ||
         (state === ERR_INVALID_TARGET && controller.upgradeBlocked > 0)) {
+
         creepBaseGoTo.moveByMemory(creep,controller.pos);
 
     }
@@ -440,7 +441,7 @@ export function upgradeController(creep: Creep): boolean | void {
         }
 
     }
-
+    creep.say(state);
     return state == OK;
 }
 

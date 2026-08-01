@@ -1,4 +1,4 @@
-// Build: 2026-08-01 00:49:36 +02:00
+// Build: 2026-08-01 11:25:05 +02:00
 "use strict";
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
@@ -1295,6 +1295,7 @@ function upgradeController(creep) {
       moveByMemory(creep, controller.pos);
     }
   }
+  creep.say(state);
   return state == OK;
 }
 function spawn(spawn13, profil, newName, memory) {
@@ -2519,9 +2520,14 @@ function _repair2(creep) {
     }
   } else {
     targetWall = Game.getObjectById(creep.memory.wall);
+    if (targetWall.hits >= targetWall.hitsMax) {
+      creep.memory.wall = null;
+      return false;
+    }
   }
   if (targetWall) {
     const repairResult = creep.repair(targetWall);
+    creep.say(repairResult);
     if (repairResult === ERR_NOT_IN_RANGE) {
       moveByMemory2(creep, targetWall.pos);
       return true;
@@ -2529,7 +2535,7 @@ function _repair2(creep) {
     return repairResult == OK;
   } else {
     creep.memory.wall = null;
-    return true;
+    return false;
   }
 }
 function _getProfil8(spawn13) {
