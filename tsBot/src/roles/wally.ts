@@ -89,7 +89,6 @@ export function _repair(creep: Creep): boolean {
     if(targetWall)
     {
         const repairResult = creep.repair(targetWall);
-        creep.say(repairResult)
 
         if (repairResult === ERR_NOT_IN_RANGE) {
             creepBase.moveByMemory(creep, targetWall.pos);

@@ -441,7 +441,7 @@ export function upgradeController(creep: Creep): boolean | void {
         }
 
     }
-    creep.say(state);
+
     return state == OK;
 }
 
