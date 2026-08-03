@@ -6,11 +6,14 @@
  * gespiegelten Modulvariable `getMode()` (siehe `./state`) — das war der
  * Hauptfehler des Originals. Die Zähler gehen an `./window`, nicht nach
  * `Memory`.
+ *
+ * Der Klassen-/Methoden-Dekorator `@profile` ist im Einsatz: die Rollen sind
+ * auf Klassen umgestellt und tragen ihn.
  */
 
 import type { CreepRole } from "../roles";
 import { getMode } from "./state";
-import { recordRole, recordCreep } from "./window";
+import { recordRole, recordCreep, recordMethod } from "./window";
 
 /**
  * Ersetzt `obj[key]` durch eine messende Fassung. Idempotent: ein zweiter
@@ -49,7 +52,11 @@ export function wrapFunction(obj: object, key: PropertyKey, className?: string):
 
     const start = Game.cpu.getUsed();
     const result = originalFunction.apply(this, args);
-    recordRole(memKey, Game.cpu.getUsed() - start);
+    // Eigener Eimer `methods`, nicht `roles`: `wrapRoles` verbucht die Rolle
+    // schon als Ganzes unter ihrem Namen. Würde hier ebenfalls `recordRole`
+    // stehen, zählte dieselbe CPU doppelt (`miner` und `Miner.doJob`), sobald
+    // eine Rollenklasse dekoriert ist, und die Anteile summierten über 100 %.
+    recordMethod(memKey, Game.cpu.getUsed() - start);
     return result;
   });
 }
@@ -59,10 +66,10 @@ export function profile(target: Function): void;
 /** Dekorator für eine einzelne Methode. */
 export function profile(target: object, key: string | symbol, descriptor: TypedPropertyDescriptor<Function>): void;
 /**
- * Kombinierter Klassen-/Methoden-Dekorator. Für den geplanten Umbau der
- * Rollen auf Klassen: der Verbuchungsschlüssel ist `<Klassenname>.<methode>`.
- * In Phase A noch ungenutzt — `wrapRoles` deckt die bestehende, funktionale
- * Rollentabelle ab.
+ * Kombinierter Klassen-/Methoden-Dekorator für die auf Klassen umgebauten
+ * Rollen: der Verbuchungsschlüssel ist `<Klassenname>.<methode>`. Verbucht
+ * wird in `methods`, getrennt von `roles`, das `wrapRoles` weiter für die
+ * Rolle als Ganzes befüllt — siehe Begründung an `wrapFunction`.
  */
 export function profile(
   target: object | Function,

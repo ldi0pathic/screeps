@@ -51,6 +51,10 @@ export function writeStats(metrics: WindowMetrics): void {
     set(stats, `profiler.role.${role.name}.cpuPerTick`, role.cpuPerTick);
   }
 
+  // `metrics.methods` (Klassenmethoden aus dem `@profile`-Dekorator) wird
+  // bewusst nicht geschrieben: der Eimer füllt sich nur im Zustand `full`, und
+  // der ist nicht der Dauerzustand, aus dem ein Sammler zieht. Die Werte sind
+  // zudem in den Rollen-Summen enthalten, wären hier also doppelt.
   // Einzelne Creeps werden bewusst nicht geschrieben: `creepDetail` enthält
   // während der Detailmessung bis zu 60 wechselnde Schlüssel je Fenster, die
   // `Memory` unnötig aufblähen und die Serialisierungskosten dauerhaft

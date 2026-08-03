@@ -34,6 +34,7 @@ function createEmptySnapshot(): WindowSnapshot {
     tickLimit: 0,
     sections: {},
     roles: {},
+    methods: {},
     creepDetail: {},
   };
 }
@@ -147,6 +148,14 @@ export function recordRole(role: string, cpu: number): void {
   record(windowState.roles, role, cpu);
 }
 
+/** Zeit einer Klassenmethode verbuchen. Genutzt vom `@profile`-Dekorator. */
+export function recordMethod(key: string, cpu: number): void {
+  // Eigener Eimer statt `roles`: der Dekorator umhüllt jede Methode einer
+  // Rollenklasse, `wrapRoles` verbucht daneben die Rolle als Ganzes — beides
+  // in einer Rangliste würde dieselbe CPU doppelt zählen.
+  record(windowState.methods, key, cpu);
+}
+
 /**
  * Zeit eines einzelnen Creeps verbuchen. Der Rollen-Wrapper in `decorator.ts`
  * ruft das bewusst bei jedem `doJob` im Zustand `full` auf, ohne selbst nach
@@ -193,6 +202,7 @@ export function metrics(snapshotState: WindowSnapshot): WindowMetrics {
     tickLimit: snapshotState.tickLimit,
     sections: rank(snapshotState.sections, ticks, snapshotState.cpuTotal),
     roles: rank(snapshotState.roles, ticks, snapshotState.cpuTotal),
+    methods: rank(snapshotState.methods, ticks, snapshotState.cpuTotal),
     creepDetail: rank(snapshotState.creepDetail, ticks, snapshotState.cpuTotal),
   };
 }

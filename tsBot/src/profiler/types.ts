@@ -103,6 +103,20 @@ export interface WindowSnapshot {
   sections: Record<string, SectionStats>;
   /** Rollen, Schlüssel sind die Rollennamen aus `roles/index.ts`. */
   roles: Record<string, SectionStats>;
+  /**
+   * Einzelne Klassenmethoden aus dem `@profile`-Dekorator, Schlüssel
+   * `<Klasse>.<methode>`.
+   *
+   * Bewusst ein eigener Eimer und **nicht** `roles`: der Dekorator umhüllt
+   * jede Methode einer Rollenklasse, `wrapRoles` verbucht dagegen die Rolle als
+   * Ganzes. Beides in einer Rangliste hieße, dieselbe CPU zweimal zu zählen
+   * (`miner` und `Miner.doJob`) — die Anteile summierten über 100 %.
+   *
+   * Getrennt ist die Verschachtelung dagegen sauber und dieselbe wie bei den
+   * Abschnitten, wo `timing.tower` schon in `timing` steckt: `share` bezieht
+   * sich immer auf den Gesamttick, nie auf den Elterneintrag.
+   */
+  methods: Record<string, SectionStats>;
   /** Einzelne Creeps. Nur während der Detailmessung gefüllt. */
   creepDetail: Record<string, SectionStats>;
 }
@@ -158,6 +172,11 @@ export interface WindowMetrics {
   sections: RankedEntry[];
   /** Rollen, absteigend nach `cpuPerTick`. */
   roles: RankedEntry[];
+  /**
+   * Klassenmethoden aus `@profile`, absteigend. Verschachtelt in `roles` —
+   * siehe `WindowSnapshot.methods`.
+   */
+  methods: RankedEntry[];
   /** Einzelne Creeps, absteigend. Leer außerhalb der Detailmessung. */
   creepDetail: RankedEntry[];
 }

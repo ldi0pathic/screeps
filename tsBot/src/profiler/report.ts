@@ -99,11 +99,19 @@ function formatRankedBlock(title: string, entries: RankedEntry[]): string {
   return [`== ${title} ==`, header, separator, ...rows].join("\n");
 }
 
-/** Ausführlicher Bericht der Detailmessung, sortiert nach Gesamtanteil. */
+/**
+ * Ausführlicher Bericht der Detailmessung, sortiert nach Gesamtanteil.
+ *
+ * Der Block „Methoden" ist in „Rollen" verschachtelt: die CPU einer
+ * Klassenmethode aus dem `@profile`-Dekorator steckt auch in der Summe ihrer
+ * Rolle. Die Prozentanteile über alle Blöcke hinweg summieren deshalb
+ * absichtlich über 100 % — das ist kein Fehler im Bericht.
+ */
 export function formatDetailReport(metrics: WindowMetrics): string {
   const blocks = [
     formatRankedBlock("Abschnitte", metrics.sections),
     formatRankedBlock("Rollen", metrics.roles),
+    formatRankedBlock("Methoden", metrics.methods),
     formatRankedBlock("Creeps", metrics.creepDetail),
   ].filter(block => block.length > 0);
 
