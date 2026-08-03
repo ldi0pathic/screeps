@@ -97,3 +97,41 @@ Konfiguration und Code, die nichts bewirken. Details und Analysegrundlage in
 ### Sprachkonvention
 
 Neue Bezeichner (Variablen, Funktionen, Typen) werden künftig englisch benannt; Kommentare, Logausgaben und Doku bleiben deutsch. Bestehende Memory- und Konfigurationsschlüssel sowie die Rollennamen bleiben deutsch, weil sie im laufenden Spiel im Creep- und Room-Memory stehen.
+
+## Runde 2026-08-03: Profiler und Kennzahlen (Plan 01)
+
+Fokus dieser Runde: messen können, bevor optimiert wird. Der Server hat 20 CPU
+pro Tick, und das ist die Obergrenze für die Zahl der Räume — nicht Energie und
+nicht GCL. Grundlage ist [Plan 01](plans/01-profiler.md).
+
+### Neu: CPU-Profiler (`src/profiler/`)
+
+| Was | Warum | Erwartete Wirkung |
+| --- | --- | --- |
+| Neues Modul `src/profiler/` mit drei Zuständen `off` / `light` / `full`, umschaltbar zur Laufzeit über die Spielkonsole (`prof.off()`, `prof.light()`, `prof.on()`). Zustand in `Memory.profiler.mode`, übersteht den Global-Reset. | Ohne Messung ist keine Verbesserung belegbar und es wird an der falschen Stelle optimiert. Ein Flag in `config.ts` hätte für jedes Umschalten ein Deployment gebraucht. | Im Standardzustand `off` **keine** Verhaltensänderung: es läuft kein einziges `Game.cpu.getUsed()`. Nachgeprüft am gebauten Bundle — alle sieben `getUsed()`-Stellen liegen hinter einem Zustandsvergleich. |
+| Drei Zustände statt eines Schalters. | Im Zustand `off` läuft kein `getUsed()` — damit lässt sich auch nicht messen, was das Messen kostet. Erst der Vergleich `light` gegen `full` liefert die Eigenkosten. | `light` (ein `getUsed()` je Tick) ist der Dauerzustand, `full` (zusätzlich Abschnitte und Rollen) nur für die Fehlersuche. |
+| Messpunkte in `main.ts` (Raumschleife, Creep-Schleife, `timer.controll()`) und `controller/timing.ts` (Türme, Terminal, Pixel, Spawn, Verteidigung, Statuslog, Tagessequenz). | Diese sieben Abschnitte sind die Kostenträger des Ticks. | Keine; die Aufrufe sind im Zustand `off` und `light` ein sofortiges `return`. |
+| Rollenmessung über einen Wrapper um die Rollentabelle statt über Aufrufe in den Rollen. | `roles/index.ts` und alle zehn Rollendateien bleiben dadurch unverändert, kein Profiler-Aufruf steht in Rollencode. | Eine zusätzliche Indirektion je `doJob`/`spawn`. Die Schlüsselreihenfolge der Tabelle — und damit die Spawn-Priorität in `controller/spawn.ts` — bleibt erhalten. Ausnahmen aus Rollen gehen unverändert durch, die Fehlerbehandlung in `main.ts` bleibt wirksam. |
+| Zähler im Heap, nicht in `Memory`. In `Memory.profiler` steht nur der Zustand plus höchstens acht Grundlinien aus `prof.baseline(name)`. | `Memory` wird jeden Tick serialisiert, die Kosten wachsen mit der Größe (`knowledge/systems/runtime-memory.md`). | `Memory.profiler` bleibt unter 1 KB, im Spiel prüfbar mit `JSON.stringify(Memory.profiler).length`. |
+| Fensterergebnis zusätzlich flach nach `Memory.stats` in der Grafana-Konvention der Community. | Ein externer Sammler (screeps-grafana) wird damit später ohne Codeänderung möglich; Graphen über Tausende Ticks sagen mehr als Konsolenzeilen. | Ein Objekt aus rund 20 Zahlen, nur bei eingeschaltetem Profiler. `prof.off()` löscht es. |
+
+Nicht übernommen wurde Fremdcode: `screepers/screeps-profiler` liegt schon als
+`prod/profiler.js` im Repo und ist als Monkey-Patching aller Prototypen bei
+20 CPU kein Dauerbetrieb (das bleibt Stufe 3 des Plans, zurückgestellt).
+`screepers/screeps-typescript-profiler` legt seine Zähler unbegrenzt in `Memory`
+ab, liest den Zustand bei jedem gewrappten Aufruf aus `Memory` und schaltet über
+eine Build-Konstante. Übernommen ist daraus nur die Wrapping-Mechanik in
+`profiler/decorator.ts`, mit ersetztem Zustand und ersetzter Speicherung.
+
+`experimentalDecorators` in `tsconfig.json` ist für das noch ungenutzte
+`@profile` gesetzt, das der anstehende Umbau der Rollen auf Klassen braucht.
+
+**Offen:** die Eigenkosten von `light` und `full` sind noch nicht gemessen. Sie
+gehören hierher, sobald je 500 Ticks in beiden Zuständen gelaufen sind — bis
+dahin ist die Aussage „kostet fast nichts" unbelegt.
+
+### Behoben: Builder ohne Rückfallprofil
+
+| Modul / Funktion | Was war falsch | Änderung | Wirkung |
+| --- | --- | --- | --- |
+| `roles/builder.ts` · `_getProfil` | Bei `energyCapacityAvailable` unter 550 wurde `numberOfSets` zu 0 und die Funktion lieferte ein leeres Body-Array; `spawnCreep` schlägt damit grundsätzlich fehl. Betroffen sind RCL1-Räume und Räume, die nach einem Angriff darunter fallen — also genau die Phase, die ein neu geclaimter Raum durchläuft. Derselbe Fehler wie beim Miner am 2026-08-01 (A4 oben). | Rückfall auf `[WORK,CARRY,CARRY,MOVE,MOVE]` für genau 300 Energie, wortgleich zu `repairer._getProfil` mit derselben Profilform. | Ab 550 Energie unverändert. Unter 550 entsteht jetzt ein kleiner Builder statt keiner. |
