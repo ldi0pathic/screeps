@@ -6,6 +6,7 @@ import "./config";
 import * as controllerMemory from "./controller/memory";
 import * as timer from "./controller/timing";
 import { bot } from "./globals";
+import * as prof from "./profiler";
 import { installCreepChecks } from "./prototypes/creep-checks";
 import { installTerminalMarket } from "./prototypes/terminal-market";
 import { jobs } from "./roles";
@@ -48,7 +49,18 @@ function reportError(kind: string, message: string): void {
 installCreepChecks();
 installTerminalMarket();
 
+/**
+ * Rollentabelle mit CPU-Messung. Einmal beim Modulladen umhüllt, damit
+ * `roles/index.ts` und die zehn Rollendateien keinen Profiler-Aufruf enthalten
+ * müssen. Die Schlüsselreihenfolge bleibt erhalten — sie *ist* die
+ * Spawn-Priorität in `controller/spawn.ts`.
+ */
+const measuredJobs = prof.wrapRoles(jobs);
+
 export function loop(): void {
+  prof.tick();
+
+  prof.begin(prof.SECTION.rooms);
   for (const name in bot.room) {
     const room = Game.rooms[name];
 
@@ -77,6 +89,10 @@ export function loop(): void {
       );
     }
   }
+  prof.end(prof.SECTION.rooms);
+
+  prof.begin(prof.SECTION.creeps);
+  let processedCreeps = 0;
 
   for (const name in Memory.creeps) {
     const creep = Game.creeps[name];
@@ -101,7 +117,7 @@ export function loop(): void {
     // Eine Rolle, die es nicht gibt (z. B. nach einer Umbenennung im Code),
     // darf den Tick nicht abbrechen. Der Creep wird übersprungen und nicht
     // suizidiert — sonst löscht eine Umbenennung die ganze Population.
-    const job = jobs[creepMemory.role];
+    const job = measuredJobs[creepMemory.role];
     if (!job) {
       reportError(
         `rolle-unbekannt:${creepMemory.role}`,
@@ -113,6 +129,10 @@ export function loop(): void {
     // Fehler bleiben auf diesen Creep begrenzt. Vorher brach ein einzelner
     // defekter Creep den ganzen Tick ab, inklusive Türmen, Spawncontroller
     // und Verteidigungsscan.
+    // Vor dem Aufruf zählen: ein Creep, dessen Rolle wirft, hat trotzdem CPU
+    // gekostet und gehört in die Bezugsgröße für "CPU pro Creep".
+    processedCreeps += 1;
+
     try {
       job.doJob(creep);
     } catch (error) {
@@ -122,7 +142,9 @@ export function loop(): void {
       );
     }
   }
+  prof.end(prof.SECTION.creeps);
 
+  prof.begin(prof.SECTION.timing);
   try {
     timer.controll();
   } catch (error) {
@@ -131,4 +153,9 @@ export function loop(): void {
       `controller/timing\n${(error as Error)?.stack ?? String(error)}`,
     );
   }
+  prof.end(prof.SECTION.timing);
+
+  // Muss die letzte Anweisung sein: `Game.cpu.getUsed()` wird hier als
+  // Gesamtwert des Ticks gelesen. Was danach käme, wäre nicht mitgezählt.
+  prof.endTick(processedCreeps);
 }

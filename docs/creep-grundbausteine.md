@@ -2,6 +2,8 @@
 
 `prod/creep.jobs.js` ist die zentrale Rollentabelle. Zulässige Werte für `creep.memory.role` sind `debitor`, `transfer`, `miner`, `claimer`, `builder`, `repairer`, `upgrader`, `extupgrader`, `defender` und `wally`. Jedes zugeordnete Modul muss `doJob(creep)` exportieren.
 
+Ein Profiler misst optional die CPU je Rolle und, während einer Detailmessung, zusätzlich je einzelnem Creep. Dazu ersetzt `main.ts` beim Laden die aus `roles/index.ts` importierte Tabelle `jobs` durch eine umhüllte Fassung, deren `doJob` und `spawn` die Zeit messen und danach das Original aufrufen; die Reihenfolge der Schlüssel bleibt dabei erhalten, weil sie die Spawn-Priorität in `controller/spawn.ts` ist. `roles/index.ts` und die zehn Rollenmodule bleiben dadurch unverändert, ein Profiler-Aufruf steht in keinem Rollencode. Eine Ausnahme aus einer Rolle geht unverändert durch den Wrapper hindurch, die Fehlerbehandlung in `main.ts` mit Rollennamen und Mail bleibt also wirksam. Ausgeschaltet (Standard) kostet der Wrapper nur einen Funktionsaufruf und eine Abfrage einer Modulvariablen, es läuft kein `Game.cpu.getUsed()`. Bedienung (`prof.on()`, `prof.report()`, …) siehe `docs/controller-und-automatik.md`.
+
 ## Arbeitszustand und Beschaffung
 
 `creep.base.js` bündelt wiederverwendbare Aktionen. Die Rollen verwenden `memory.harvest` als Zustandsautomat: `true` bedeutet Ressourcen beschaffen, `false` bedeutet arbeiten/abliefern. Die Prototypmethode `checkHarvest()` schaltet bei leerem bzw. vollem Inventar um und löscht dabei zwischengespeicherte Pfade und Ziele.

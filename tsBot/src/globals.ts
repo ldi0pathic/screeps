@@ -7,6 +7,10 @@
  * statt einer `declare global`-Deklaration.
  */
 
+// Reiner Typimport: `profiler/types.ts` importiert selbst nichts, deshalb
+// entsteht hier keine Importschleife, obwohl der Profiler `bot` benutzt.
+import type { ProfilerHandle } from "./profiler/types";
+
 /** Eine Raumdefinition aus `global.room`. */
 export interface RoomConfig {
   room: string;
@@ -80,6 +84,11 @@ export interface BotGlobal {
   transfer: Record<string, TransferConfig>;
   log(condition: boolean, message: unknown): void;
   logWorkroom(room: string, message: string): void;
+  /**
+   * Konsolenhandle des Profilers, gesetzt von `profiler/index.ts`. Weil `bot`
+   * dasselbe Objekt wie `global` ist, tippt man im Spiel `prof.report()`.
+   */
+  prof: ProfilerHandle;
 }
 
 export const bot = global as typeof global & BotGlobal;

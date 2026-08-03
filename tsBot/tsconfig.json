@@ -18,6 +18,12 @@
     "noUncheckedIndexedAccess": true,
     "exactOptionalPropertyTypes": false,
 
+    // Legacy-Dekoratoren für `@profile` aus `src/profiler/decorator.ts`.
+    // Ohne das Flag nimmt TypeScript bei `target: es2022` die Standard-
+    // Dekoratoren, deren Signatur nicht zu `(target, key, descriptor)` passt.
+    // esbuild liest das Flag aus dieser Datei.
+    "experimentalDecorators": true,
+
     // Recommended Options
     "strict": true,
     "isolatedModules": true,

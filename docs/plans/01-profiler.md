@@ -1,6 +1,7 @@
 # Plan 01: Profiler und Kennzahlen
 
-Status: **Vorschlag, noch nicht umgesetzt.**
+Status: **Stufe 1 und 2 umgesetzt** (Branch `plan-01-profiler`),
+Stufe 3 zurückgestellt, Zahlen werden im Spiel erhoben.
 
 ## Warum zuerst
 
@@ -105,15 +106,19 @@ lassen.
 
 ## Bedienung
 
-Konsolenzugriff über den bestehenden `bot`-Handle, damit im Spiel ohne
+Konsolenzugriff über `prof` (kein Präfix), damit im Spiel ohne
 Neu-Deployment umgeschaltet werden kann:
 
-- `bot.prof.report()` — aktuellen Fensterbericht ausgeben
-- `bot.prof.reset()` — Fenster verwerfen und neu beginnen
-- `bot.prof.detail(ticks)` — Stufe 2 für die angegebene Zahl Ticks
-- `bot.prof.off()` — Detailmessung sofort beenden
-- `bot.prof.baseline(name)` — aktuelles Fenster als benannte Grundlinie
+- `prof.light()` — Zustand `light`: nur Gesamttick und Bucket
+- `prof.on()` — Zustand `full`: zusätzlich Abschnitte und Rollen
+- `prof.off()` — Zustand `off`: Messung völlig ausgeschaltet
+- `prof.status()` — Zustand anzeigen und Restticks der Detailmessung
+- `prof.report()` — aktuellen Fensterbericht ausgeben
+- `prof.reset()` — Fenster verwerfen und neu beginnen
+- `prof.detail(ticks)` — Stufe 2 für die angegebene Zahl Ticks
+- `prof.baseline(name)` — aktuelles Fenster als benannte Grundlinie
   festhalten, damit „vorher/nachher" nicht von Hand notiert werden muss
+- `prof.baselines()` — alle gespeicherten Grundlinien nebeneinander
 
 ## Vorgehen beim Vergleich vorher/nachher
 
@@ -127,12 +132,17 @@ Neu-Deployment umgeschaltet werden kann:
 
 ## Eigenkosten belegen
 
-Der Profiler darf das nicht verfälschen, was er messen soll. Nachweis:
+Der Profiler darf das nicht verfälschen, was er messen soll. Umgesetzt mit
+drei Zuständen:
 
-- Ein Schalter `bot.const.profiler` schaltet Stufe 1 komplett aus; im
-  ausgeschalteten Zustand darf kein `Game.cpu.getUsed()`-Aufruf mehr laufen.
-- Mittleres CPU pro Tick über je 500 Ticks mit Schalter an und aus vergleichen.
-  Die Differenz ist der Preis und gehört ins Änderungsprotokoll.
+- `Memory.profiler.mode` hält `off`, `light` oder `full`, zur Laufzeit über
+  die Konsole (`prof.off()`, `prof.light()`, `prof.on()`) umschaltbar und
+  übersteht einen Global-Reset. Standard nach dem Deployment ist `off`.
+- Im Zustand `off` läuft kein `Game.cpu.getUsed()` — damit lässt sich auch
+  nicht messen, wie teuer das Messen ist. Der Vergleich `light` gegen `full`
+  über je 500 Ticks liefert die Eigenkosten.
+- `light` ist zugleich der sinnvolle Dauerzustand: nur Gesamttick und Bucket,
+  deutlich billiger als `full`.
 
 ## Abnahmekriterien
 
@@ -166,11 +176,19 @@ automatisch geclaimter Neuraum durchläuft.
 Reiner Guard, keine Verhaltensänderung im Normalbetrieb. Details und Begründung
 in [Plan 03](03-durchsatz-und-bodies.md).
 
-## Offene Frage
+## Entschieden: Messpunkte und Wrapper
 
 Aufteilung der Messpunkte auf `main.ts` und `controller/timing.ts` bedeutet,
-dass beide Dateien Profiler-Aufrufe enthalten. Alternative wäre ein Wrapper,
-der die Rollentabelle aus `roles/index.ts` einmalig umhüllt — weniger
-Fremdkörper im Code, aber eine zusätzliche Indirektion in jedem
-`doJob`-Aufruf. Vorschlag: erst die einfache Variante mit direkten Messpunkten,
-weil sie sich ohne Nebenwirkung wieder entfernen lässt.
+dass beide Dateien Profiler-Aufrufe enthalten. Umgesetzt wurde die Lösung:
+**beides, aufgeteilt.**
+
+- Direkte Messpunkte in `main.ts` und `controller/timing.ts` für die Abschnitte
+  (Gesamttick, Raum-Visuals, Creep-Schleife, Controller-Funktionen).
+- Ein Wrapper um die Rollentabelle für die Rollen, damit `roles/index.ts` und
+  die zehn Rollendateien unverändert bleiben.
+
+Die Indirektion in jedem `doJob`-Aufruf, die im Vorschlag noch als Nachteil des
+Wrappers stand, bleibt damit bestehen — sie ist der bezahlte Preis dafür, dass
+kein Rollencode einen Profiler-Aufruf enthält. Im ausgeschalteten Zustand kostet
+sie einen Funktionsaufruf und den Vergleich einer Modulvariablen, kein
+`Game.cpu.getUsed()`.

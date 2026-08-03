@@ -2,6 +2,8 @@ import * as defenceController from "./defence";
 import * as memoryController from "./memory";
 import * as rebuildController from "./rebuild";
 import * as spawnController from "./spawn";
+// Messpunkte für den CPU-Profiler: klammern die Abschnitte des Schedulers ein.
+import { begin, end, SECTION } from "../profiler";
 
 interface TerminalMarket extends StructureTerminal {
   sell(): void;
@@ -18,8 +20,11 @@ export function controll(): void {
   const tick = Game.time;
 
   memoryController.init();
+  begin(SECTION.tower);
   defenceController.tower();
+  end(SECTION.tower);
 
+  begin(SECTION.terminal);
   const terminalIds = botMemory.terminals;
   if (terminalIds && terminalIds.length > 0) {
     const terminalId = terminalIds[Game.time % terminalIds.length];
@@ -36,24 +41,35 @@ export function controll(): void {
       }
     }
   }
+  end(SECTION.terminal);
 
   if (tick % 3 === 0 && Game.cpu.bucket === 10_000) {
+    begin(SECTION.pixel);
     Game.cpu.generatePixel();
+    end(SECTION.pixel);
   }
 
   if (tick % 5 === 0) {
+    begin(SECTION.spawn);
     spawnController.spawn();
+    end(SECTION.spawn);
   }
 
   if (tick % 7 === 0) {
+    begin(SECTION.defence);
     defenceController.check();
+    end(SECTION.defence);
   }
 
   if (tick % 11 === 0) {
+    begin(SECTION.status);
     memoryController.writeStatus();
+    end(SECTION.status);
   }
 
+  begin(SECTION.daily);
   daylie();
+  end(SECTION.daily);
 }
 
 export function daylie(): void {
