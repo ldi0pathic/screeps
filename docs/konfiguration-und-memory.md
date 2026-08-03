@@ -13,6 +13,8 @@ Globale Gruppen:
 
 Eine Raumdefinition enthält typischerweise `room`, `spawnRoom`, Flags zum Entsenden von Rollen (`sendMiner`, `sendDebitor`, `sendBuilder`, `sendDefender`, `sendClaimer`), Quellen-IDs, Link-IDs, Baulimits und Upgrader-Anzahl. Nicht jeder Raum muss sichtbar oder selbst besessen sein; `spawnRoom` kann die Produktion aus einem anderen Raum anfordern.
 
+Der Schalter `sendLinkkeeper` aktiviert die Rolle `linkkeeper` für den Raum. Sie schiebt die Energie aus dem Link in der Basis (`spawnLink`) kontinuierlich ins Storage. Muss an sein, solange `useLinks` für den Raum gilt: Der frühere Direktzugriff `harvestSpawnLink` ist entfernt, weshalb ohne `sendLinkkeeper` niemand sonst den Link leert. Ein voller Empfänger-Link blockiert dann alle Quell-Links, die auf ihn senden. Voraussetzungen: `useLinks` gesetzt, `spawnLink` konfiguriert, ein Storage im Raum, der Raum ist sein eigener Spawnraum. Höchstens ein Creep je Raum. Derzeit gesetzt in E58N6, E58N7, E59N3 und E59N9.
+
 Die Prioritätstabellen verwenden kleinere Werte als höhere Priorität. `build` bevorzugt u. a. Extensions, Spawns, Links und Storage; `repair` bevorzugt Ramparts vor Walls, danach kritische Gebäudetypen — Ramparts stehen vor Walls, weil sie dauerhaft 300 Hits je 100 Ticks verlieren, während Walls gar nicht zerfallen. `hits` definiert die Reparaturschwelle als Anteil der Maximalhits (Wände `0,0005`, Ramparts `0,001`).
 
 `showPaths` schaltet die Pfad-Visualisierung in `creep/goto.ts::moveByMemory` frei (roter `RoomVisual`-Restpfad je bewegtem Creep); im Normalbetrieb bleibt sie aus, weil sie jeden Tick den gecachten Pfad erneut deserialisiert und durchsucht.

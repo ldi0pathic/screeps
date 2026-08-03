@@ -91,7 +91,6 @@ export class Debitor implements CreepRole {
 
         if (creep.memory.notfall) {
             if (creep.memory.harvest) {
-                if (creepBase.harvestSpawnLink(creep, creep.memory.mineral)) return;
                 if (creepBase.harvestControllerLink(creep, creep.memory.mineral)) return;
                 if (creepBase.harvestRoomStorage(creep, creep.memory.mineral)) return;
                 if (creepBase.harvestRoomContainer(creep, creep.memory.mineral, 0.25)) return;
@@ -118,7 +117,6 @@ export class Debitor implements CreepRole {
 
             if (creepBase.harvestRoomRuins(creep, creep.memory.mineral)) return;
 
-            if (creepBase.harvestSpawnLink(creep, creep.memory.mineral)) return;
             if (creepBase.harvestMyContainer(creep, creep.memory.mineral)) return;
 
             const storage = creep.room.storage;

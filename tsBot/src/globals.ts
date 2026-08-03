@@ -25,6 +25,12 @@ export interface RoomConfig {
   sendBuilder?: boolean;
   sendDefender?: boolean;
   sendClaimer?: boolean;
+  /**
+   * Hält den Link in der Basis (`spawnLink`) leer und schiebt seine Energie
+   * ins Storage. Nötig, sobald `useLinks` gesetzt ist: ein voller Empfänger-Link
+   * blockiert alle Quell-Links, die auf ihn senden.
+   */
+  sendLinkkeeper?: boolean;
   /** Ab wie vielen Feinden Verteidigung ausgelöst wird (Standard 1). */
   minHostile?: number;
   saveRoads?: boolean;

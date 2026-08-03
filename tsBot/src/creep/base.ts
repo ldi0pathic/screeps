@@ -246,29 +246,6 @@ export function harvestRoomContainer(creep: Creep, type: string, mul?: number): 
     return false;
 }
 
-export function harvestSpawnLink(creep: Creep, type: string): boolean {
-    if (creep.memory.workroom != creep.room.name ||
-        !bot.room[creep.memory.workroom]!.spawnLink)
-        return false;
-
-    var link: any = Game.getObjectById(bot.room[creep.memory.workroom]!.spawnLink!);
-
-    if (link && link.store[type] > 100) {
-        switch (creep.withdraw(link, type as ResourceConstant)) {
-            case ERR_NOT_IN_RANGE:
-                creepBaseGoTo.moveByMemory(creep,link.pos);
-                return true;
-            case OK:
-                creep.memory.fromId = link.id;
-                return true;
-
-            default:
-                return false;
-        }
-    }
-    return false;
-}
-
 export function harvestControllerLink(creep: Creep, type: string): boolean {
     if (creep.memory.workroom != creep.room.name ||
         !bot.room[creep.memory.workroom]!.controllerLink ||

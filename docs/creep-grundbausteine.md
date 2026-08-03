@@ -2,7 +2,7 @@
 
 `prod/creep.jobs.js` ist die zentrale Rollentabelle. Zulässige Werte für `creep.memory.role` sind `debitor`, `transfer`, `miner`, `claimer`, `builder`, `repairer`, `upgrader`, `extupgrader`, `defender` und `wally`. Jedes zugeordnete Modul muss `doJob(creep)` exportieren.
 
-Ein Profiler misst optional die CPU je Rolle und, während einer Detailmessung, zusätzlich je einzelnem Creep. Dazu ersetzt `main.ts` beim Laden die aus `roles/index.ts` importierte Tabelle `jobs` durch eine umhüllte Fassung, deren `doJob` und `spawn` die Zeit messen und danach das Original aufrufen; die Reihenfolge der Schlüssel bleibt dabei erhalten, weil sie die Spawn-Priorität in `controller/spawn.ts` ist. `roles/index.ts` und die zehn Rollenmodule bleiben dadurch unverändert, ein Profiler-Aufruf steht in keinem Rollencode. Eine Ausnahme aus einer Rolle geht unverändert durch den Wrapper hindurch, die Fehlerbehandlung in `main.ts` mit Rollennamen und Mail bleibt also wirksam. Ausgeschaltet (Standard) kostet der Wrapper nur einen Funktionsaufruf und eine Abfrage einer Modulvariablen, es läuft kein `Game.cpu.getUsed()`. Bedienung (`prof.on()`, `prof.report()`, …) siehe `docs/controller-und-automatik.md`.
+Ein Profiler misst optional die CPU je Rolle und, während einer Detailmessung, zusätzlich je einzelnem Creep. Alle zehn Rollen sind Klassen mit `implements CreepRole`, tragen den Dekorator `@profile` und exportieren ihre Instanz als Default; `roles/index.ts` importiert deshalb Defaults statt Namespaces. Die Reihenfolge der Tabelle und ihre Schlüssel bleiben davon unberührt — sie ist die Spawn-Priorität in `controller/spawn.ts` und steht im Creep-Memory laufender Creeps. Zwei Messwege bestehen nebeneinander: `wrapRoles` verbucht weiter die Rolle als Ganzes unter ihrem Namen, `@profile` zusätzlich jede Methode einzeln unter `<Klasse>.<Methode>` in einen eigenen Eimer. Ein Profiler-Aufruf steht in keinem Rollencode, eine Ausnahme aus einer Rolle geht unverändert durch, und ausgeschaltet läuft kein `Game.cpu.getUsed()`. Details und Bedienung (`prof.on()`, `prof.report()`, …) siehe `docs/controller-und-automatik.md`.
 
 ## Arbeitszustand und Beschaffung
 
@@ -16,7 +16,7 @@ Die allgemeine Energiepriorität von `base.harvest()` lautet:
 
 Erfolgreiche Entnahmen speichern die Herkunft in `memory.fromId`. Transportfunktionen nutzen diese ID, um nicht in das eben verwendete Objekt zurückzuliefern.
 
-Spezialisierte Entnahmen existieren für Spawn- und Controller-Links, einen dem Creep zugeordneten Container sowie eine Notfallentnahme aus energiehaltigen Links, Labs, Nukern und Türmen.
+Spezialisierte Entnahmen existieren für den Controller-Link, einen dem Creep zugeordneten Container sowie eine Notfallentnahme aus energiehaltigen Links, Labs, Nukern und Türmen. Den Spawn-Link leert stattdessen die Rolle `linkkeeper` in der Basis und schiebt die Energie ins Storage — wer Energie braucht, holt sie von dort.
 
 ## Transportziele
 

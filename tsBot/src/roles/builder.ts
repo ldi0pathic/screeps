@@ -34,10 +34,6 @@ export class Builder implements CreepRole {
                 creep.memory.harvest = false;
             }
 
-            // Fix ggü. prod/creep.builder.js: dort creep.memory.mineral, das bei Buildern nie gesetzt wird
-            // (creepBase.spawn setzt nur role/workroom/home) - korrekt ist RESOURCE_ENERGY.
-            if(creepBase.harvestSpawnLink(creep,RESOURCE_ENERGY))return;
-
             return;
         }
 

@@ -18,6 +18,7 @@ import claimer from "./claimer";
 import debitor from "./debitor";
 import defender from "./defender";
 import extupgrader from "./extupgrader";
+import linkkeeper from "./linkkeeper";
 import miner from "./miner";
 import repairer from "./repairer";
 import transfer from "./transfer";
@@ -32,6 +33,9 @@ export interface CreepRole {
 
 export const jobs: Record<string, CreepRole> = {
   debitor,
+  // Weit vorn mit Absicht: ein voller Empfänger-Link nimmt nichts mehr an und
+  // blockiert damit den Durchsatz aller Quell-Links, die auf ihn senden.
+  linkkeeper,
   transfer,
   miner,
   claimer,
