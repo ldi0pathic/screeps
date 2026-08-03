@@ -1,4 +1,4 @@
-// Build: 2026-08-01 11:31:16 +02:00
+// Build: 2026-08-03 21:54:38 +02:00
 "use strict";
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
@@ -1367,6 +1367,9 @@ function _getProfil(spawn13) {
   const totalCost = 3 * BODYPART_COST[WORK] + 2 * BODYPART_COST[CARRY] + 2 * BODYPART_COST[MOVE];
   var maxEnergy = spawn13.room.energyCapacityAvailable;
   var numberOfSets = Math.min(7, Math.floor(maxEnergy / totalCost));
+  if (numberOfSets == 0) {
+    return [WORK, CARRY, CARRY, MOVE, MOVE];
+  }
   return Array(numberOfSets * 3).fill(WORK).concat(Array(numberOfSets * 2).fill(CARRY).concat(Array(numberOfSets * 2).fill(MOVE)));
 }
 function spawn2(spawn13, workroom) {
@@ -2620,12 +2623,552 @@ function spawn12() {
   }
 }
 
+// src/profiler/report.ts
+function fmt(value, decimals = 2) {
+  if (!Number.isFinite(value)) return "-";
+  return value.toFixed(decimals);
+}
+function fmtPercent(share) {
+  if (!Number.isFinite(share)) return "-";
+  return `${(share * 100).toFixed(1)}%`;
+}
+function topEntries(entries, count) {
+  if (entries.length === 0) return "-";
+  return entries.slice(0, count).map((entry) => `${entry.name} ${fmtPercent(entry.share)}`).join(", ");
+}
+function formatWindowLine(metrics2) {
+  const top = topEntries(metrics2.roles, 3);
+  return `[prof] Fenster=${fmt(metrics2.ticks, 0)}T | CPU/Tick=${fmt(metrics2.cpuPerTick)} | CPU/Raum=${fmt(metrics2.cpuPerRoom)} | CPU/Creep=${fmt(metrics2.cpuPerCreep)} | Bucket~${fmt(metrics2.bucketMean, 0)} (min ${fmt(metrics2.bucketMin, 0)}) | Limit=${fmt(metrics2.limit, 0)} | Top: ${top}`;
+}
+var NUMBER_COLUMN_WIDTHS = {
+  cpuPerTick: 9,
+  cpuPerCall: 10,
+  callsPerTick: 12,
+  max: 8,
+  share: 8
+};
+function formatRankedRow(entry, widths) {
+  return [
+    entry.name.padEnd(widths.name),
+    fmt(entry.cpuPerTick).padStart(widths.cpuPerTick),
+    fmt(entry.cpuPerCall).padStart(widths.cpuPerCall),
+    fmt(entry.callsPerTick).padStart(widths.callsPerTick),
+    fmt(entry.max).padStart(widths.max),
+    fmtPercent(entry.share).padStart(widths.share)
+  ].join("  ");
+}
+function formatRankedBlock(title, entries) {
+  if (entries.length === 0) return "";
+  const sorted = [...entries].sort((a, b) => b.share - a.share);
+  const nameWidth = Math.max("Name".length, ...sorted.map((entry) => entry.name.length));
+  const widths = { name: nameWidth, ...NUMBER_COLUMN_WIDTHS };
+  const header = [
+    "Name".padEnd(widths.name),
+    "CPU/Tick".padStart(widths.cpuPerTick),
+    "CPU/Aufruf".padStart(widths.cpuPerCall),
+    "Aufrufe/Tick".padStart(widths.callsPerTick),
+    "Max".padStart(widths.max),
+    "Anteil%".padStart(widths.share)
+  ].join("  ");
+  const separator = "-".repeat(header.length);
+  const rows = sorted.map((entry) => formatRankedRow(entry, widths));
+  return [`== ${title} ==`, header, separator, ...rows].join("\n");
+}
+function formatDetailReport(metrics2) {
+  const blocks = [
+    formatRankedBlock("Abschnitte", metrics2.sections),
+    formatRankedBlock("Rollen", metrics2.roles),
+    formatRankedBlock("Creeps", metrics2.creepDetail)
+  ].filter((block) => block.length > 0);
+  if (blocks.length === 0) {
+    return "Keine Detaildaten im laufenden Fenster. Mit prof.detail() eine Messung starten.";
+  }
+  return blocks.join("\n\n");
+}
+var BASELINE_NUMBER_WIDTHS = {
+  tick: 10,
+  ticks: 6,
+  cpuPerTick: 10,
+  cpuPerRoom: 10,
+  cpuPerCreep: 11,
+  bucketMean: 11
+};
+function formatBaselineRow(row, widths) {
+  return [
+    row.name.padEnd(widths.name),
+    fmt(row.tick, 0).padStart(widths.tick),
+    fmt(row.ticks, 0).padStart(widths.ticks),
+    fmt(row.cpuPerTick).padStart(widths.cpuPerTick),
+    fmt(row.cpuPerRoom).padStart(widths.cpuPerRoom),
+    fmt(row.cpuPerCreep).padStart(widths.cpuPerCreep),
+    fmt(row.bucketMean).padStart(widths.bucketMean)
+  ].join("  ");
+}
+function formatBaselines(baselines, current) {
+  const names = Object.keys(baselines);
+  if (names.length === 0) {
+    return "Keine Grundlinien vorhanden. Mit prof.baseline(name) eine anlegen.";
+  }
+  const rows = names.map((name) => {
+    const baseline = baselines[name];
+    return {
+      name,
+      tick: baseline.tick,
+      ticks: baseline.ticks,
+      cpuPerTick: baseline.cpuPerTick,
+      cpuPerRoom: baseline.cpuPerRoom,
+      cpuPerCreep: baseline.cpuPerCreep,
+      bucketMean: baseline.bucketMean
+    };
+  });
+  if (current !== null) {
+    rows.push({
+      name: "jetzt",
+      tick: Game.time,
+      ticks: current.ticks,
+      cpuPerTick: current.cpuPerTick,
+      cpuPerRoom: current.cpuPerRoom,
+      cpuPerCreep: current.cpuPerCreep,
+      bucketMean: current.bucketMean
+    });
+  }
+  const nameWidth = Math.max("Name".length, ...rows.map((row) => row.name.length));
+  const widths = { name: nameWidth, ...BASELINE_NUMBER_WIDTHS };
+  const header = [
+    "Name".padEnd(widths.name),
+    "Tick".padStart(widths.tick),
+    "Ticks".padStart(widths.ticks),
+    "CPU/Tick".padStart(widths.cpuPerTick),
+    "CPU/Raum".padStart(widths.cpuPerRoom),
+    "CPU/Creep".padStart(widths.cpuPerCreep),
+    "Bucket-\xD8".padStart(widths.bucketMean)
+  ].join("  ");
+  const separator = "-".repeat(header.length);
+  const dataRows = rows.map((row) => formatBaselineRow(row, widths));
+  return [header, separator, ...dataRows].join("\n");
+}
+
+// src/profiler/state.ts
+var MAX_BASELINES = 8;
+var profilerMemory = Memory;
+var currentMode = "off";
+function ensureMemory() {
+  var _a;
+  return (_a = profilerMemory.profiler) != null ? _a : profilerMemory.profiler = { mode: "off" };
+}
+function syncFromMemory() {
+  currentMode = ensureMemory().mode;
+  return currentMode;
+}
+function getMode() {
+  return currentMode;
+}
+function setMode(mode) {
+  ensureMemory().mode = mode;
+  currentMode = mode;
+}
+function startDetail(ticks) {
+  const memory = ensureMemory();
+  if (memory.detailUntil === void 0) {
+    memory.detailReturnTo = currentMode;
+  }
+  memory.detailUntil = Game.time + ticks;
+  memory.mode = "full";
+  currentMode = "full";
+}
+function detailActive() {
+  return ensureMemory().detailUntil !== void 0;
+}
+function detailRemaining() {
+  const memory = ensureMemory();
+  if (memory.detailUntil === void 0) {
+    return 0;
+  }
+  const remaining = memory.detailUntil - Game.time;
+  return remaining > 0 ? remaining : 0;
+}
+function expireDetail() {
+  var _a;
+  const memory = ensureMemory();
+  if (memory.detailUntil === void 0 || Game.time < memory.detailUntil) {
+    return false;
+  }
+  const returnTo = (_a = memory.detailReturnTo) != null ? _a : "off";
+  delete memory.detailUntil;
+  delete memory.detailReturnTo;
+  memory.mode = returnTo;
+  currentMode = returnTo;
+  return true;
+}
+function saveBaseline(name, baseline) {
+  var _a;
+  const memory = ensureMemory();
+  const baselines = (_a = memory.baselines) != null ? _a : memory.baselines = {};
+  baselines[name] = baseline;
+  const names = Object.keys(baselines);
+  if (names.length <= MAX_BASELINES) {
+    return;
+  }
+  let oldestName = names[0];
+  let oldestTick = baselines[oldestName].tick;
+  for (const candidate of names) {
+    const tick2 = baselines[candidate].tick;
+    if (tick2 < oldestTick) {
+      oldestTick = tick2;
+      oldestName = candidate;
+    }
+  }
+  delete baselines[oldestName];
+}
+function readBaselines() {
+  var _a;
+  return (_a = ensureMemory().baselines) != null ? _a : {};
+}
+
+// src/profiler/stats.ts
+var statsMemory = Memory;
+function isWritable(value) {
+  return Number.isFinite(value);
+}
+function set(target, key, value) {
+  if (!isWritable(value)) return;
+  target[key] = value;
+}
+function writeStats(metrics2) {
+  const stats = {};
+  set(stats, "cpu.getUsed", metrics2.cpuPerTick);
+  set(stats, "cpu.limit", metrics2.limit);
+  set(stats, "cpu.tickLimit", metrics2.tickLimit);
+  set(stats, "cpu.bucket", metrics2.bucketMean);
+  set(stats, "profiler.ticks", metrics2.ticks);
+  set(stats, "profiler.cpuPerTick", metrics2.cpuPerTick);
+  set(stats, "profiler.cpuMaxTick", metrics2.cpuMaxTick);
+  set(stats, "profiler.cpuPerRoom", metrics2.cpuPerRoom);
+  set(stats, "profiler.cpuPerCreep", metrics2.cpuPerCreep);
+  set(stats, "profiler.rooms", metrics2.rooms);
+  set(stats, "profiler.creeps", metrics2.creeps);
+  set(stats, "profiler.bucketMin", metrics2.bucketMin);
+  for (const section of metrics2.sections) {
+    set(stats, `profiler.section.${section.name}.cpuPerTick`, section.cpuPerTick);
+  }
+  for (const role11 of metrics2.roles) {
+    set(stats, `profiler.role.${role11.name}.cpuPerTick`, role11.cpuPerTick);
+  }
+  statsMemory.stats = stats;
+}
+function clearStats() {
+  delete statsMemory.stats;
+}
+
+// src/profiler/types.ts
+var WINDOW_TICKS = 100;
+var DEFAULT_DETAIL_TICKS = 50;
+var SECTION = {
+  /** Raum-Visuals und Memory-Init, erste Schleife in `main.ts::loop`. */
+  rooms: "rooms",
+  /** Creep-Schleife gesamt, zweite Schleife in `main.ts::loop`. */
+  creeps: "creeps",
+  /** `controller/timing.ts::controll` gesamt. */
+  timing: "timing",
+  /** Türme, `defence.tower()`. */
+  tower: "timing.tower",
+  /** Terminal und Markt. */
+  terminal: "timing.terminal",
+  /** Pixelgenerierung. */
+  pixel: "timing.pixel",
+  /** Spawncontroller, `spawn.spawn()`. */
+  spawn: "timing.spawn",
+  /** Verteidigungsscan, `defence.check()`. */
+  defence: "timing.defence",
+  /** Statuslog, `memory.writeStatus()`. */
+  status: "timing.status",
+  /** Tagessequenz, `daylie()`. */
+  daily: "timing.daily"
+};
+
+// src/profiler/window.ts
+var openSections = /* @__PURE__ */ new Map();
+function createEmptySnapshot() {
+  return {
+    startTick: 0,
+    ticks: 0,
+    mode: "off",
+    cpuTotal: 0,
+    cpuMax: 0,
+    bucketTotal: 0,
+    bucketMin: Infinity,
+    roomTotal: 0,
+    creepTotal: 0,
+    limit: 0,
+    tickLimit: 0,
+    sections: {},
+    roles: {},
+    creepDetail: {}
+  };
+}
+var windowState = createEmptySnapshot();
+function record(map, key, cpu) {
+  const existing = map[key];
+  if (existing === void 0) {
+    map[key] = { total: cpu, max: cpu, calls: 1 };
+    return;
+  }
+  existing.total += cpu;
+  existing.calls += 1;
+  if (cpu > existing.max) existing.max = cpu;
+}
+function safeDiv(numerator, denominator) {
+  return denominator > 0 ? numerator / denominator : 0;
+}
+function rank(map, ticks, cpuTotal) {
+  const entries = [];
+  for (const name in map) {
+    const stat = map[name];
+    entries.push({
+      name,
+      cpuPerTick: safeDiv(stat.total, ticks),
+      cpuPerCall: safeDiv(stat.total, stat.calls),
+      callsPerTick: safeDiv(stat.calls, ticks),
+      max: stat.max,
+      share: safeDiv(stat.total, cpuTotal)
+    });
+  }
+  entries.sort((a, b) => b.cpuPerTick - a.cpuPerTick);
+  return entries;
+}
+function begin(section) {
+  if (getMode() !== "full") return;
+  openSections.set(section, Game.cpu.getUsed());
+}
+function end(section) {
+  if (getMode() !== "full") return;
+  const start = openSections.get(section);
+  if (start === void 0) return;
+  openSections.delete(section);
+  record(windowState.sections, section, Game.cpu.getUsed() - start);
+}
+function beginTick() {
+  if (getMode() === "off") return;
+  if (windowState.ticks === 0) {
+    windowState.startTick = Game.time;
+  }
+  windowState.ticks += 1;
+}
+function endTick(creepCount) {
+  const mode = getMode();
+  if (mode === "off") return;
+  const cpu = Game.cpu.getUsed();
+  windowState.mode = mode;
+  windowState.cpuTotal += cpu;
+  if (cpu > windowState.cpuMax) windowState.cpuMax = cpu;
+  const bucket = Game.cpu.bucket;
+  windowState.bucketTotal += bucket;
+  if (bucket < windowState.bucketMin) windowState.bucketMin = bucket;
+  windowState.roomTotal += Object.keys(bot.room).length;
+  windowState.creepTotal += creepCount;
+  windowState.limit = Game.cpu.limit;
+  windowState.tickLimit = Game.cpu.tickLimit;
+}
+function recordRole(role11, cpu) {
+  record(windowState.roles, role11, cpu);
+}
+function recordCreep(creepName, cpu) {
+  if (getMode() !== "full") return;
+  if (!detailActive()) return;
+  record(windowState.creepDetail, creepName, cpu);
+}
+function snapshot() {
+  return windowState;
+}
+function metrics(snapshotState) {
+  const ticks = snapshotState.ticks;
+  const rooms = safeDiv(snapshotState.roomTotal, ticks);
+  const creeps = safeDiv(snapshotState.creepTotal, ticks);
+  const cpuPerTick = safeDiv(snapshotState.cpuTotal, ticks);
+  return {
+    ticks,
+    mode: snapshotState.mode,
+    cpuPerTick,
+    cpuMaxTick: snapshotState.cpuMax,
+    cpuPerRoom: safeDiv(cpuPerTick, rooms),
+    cpuPerCreep: safeDiv(cpuPerTick, creeps),
+    rooms,
+    creeps,
+    bucketMean: safeDiv(snapshotState.bucketTotal, ticks),
+    bucketMin: snapshotState.bucketMin === Infinity ? 0 : snapshotState.bucketMin,
+    limit: snapshotState.limit,
+    tickLimit: snapshotState.tickLimit,
+    sections: rank(snapshotState.sections, ticks, snapshotState.cpuTotal),
+    roles: rank(snapshotState.roles, ticks, snapshotState.cpuTotal),
+    creepDetail: rank(snapshotState.creepDetail, ticks, snapshotState.cpuTotal)
+  };
+}
+function reset() {
+  openSections.clear();
+  windowState = createEmptySnapshot();
+}
+function isDue() {
+  return windowState.ticks >= WINDOW_TICKS;
+}
+
+// src/profiler/decorator.ts
+function wrapRoles(jobs2) {
+  const wrapped = {};
+  for (const role11 in jobs2) {
+    const original = jobs2[role11];
+    wrapped[role11] = {
+      doJob(creep) {
+        if (getMode() !== "full") {
+          original.doJob(creep);
+          return;
+        }
+        const start = Game.cpu.getUsed();
+        original.doJob(creep);
+        const cpu = Game.cpu.getUsed() - start;
+        recordRole(role11, cpu);
+        recordCreep(creep.name, cpu);
+      },
+      spawn(spawn13, workroom) {
+        if (getMode() !== "full") {
+          return original.spawn(spawn13, workroom);
+        }
+        const start = Game.cpu.getUsed();
+        const result = original.spawn(spawn13, workroom);
+        recordRole(`${role11}.spawn`, Game.cpu.getUsed() - start);
+        return result;
+      }
+    };
+  }
+  return wrapped;
+}
+
+// src/profiler/index.ts
+var begin2 = begin;
+var end2 = end;
+var lastMode = "off";
+function currentMetrics() {
+  return metrics(snapshot());
+}
+function switchMode(mode) {
+  if (getMode() === mode) return;
+  setMode(mode);
+  lastMode = mode;
+  reset();
+}
+function tick() {
+  const mode = syncFromMemory();
+  if (expireDetail()) {
+    console.log(`[prof] Detailmessung beendet.
+${formatDetailReport(currentMetrics())}`);
+    reset();
+    lastMode = getMode();
+    beginTick();
+    return;
+  }
+  if (mode !== lastMode) {
+    lastMode = mode;
+    reset();
+  }
+  beginTick();
+}
+function endTick2(creepCount) {
+  endTick(creepCount);
+  if (!isDue()) return;
+  const metrics2 = currentMetrics();
+  console.log(formatWindowLine(metrics2));
+  writeStats(metrics2);
+  reset();
+}
+function toBaseline(metrics2) {
+  return {
+    tick: Game.time,
+    ticks: metrics2.ticks,
+    mode: metrics2.mode,
+    cpuPerTick: metrics2.cpuPerTick,
+    cpuPerRoom: metrics2.cpuPerRoom,
+    cpuPerCreep: metrics2.cpuPerCreep,
+    bucketMean: metrics2.bucketMean,
+    rooms: metrics2.rooms,
+    creeps: metrics2.creeps
+  };
+}
+var handle = {
+  on() {
+    switchMode("full");
+    return "Profiler: full \u2014 Gesamttick, Abschnitte und Rollen. Fensterzeile alle 100 Ticks.";
+  },
+  light() {
+    switchMode("light");
+    return "Profiler: light \u2014 nur Gesamttick, Bucket, CPU pro Raum und pro Creep.";
+  },
+  off() {
+    switchMode("off");
+    clearStats();
+    return "Profiler: aus. Es l\xE4uft kein Game.cpu.getUsed() mehr.";
+  },
+  status() {
+    const mode = getMode();
+    const metrics2 = currentMetrics();
+    const detail = detailActive() ? ` | Detailmessung noch ${detailRemaining()} Ticks` : "";
+    return `Profiler: ${mode} | Fenster ${metrics2.ticks}/100 Ticks${detail}`;
+  },
+  report() {
+    const metrics2 = currentMetrics();
+    if (metrics2.ticks === 0) {
+      return "Kein gemessener Tick im Fenster. Mit prof.light() oder prof.on() einschalten.";
+    }
+    const line = formatWindowLine(metrics2);
+    if (metrics2.sections.length === 0 && metrics2.roles.length === 0) {
+      return line;
+    }
+    return `${line}
+${formatDetailReport(metrics2)}`;
+  },
+  reset() {
+    reset();
+    return "Fenster verworfen, Messung beginnt neu.";
+  },
+  detail(ticks = DEFAULT_DETAIL_TICKS) {
+    if (!Number.isFinite(ticks) || ticks < 1) {
+      return `Ung\xFCltige Tickzahl. Beispiel: prof.detail(${DEFAULT_DETAIL_TICKS})`;
+    }
+    const returnTo = getMode();
+    startDetail(Math.floor(ticks));
+    lastMode = "full";
+    reset();
+    return `Detailmessung f\xFCr ${Math.floor(ticks)} Ticks gestartet, danach zur\xFCck auf ${returnTo}.`;
+  },
+  baseline(name) {
+    if (!name) {
+      return 'Name fehlt. Beispiel: prof.baseline("vor-plan-02")';
+    }
+    const metrics2 = currentMetrics();
+    if (metrics2.ticks === 0) {
+      return "Kein gemessener Tick im Fenster \u2014 es gibt nichts festzuhalten.";
+    }
+    if (metrics2.ticks < 1e3) {
+      saveBaseline(name, toBaseline(metrics2));
+      return `Grundlinie "${name}" gespeichert \u2014 Achtung, nur ${metrics2.ticks} Ticks. F\xFCr einen belastbaren Vergleich mindestens 1000 Ticks messen.`;
+    }
+    saveBaseline(name, toBaseline(metrics2));
+    return `Grundlinie "${name}" \xFCber ${metrics2.ticks} Ticks gespeichert.`;
+  },
+  baselines() {
+    const metrics2 = currentMetrics();
+    return formatBaselines(readBaselines(), metrics2.ticks > 0 ? metrics2 : null);
+  }
+};
+bot.prof = handle;
+
 // src/controller/timing.ts
 var botMemory3 = Memory;
 function controll() {
-  const tick = Game.time;
+  const tick2 = Game.time;
   init();
+  begin2(SECTION.tower);
   tower();
+  end2(SECTION.tower);
+  begin2(SECTION.terminal);
   const terminalIds = botMemory3.terminals;
   if (terminalIds && terminalIds.length > 0) {
     const terminalId = terminalIds[Game.time % terminalIds.length];
@@ -2642,19 +3185,30 @@ function controll() {
       }
     }
   }
-  if (tick % 3 === 0 && Game.cpu.bucket === 1e4) {
+  end2(SECTION.terminal);
+  if (tick2 % 3 === 0 && Game.cpu.bucket === 1e4) {
+    begin2(SECTION.pixel);
     Game.cpu.generatePixel();
+    end2(SECTION.pixel);
   }
-  if (tick % 5 === 0) {
+  if (tick2 % 5 === 0) {
+    begin2(SECTION.spawn);
     spawn12();
+    end2(SECTION.spawn);
   }
-  if (tick % 7 === 0) {
+  if (tick2 % 7 === 0) {
+    begin2(SECTION.defence);
     check();
+    end2(SECTION.defence);
   }
-  if (tick % 11 === 0) {
+  if (tick2 % 11 === 0) {
+    begin2(SECTION.status);
     writeStatus();
+    end2(SECTION.status);
   }
+  begin2(SECTION.daily);
   daylie();
+  end2(SECTION.daily);
 }
 function daylie() {
   const dayTicks = 86400 / 3;
@@ -2935,8 +3489,11 @@ function reportError(kind, message) {
 }
 installCreepChecks();
 installTerminalMarket();
+var measuredJobs = wrapRoles(jobs);
 function loop() {
   var _a, _b, _c;
+  tick();
+  begin2(SECTION.rooms);
   for (const name in bot.room) {
     const room = Game.rooms[name];
     try {
@@ -2963,6 +3520,9 @@ function loop() {
       );
     }
   }
+  end2(SECTION.rooms);
+  begin2(SECTION.creeps);
+  let processedCreeps = 0;
   for (const name in Memory.creeps) {
     const creep = Game.creeps[name];
     if (!creep) {
@@ -2979,7 +3539,7 @@ function loop() {
     if (creep.spawning) {
       continue;
     }
-    const job = jobs[creepMemory.role];
+    const job = measuredJobs[creepMemory.role];
     if (!job) {
       reportError(
         `rolle-unbekannt:${creepMemory.role}`,
@@ -2987,6 +3547,7 @@ function loop() {
       );
       continue;
     }
+    processedCreeps += 1;
     try {
       job.doJob(creep);
     } catch (error) {
@@ -2997,6 +3558,8 @@ ${(_b = error == null ? void 0 : error.stack) != null ? _b : String(error)}`
       );
     }
   }
+  end2(SECTION.creeps);
+  begin2(SECTION.timing);
   try {
     controll();
   } catch (error) {
@@ -3006,6 +3569,8 @@ ${(_b = error == null ? void 0 : error.stack) != null ? _b : String(error)}`
 ${(_c = error == null ? void 0 : error.stack) != null ? _c : String(error)}`
     );
   }
+  end2(SECTION.timing);
+  endTick2(processedCreeps);
 }
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
