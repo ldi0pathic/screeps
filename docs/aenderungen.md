@@ -169,3 +169,9 @@ dann einen Tick statt zwei. Mit `prof.detail()` messbar.
   `creep.store` sich innerhalb eines Ticks nicht ändert. Eine irreführende
   Aufzählung, die `transfer`/`drop`/`pickup` als frei kombinierbar darstellte,
   ist korrigiert.
+
+### Behoben: Sonderregel in `TransportToHomeStorage`
+
+| Modul / Funktion | Was war falsch | Änderung | Wirkung |
+| --- | --- | --- | --- |
+| `creep/transport.ts` · `TransportToHomeStorage` | Zwei Fehler in einer Sonderregel. **Erstens** Raumverwechslung: die Bedingung prüfte `bot.room[workroom].spawnLink`, der Zugriff darunter las `bot.room[home].spawnLink`. Fallen die beiden auseinander und hat der Heimatraum keinen Link, ist `link` `null` und `link.store[RESOURCE_ENERGY]` wirft. Nicht erreichbar, weil alle Räume mit `workroom != home` `spawnLink: null` haben — aber ein latenter Absturz. **Zweitens** war der Zweck entfallen: die Regel erlaubte einem Creep, der aus dem Storage genommen hatte, das Abliefern in dasselbe Storage, damit Energie aus dem Spawn-Link dorthin gelangt. Dieser Weg lief über `fromId == link.id`, gesetzt vom inzwischen entfernten `harvestSpawnLink`. | Sonderregel entfernt. Es bleibt die Grundregel: nicht dorthin abliefern, wo die Ladung geholt wurde. Damit entfallen beide `bot.room`-Zugriffe und der latente Absturz. Zusätzlich das redundante `if (target)` und das dadurch unerreichbare `return false;` aufgelöst. | In den vier Link-Räumen liefert ein Creep, der aus dem Storage genommen hat, seine Ladung nicht mehr dorthin zurück — das war ein Leerlauf. Er fällt stattdessen auf das nächste Ziel seiner Kette. Den Link leert jetzt der `linkkeeper` direkt. |
