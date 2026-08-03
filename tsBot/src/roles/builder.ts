@@ -99,6 +99,13 @@ export function _getProfil(spawn: StructureSpawn): BodyPartConstant[]
     var maxEnergy = spawn.room.energyCapacityAvailable;
     var numberOfSets = Math.min(7,Math.floor(maxEnergy / totalCost));
 
+    if(numberOfSets == 0)
+    {
+        // Minimalprofil für 300 Energie (RCL1): [WORK,CARRY,CARRY,MOVE,MOVE] = 100+50+50+50+50 = 300.
+        // Vorher kam hier ein leeres Body-Array heraus, mit dem spawnCreep grundsätzlich fehlschlägt.
+        return [WORK,CARRY,CARRY,MOVE,MOVE];
+    }
+
     return Array((numberOfSets*3)).fill(WORK).concat(Array((numberOfSets*2)).fill(CARRY).concat(Array((numberOfSets*2)).fill(MOVE)));
 }
 
