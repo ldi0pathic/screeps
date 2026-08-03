@@ -1,9 +1,15 @@
 // build.ts - Einmaliger Build (ersetzt den bisherigen esbuild-CLI-Aufruf)
 import * as esbuild from "esbuild";
-import { ESBUILD_OPTIONS, stampBuild } from "./build-common.ts";
+import { basename } from "path";
+import { ESBUILD_OPTIONS, stampBuild, backupMainJs } from "./build-common.ts";
 
 async function build() {
   try {
+    const backupPath = backupMainJs();
+    if (backupPath) {
+      console.log(`🗄 Vorherige main.js gesichert als ${basename(backupPath)}`);
+    }
+
     const result = await esbuild.build(ESBUILD_OPTIONS);
 
     if (result.errors.length > 0) {
