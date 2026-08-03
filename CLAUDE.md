@@ -60,6 +60,8 @@ Da das Spiel per GitHub synct, gehört zu jeder Codeänderung ein `pnpm build`, 
 
 Die erste Zeile von `tsProd/main.js` ist ein Build-Stempel (`// Build: JJJJ-MM-TT HH:MM:SS ±HH:MM`, lokale Zeit), geschrieben von `build-common.ts::stampBuild()` nach jedem Build — auch bei jedem Rebuild im Watch-Modus, und dort vor dem Upload. Damit ist im Spiel erkennbar, welcher Stand läuft. Nebenwirkung: **jeder** Build erzeugt einen Diff in `tsProd/main.js`, auch wenn sich am Code nichts geändert hat. Die gemeinsamen esbuild-Optionen stehen in `build-common.ts`; wer Buildparameter ändert, ändert sie dort und nicht in `build.ts`/`builder.ts`.
 
+Vor jedem Build sichert `build-common.ts::backupMainJs()` die vorhandene `tsProd/main.js` nach `tsProd-backup/main-<Stempel der gesicherten Datei>.js` — im Watch-Modus an esbuilds `onStart`, weil `onEnd` zu spät liefe. Es werden die 20 neuesten Sicherungen behalten. Der Ordner ist ein **Schwesterordner** von `tsProd/` und steht in `.gitignore`; beides mit Absicht: `uploader.ts` lädt jede `.js` aus `tsProd` als eigenes Spielmodul hoch, und die Sicherungen sind lokale Kopien, nicht Repo-Inhalt. Für committete Stände ist Git das Archiv — dieses Backup fängt die **nicht** committeten. Ein fehlgeschlagenes Backup warnt nur und bricht den Build nicht ab.
+
 Die Serverziele stehen in `.screeps.json` (`local` / `main` / `ptr`, `defaultServer` ist `local`); Zugangsdaten sind `${VAR}`-Platzhalter aus `.env` (`SCREEPS_TOKEN`, `SCREEPS_PTR_TOKEN`, `SCREEPS_LOCAL_USERNAME/PASSWORD`). Achtung: `pnpm upload` ohne Argument nimmt `main` (die echte MMO-Welt), nicht `defaultServer` — Ziel immer explizit angeben.
 
 ## Aufbau von `tsBot/src/` (zuerst verstehen)
