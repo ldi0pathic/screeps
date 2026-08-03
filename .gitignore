@@ -12,12 +12,10 @@ tsBot/.screeps.json
 # laufende Stand. Alles andere aus einem Buildlauf gehört nicht ins Repo.
 *.tsbuildinfo
 
-# Sicherungskopien, die build-common.ts::backupMainJs() vor jedem Build von der
-# alten tsProd/main.js anlegt. Bewusst ein Schwesterordner und nicht tsProd/
-# selbst: uploader.ts lädt jede .js aus tsProd als eigenes Spielmodul hoch.
-# Git ist das Archiv der committeten Stände – diese Kopien fangen genau die,
-# die nicht committet waren, und gehören deshalb nicht ins Repo.
-tsProd-backup/
+# Hinweis: tsProd-backup/ ist bewusst NICHT ignoriert. Die Sicherungen, die
+# build-common.ts::backupMainJs() vor jedem Build anlegt, gehören mit ins Repo.
+# Sie liegen als Schwesterordner und nicht in tsProd/ selbst, weil uploader.ts
+# jede .js aus tsProd als eigenes Spielmodul hochladen würde.
 tsBot/src/**/*.js
 tsBot/src/**/*.js.map
 tsBot/src/**/*.d.ts
