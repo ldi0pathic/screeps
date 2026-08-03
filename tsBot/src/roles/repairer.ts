@@ -14,8 +14,6 @@ import * as creepBase from "../creep/base";
 
 const role = "repairer";
 
-export function sayJob(this: any) { this.creep.say('🔧') }
-
 export function doJob(creep: Creep) {
     creep.checkHarvest(function()
     {

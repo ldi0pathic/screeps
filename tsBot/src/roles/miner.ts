@@ -392,8 +392,6 @@ export function doJob(creep: Creep) {
     }
 }
 
-export function sayJob(this: any) { this.creep.say('⛏') }
-
  /**
  *
  * @param {StructureSpawn} spawn

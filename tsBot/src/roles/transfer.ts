@@ -11,8 +11,6 @@ import * as creepBase from "../creep/base";
 
 const role = "transfer";
 
-export function sayJob(this: any) { this.creep.say('🚛') }
-
 export function doJob(creep: Creep) {
 
     if(!creep.memory.mineral)

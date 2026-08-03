@@ -11,8 +11,6 @@ import * as creepBase from "../creep/base";
 
 const role = "extupgrader";
 
-export function sayJob(this: any) { this.creep.say('🔑') }
-
 export function doJob(creep: Creep) {
 
     if(creepBase.goToWorkroom(creep)) return;

@@ -28,8 +28,6 @@ const NEVER_SELL = {
     "XGHO2": true
 };
 
-export function sayJob(this: any) { this.creep.say('🚛') }
-
 export function doJob(creep: Creep) {
 
     if (!creep.memory.mineral)

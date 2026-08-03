@@ -13,8 +13,6 @@ import * as creepBaseGoto from "../creep/goto";
 
 const role = "builder";
 
-export function sayJob(this: any) { this.creep.say('🔨') }
-
 export function doJob(creep: Creep) {
     creep.checkHarvest();
     if(creepBase.goToWorkroom(creep)) return;

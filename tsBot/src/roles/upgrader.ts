@@ -12,8 +12,6 @@ import * as creepBase from "../creep/base";
 
 const role = "upgrader";
 
-export function sayJob(this: any) { this.creep.say('🔑') }
-
 export function doJob(creep: Creep) {
 
     if(creep.memory.sparmodus && Game.time % creep.room.controller!.level != 0) return;
