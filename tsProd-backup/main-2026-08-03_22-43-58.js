@@ -1,4 +1,4 @@
-// Build: 2026-08-04 22:38:04 +02:00
+// Build: 2026-08-03 22:43:58 +02:00
 "use strict";
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
@@ -1323,11 +1323,6 @@ function startDetail(ticks) {
   memory.mode = "full";
   currentMode = "full";
 }
-function cancelDetail() {
-  const memory = ensureMemory();
-  delete memory.detailUntil;
-  delete memory.detailReturnTo;
-}
 function detailActive() {
   return ensureMemory().detailUntil !== void 0;
 }
@@ -1375,12 +1370,6 @@ function saveBaseline(name, baseline) {
 function readBaselines() {
   var _a;
   return (_a = ensureMemory().baselines) != null ? _a : {};
-}
-function getFlagColor() {
-  return ensureMemory().flagColor;
-}
-function setFlagColor(color) {
-  ensureMemory().flagColor = color;
 }
 
 // src/profiler/types.ts
@@ -3012,100 +3001,6 @@ function spawn2() {
   }
 }
 
-// src/profiler/flag.ts
-var FLAG_NAME = "prof";
-var SWITCH_COLORS = [
-  { color: COLOR_GREY, request: "off", label: "grau", meaning: "aus", css: "#b4b4b4" },
-  { color: COLOR_WHITE, request: "light", label: "wei\xDF", meaning: "light", css: "#ffffff" },
-  { color: COLOR_GREEN, request: "full", label: "gr\xFCn", meaning: "full", css: "#00ff00" },
-  {
-    color: COLOR_RED,
-    request: "detail",
-    label: "rot",
-    meaning: `Detail ${DEFAULT_DETAIL_TICKS}T`,
-    css: "#ff3030"
-  }
-];
-function bySwitchColor(color) {
-  return SWITCH_COLORS.find((entry) => entry.color === color);
-}
-function byRequest(request) {
-  return SWITCH_COLORS.find((entry) => entry.request === request);
-}
-function switchFlag() {
-  return Game.flags[FLAG_NAME];
-}
-function readRequest() {
-  const flag = switchFlag();
-  if (flag === void 0) return null;
-  if (flag.color === getFlagColor()) return null;
-  setFlagColor(flag.color);
-  const entry = bySwitchColor(flag.color);
-  if (entry === void 0) {
-    const belegt = SWITCH_COLORS.map((item) => `${item.label}=${item.meaning}`).join(", ");
-    console.log(`[prof] Flagge "${FLAG_NAME}": diese Farbe ist nicht belegt. Belegt sind ${belegt}.`);
-    return null;
-  }
-  return entry.request;
-}
-function acknowledge(request) {
-  const flag = switchFlag();
-  if (flag === void 0) return;
-  const color = byRequest(request).color;
-  if (flag.color === color) {
-    setFlagColor(color);
-    return;
-  }
-  flag.setColor(color, flag.secondaryColor);
-  setFlagColor(color);
-}
-function describe() {
-  const flag = switchFlag();
-  if (flag === void 0) return null;
-  const entry = bySwitchColor(flag.color);
-  const color = entry !== void 0 ? `${entry.label} = ${entry.meaning}` : "unbelegte Farbe";
-  return `Flagge ${FLAG_NAME} in ${flag.pos.roomName}: ${color}`;
-}
-function statusLine(data) {
-  const window = data.ticks === 0 ? "noch keine Messung" : `Fenster ${data.ticks}T | CPU/Tick ${data.cpuPerTick.toFixed(2)}`;
-  return data.detailRemaining > 0 ? `${window} | Detail noch ${data.detailRemaining}T` : window;
-}
-function isActive(entry, data) {
-  if (entry.request === "detail") return data.detailRemaining > 0;
-  return data.detailRemaining === 0 && entry.request === data.mode;
-}
-function draw(data) {
-  const flag = switchFlag();
-  if (flag === void 0) return;
-  const visual = new RoomVisual(flag.pos.roomName);
-  const toLeft = flag.pos.x >= 25;
-  const x = toLeft ? flag.pos.x - 0.8 : flag.pos.x + 0.8;
-  const align = toLeft ? "right" : "left";
-  const top = Math.min(Math.max(flag.pos.y - 2, 0.8), 45);
-  const lineHeight = 0.7;
-  const style = {
-    align,
-    font: 0.5,
-    backgroundColor: "#000000",
-    backgroundPadding: 0.12
-  };
-  visual.text(`prof: ${data.mode}`, x, top, { ...style, color: "#ffffff" });
-  SWITCH_COLORS.forEach((entry, index) => {
-    const active = isActive(entry, data);
-    visual.text(
-      `${active ? "\u25B6" : "\xB7"} ${entry.label} = ${entry.meaning}`,
-      x,
-      top + lineHeight * (index + 1),
-      { ...style, color: entry.css, opacity: active ? 1 : 0.4 }
-    );
-  });
-  visual.text(statusLine(data), x, top + lineHeight * (SWITCH_COLORS.length + 1), {
-    ...style,
-    color: "#cccccc",
-    opacity: 0.8
-  });
-}
-
 // src/profiler/report.ts
 function fmt(value, decimals = 2) {
   if (!Number.isFinite(value)) return "-";
@@ -3275,50 +3170,21 @@ function currentMetrics() {
   return metrics(snapshot());
 }
 function switchMode(mode) {
-  if (detailActive()) {
-    cancelDetail();
-    console.log("[prof] Laufende Detailmessung abgebrochen, kein Abschlussbericht \u2014 prof.report() zeigt das Fenster.");
-  }
-  if (getMode() !== mode) {
-    setMode(mode);
-    lastMode = mode;
-    reset();
-  }
-  acknowledge(mode);
-}
-function applyFlagRequest() {
-  const request = readRequest();
-  if (request === null) return;
-  if (request === "detail") {
-    console.log(`[prof] Flagge: ${handle.detail()}`);
-    return;
-  }
-  const message = request === "off" ? handle.off() : request === "light" ? handle.light() : handle.on();
-  console.log(`[prof] Flagge: ${message}`);
-}
-function drawFlagLegend() {
-  const snapshotState = snapshot();
-  draw({
-    mode: getMode(),
-    ticks: snapshotState.ticks,
-    cpuPerTick: snapshotState.ticks > 0 ? snapshotState.cpuTotal / snapshotState.ticks : 0,
-    detailRemaining: detailRemaining()
-  });
+  if (getMode() === mode) return;
+  setMode(mode);
+  lastMode = mode;
+  reset();
 }
 function tick() {
-  syncFromMemory();
-  applyFlagRequest();
-  drawFlagLegend();
+  const mode = syncFromMemory();
   if (expireDetail()) {
     console.log(`[prof] Detailmessung beendet.
 ${formatDetailReport(currentMetrics())}`);
-    lastMode = getMode();
-    acknowledge(lastMode);
     reset();
+    lastMode = getMode();
     beginTick();
     return;
   }
-  const mode = getMode();
   if (mode !== lastMode) {
     lastMode = mode;
     reset();
@@ -3364,9 +3230,7 @@ var handle = {
     const mode = getMode();
     const metrics2 = currentMetrics();
     const detail = detailActive() ? ` | Detailmessung noch ${detailRemaining()} Ticks` : "";
-    const flag = describe();
-    const switchState = flag !== null ? ` | ${flag}` : "";
-    return `Profiler: ${mode} | Fenster ${metrics2.ticks}/100 Ticks${detail}${switchState}`;
+    return `Profiler: ${mode} | Fenster ${metrics2.ticks}/100 Ticks${detail}`;
   },
   report() {
     const metrics2 = currentMetrics();
@@ -3392,7 +3256,6 @@ ${formatDetailReport(metrics2)}`;
     startDetail(Math.floor(ticks));
     lastMode = "full";
     reset();
-    acknowledge("detail");
     return `Detailmessung f\xFCr ${Math.floor(ticks)} Ticks gestartet, danach zur\xFCck auf ${returnTo}.`;
   },
   baseline(name) {

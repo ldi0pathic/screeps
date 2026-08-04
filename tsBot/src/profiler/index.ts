@@ -12,6 +12,7 @@
  */
 
 import { bot } from "../globals";
+import * as flagSwitch from "./flag";
 import { formatBaselines, formatDetailReport, formatWindowLine } from "./report";
 import * as state from "./state";
 import { clearStats, writeStats } from "./stats";
@@ -45,31 +46,83 @@ function currentMetrics(): WindowMetrics {
   return measure.metrics(measure.snapshot());
 }
 
-/** Wechselt den Zustand und beginnt ein frisches Fenster. */
+/**
+ * Wechselt den Zustand und beginnt ein frisches Fenster.
+ *
+ * Ein ausdrücklicher Zustandswechsel beendet außerdem eine laufende
+ * Detailmessung: wer `off`, `light` oder `full` verlangt, will nicht, dass ihm
+ * Ticks später die Selbstabschaltung den alten Zustand zurückholt.
+ */
 function switchMode(mode: ProfilerMode): void {
-  if (state.getMode() === mode) return;
-  state.setMode(mode);
-  lastMode = mode;
-  measure.reset();
+  if (state.detailActive()) {
+    state.cancelDetail();
+    console.log("[prof] Laufende Detailmessung abgebrochen, kein Abschlussbericht — prof.report() zeigt das Fenster.");
+  }
+
+  if (state.getMode() !== mode) {
+    state.setMode(mode);
+    lastMode = mode;
+    measure.reset();
+  }
+
+  flagSwitch.acknowledge(mode);
+}
+
+/** Führt aus, was die Schalterflagge verlangt — nur bei einer Farbänderung. */
+function applyFlagRequest(): void {
+  const request = flagSwitch.readRequest();
+  if (request === null) return;
+
+  if (request === "detail") {
+    console.log(`[prof] Flagge: ${handle.detail()}`);
+    return;
+  }
+
+  const message =
+    request === "off" ? handle.off() : request === "light" ? handle.light() : handle.on();
+  console.log(`[prof] Flagge: ${message}`);
 }
 
 /**
- * Tickgrenze am Anfang von `loop()`. Spiegelt den über die Konsole gesetzten
- * Zustand aus `Memory` und beendet eine abgelaufene Detailmessung.
+ * Zeichnet die Legende neben die Schalterflagge.
+ *
+ * Bewusst aus dem Rohzustand statt aus `currentMetrics()`: die Kennzahlen
+ * sortieren vier Ranglisten, und das jeden Tick nur für eine Textzeile zu tun
+ * wäre genau die Art Kosten, die der Profiler aufspüren soll.
+ */
+function drawFlagLegend(): void {
+  const snapshotState = measure.snapshot();
+  flagSwitch.draw({
+    mode: state.getMode(),
+    ticks: snapshotState.ticks,
+    cpuPerTick: snapshotState.ticks > 0 ? snapshotState.cpuTotal / snapshotState.ticks : 0,
+    detailRemaining: state.detailRemaining(),
+  });
+}
+
+/**
+ * Tickgrenze am Anfang von `loop()`. Spiegelt den über Konsole oder Flagge
+ * gesetzten Zustand aus `Memory` und beendet eine abgelaufene Detailmessung.
  */
 export function tick(): void {
-  const mode = state.syncFromMemory();
+  state.syncFromMemory();
+
+  // Vor der Messung, damit ein Farbwechsel schon in diesem Tick greift.
+  applyFlagRequest();
+  drawFlagLegend();
 
   // Selbstabschaltung der Detailmessung: Abschlussbericht ausgeben, solange die
   // Daten noch im Fenster stehen, danach frisch beginnen.
   if (state.expireDetail()) {
     console.log(`[prof] Detailmessung beendet.\n${formatDetailReport(currentMetrics())}`);
-    measure.reset();
     lastMode = state.getMode();
+    flagSwitch.acknowledge(lastMode);
+    measure.reset();
     measure.beginTick();
     return;
   }
 
+  const mode = state.getMode();
   if (mode !== lastMode) {
     lastMode = mode;
     measure.reset();
@@ -130,7 +183,9 @@ const handle: ProfilerHandle = {
     const detail = state.detailActive()
       ? ` | Detailmessung noch ${state.detailRemaining()} Ticks`
       : "";
-    return `Profiler: ${mode} | Fenster ${metrics.ticks}/100 Ticks${detail}`;
+    const flag = flagSwitch.describe();
+    const switchState = flag !== null ? ` | ${flag}` : "";
+    return `Profiler: ${mode} | Fenster ${metrics.ticks}/100 Ticks${detail}${switchState}`;
   },
 
   report(): string {
@@ -160,6 +215,8 @@ const handle: ProfilerHandle = {
     state.startDetail(Math.floor(ticks));
     lastMode = "full";
     measure.reset();
+    // Rot heißt „misst gerade"; die Selbstabschaltung färbt die Flagge zurück.
+    flagSwitch.acknowledge("detail");
     return `Detailmessung für ${Math.floor(ticks)} Ticks gestartet, danach zurück auf ${returnTo}.`;
   },
 

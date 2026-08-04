@@ -56,6 +56,18 @@ export function startDetail(ticks: number): void {
   currentMode = "full";
 }
 
+/**
+ * Bricht eine laufende Detailmessung ab, **ohne** den Rückkehrzustand
+ * anzuwenden. Für einen Zustandswechsel über Konsole oder Flagge: wer
+ * ausdrücklich `off`, `light` oder `full` verlangt, will nicht, dass die
+ * Detailmessung Ticks später ihren alten Zustand zurückholt.
+ */
+export function cancelDetail(): void {
+  const memory = ensureMemory();
+  delete memory.detailUntil;
+  delete memory.detailReturnTo;
+}
+
 /** Läuft gerade eine Detailmessung? */
 export function detailActive(): boolean {
   return ensureMemory().detailUntil !== undefined;
@@ -118,4 +130,14 @@ export function saveBaseline(name: string, baseline: Baseline): void {
 /** Alle festgehaltenen Grundlinien, leeres Objekt statt `undefined`. */
 export function readBaselines(): Record<string, Baseline> {
   return ensureMemory().baselines ?? {};
+}
+
+/** Zuletzt verarbeitete Farbe der Schalterflagge, `undefined` wenn noch keine. */
+export function getFlagColor(): ColorConstant | undefined {
+  return ensureMemory().flagColor;
+}
+
+/** Merkt eine Flaggenfarbe als verarbeitet, damit sie keine Flanke mehr auslöst. */
+export function setFlagColor(color: ColorConstant): void {
+  ensureMemory().flagColor = color;
 }

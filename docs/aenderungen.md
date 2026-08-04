@@ -175,3 +175,23 @@ dann einen Tick statt zwei. Mit `prof.detail()` messbar.
 | Modul / Funktion | Was war falsch | Änderung | Wirkung |
 | --- | --- | --- | --- |
 | `creep/transport.ts` · `TransportToHomeStorage` | Zwei Fehler in einer Sonderregel. **Erstens** Raumverwechslung: die Bedingung prüfte `bot.room[workroom].spawnLink`, der Zugriff darunter las `bot.room[home].spawnLink`. Fallen die beiden auseinander und hat der Heimatraum keinen Link, ist `link` `null` und `link.store[RESOURCE_ENERGY]` wirft. Nicht erreichbar, weil alle Räume mit `workroom != home` `spawnLink: null` haben — aber ein latenter Absturz. **Zweitens** war der Zweck entfallen: die Regel erlaubte einem Creep, der aus dem Storage genommen hatte, das Abliefern in dasselbe Storage, damit Energie aus dem Spawn-Link dorthin gelangt. Dieser Weg lief über `fromId == link.id`, gesetzt vom inzwischen entfernten `harvestSpawnLink`. | Sonderregel entfernt. Es bleibt die Grundregel: nicht dorthin abliefern, wo die Ladung geholt wurde. Damit entfallen beide `bot.room`-Zugriffe und der latente Absturz. Zusätzlich das redundante `if (target)` und das dadurch unerreichbare `return false;` aufgelöst. | In den vier Link-Räumen liefert ein Creep, der aus dem Storage genommen hat, seine Ladung nicht mehr dorthin zurück — das war ein Leerlauf. Er fällt stattdessen auf das nächste Ziel seiner Kette. Den Link leert jetzt der `linkkeeper` direkt. |
+
+## Runde 2026-08-04: Schalter für den Profiler auf der Karte
+
+| Was | Warum | Erwartete Wirkung |
+| --- | --- | --- |
+| Neues Modul `src/profiler/flag.ts`: eine Flagge namens `prof` schaltet den Profiler über ihre **Hauptfarbe** (grau = `off`, weiß = `light`, grün = `full`, rot startet `prof.detail(50)`). Verdrahtet ausschließlich in `profiler/index.ts::tick()`, `main.ts` bleibt unverändert. | Screeps hat keine API für eigene Bedienelemente: `RoomVisual` zeichnet nur und ist nicht klickbar, die verbreiteten „Konsolenknöpfe" (`javascript:`-Links, die den Angular-Injector des Clients anzapfen) hängen an undokumentierten Client-Internas und brechen mit jedem Umbau still. Eine Flagge ist dokumentierte Spiel-API, spielerprivat und übersteht den Global-Reset. | Ohne gesetzte Flagge nur ein Objektzugriff auf `Game.flags` je Tick. Der Flaggen-Namensraum gilt je Spieler — eine gleichnamige Flagge eines anderen Spielers kann nichts auslösen. |
+| Gehandelt wird nur bei einer **Farbänderung** (Flanke); die letzte verarbeitete Farbe steht in `Memory.profiler.flagColor`. | Eine stehende Flagge würde sonst jeden Konsolenbefehl im nächsten Tick überstimmen. Die Farbe liegt in `Memory` und nicht im Heap, damit das auch nach einem Global-Reset gilt. | Ein zusätzlicher Zahlenschlüssel in `Memory.profiler`; die 1-KB-Grenze bleibt weit unterschritten. |
+| Die Flagge wird bei jedem Zustandswechsel **mitgefärbt**, auch bei einem über die Konsole. Rot bedeutet „Detailmessung läuft" und fällt nach deren Selbstabschaltung auf die Farbe des Rückkehrzustands. | Zwei Anzeigen, die auseinanderlaufen können, sind schlimmer als keine: die Flagge darf nicht behaupten, der Profiler sei aus, während er messt. | Ein Intent (0,2 CPU) je Umschaltung, und nur wenn eine Flagge steht. |
+| Legende als Room Visual neben der Flagge: alle vier Farben mit ihrer Wirkung, aktive Zeile mit `▶`, dazu Zustand, Fensterfüllstand, CPU pro Tick und Restticks der Detailmessung. Gezeichnet wird nur, solange die Flagge steht. | Ein Farbcode, den man im Kopf haben muss, wird nicht benutzt. Die Flagge ist damit zugleich der Schalter der Anzeige. | Sechs `text`-Aufrufe je Tick, gezeichnet in `prof.tick()` und damit **innerhalb** der Messung — die Kosten stehen in `CPU/Tick` und sind nicht versteckt. Room Visuals sieht nur der Besitzer. |
+| **Verhaltensänderung:** `prof.off()`, `prof.light()` und `prof.on()` brechen eine laufende Detailmessung jetzt ab (`state.cancelDetail()`), mit Hinweis in der Konsole. | Vorher blieb `detailUntil` stehen: die Selbstabschaltung holte Ticks später den vorherigen Zustand zurück und machte damit ein ausdrückliches `prof.off()` wieder zunichte. | Wer während einer Detailmessung umschaltet, bekommt keinen Abschlussbericht; das Fenster zeigt weiterhin `prof.report()`. Ohne laufende Detailmessung unverändert. |
+
+Bedienung, Farbtabelle und Regeln stehen in
+[profiler-befehle.md](profiler-befehle.md#flaggen-schalter-statt-tippen), der
+Memory-Schlüssel in
+[konfiguration-und-memory.md](konfiguration-und-memory.md#profiler-memory-memoryprofiler-memorystats).
+
+**Nicht gebaut:** die klickbare Knopfzeile in der Konsole. Sie wäre bequemer,
+hängt aber an Client-Internas, lebt im Log (scrollt weg, müsste also regelmäßig
+neu ausgegeben werden und würde die Konsole zumüllen) und schickt rohes HTML an
+jeden, der die Logs über die API abholt.

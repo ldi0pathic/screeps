@@ -8,6 +8,7 @@
  * Abhängigkeitsrichtung, die nicht verletzt werden darf:
  *
  *     types  <-  state  <-  window  <-  decorator
+ *     types  <-  state  <-  flag
  *     types  <-  report
  *     types  <-  stats
  *     alle   <-  index
@@ -210,6 +211,12 @@ export interface ProfilerMemory {
   detailReturnTo?: ProfilerMode;
   /** Benannte Grundlinien, angelegt über `prof.baseline(name)`. */
   baselines?: Record<string, Baseline>;
+  /**
+   * Zuletzt verarbeitete Hauptfarbe der Schalterflagge (`profiler/flag.ts`).
+   * Liegt in `Memory` und nicht im Heap, damit die stehende Flagge nach einem
+   * Global-Reset nicht erneut auslöst und den Konsolenzustand überstimmt.
+   */
+  flagColor?: ColorConstant;
 }
 
 /**

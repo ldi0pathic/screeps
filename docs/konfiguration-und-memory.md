@@ -51,6 +51,7 @@ Die laufenden Zähler eines Fensters (Abschnitte, Rollen, Ticks) leben im Heap, 
 - `mode`: `"off"` / `"light"` / `"full"`. Standard `"off"`, wird beim ersten Zugriff angelegt. Überlebt den Global-Reset, Umschalten braucht daher kein Deployment.
 - `detailUntil`: Tick, bis zu dem die Detailmessung läuft; fehlt, wenn sie aus ist.
 - `detailReturnTo`: Zustand, auf den nach Ablauf der Detailmessung zurückgeschaltet wird.
+- `flagColor`: zuletzt verarbeitete Hauptfarbe der Schalterflagge `prof` (`tsBot/src/profiler/flag.ts`). Eine Zahl. Steht in `Memory` und nicht im Heap, damit die stehende Flagge nach einem Global-Reset nicht erneut auslöst und den über die Konsole gesetzten Zustand überstimmt.
 - `baselines`: benannte Grundlinien aus `prof.baseline(name)`. Je Eintrag nur Skalare (`tick`, `ticks`, `mode`, `cpuPerTick`, `cpuPerRoom`, `cpuPerCreep`, `bucketMean`, `rooms`, `creeps`). Auf 8 Einträge begrenzt, beim Überlauf fällt die älteste heraus, damit `Memory.profiler` unter 1 KB bleibt — im Spiel prüfbar mit `JSON.stringify(Memory.profiler).length`.
 
 ### `Memory.stats` — Ausgabe

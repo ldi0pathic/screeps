@@ -72,6 +72,10 @@ Bedienung über die Konsole, Handle auf `global` (wie `bot` in `globals.ts`), ma
 
 Der Zustand liegt in `Memory.profiler.mode` und übersteht einen Global-Reset — Umschalten braucht **kein** neues Deployment.
 
+Alternativ zur Konsole schaltet eine **Flagge** namens `prof`: ihre Hauptfarbe ist der Zustand (grau = `off`, weiß = `light`, grün = `full`, rot startet die Detailmessung), und daneben zeichnet der Bot die Farbzuordnung als Room Visual. Screeps hat keine API für eigene Bedienelemente — die Flagge ist der einzige Weg, ohne Tippen zu schalten. Details in [Profiler: Befehle für die Spielkonsole](profiler-befehle.md#flaggen-schalter-statt-tippen).
+
+Ausführlich mit Ausgabeformaten, Spaltenbedeutung und dem Vorgehen beim Vergleich vorher/nachher: [Profiler: Befehle für die Spielkonsole](profiler-befehle.md).
+
 Gemessen werden die Raum-/Memory-Schleife und die Creep-Schleife aus `main.ts` (siehe oben), `controll()` aus `controller/timing.ts` als Ganzes und darin einzeln Türme, Terminal, Pixel, Spawncontroller, Verteidigungsscan, Statuslog und die Tagessequenz — dieselbe Aufteilung wie in der Tabelle unter Zeitsteuerung. Dazu jede Rolle einzeln, gemessen über einen Wrapper um die Rollentabelle, damit `roles/index.ts` und die zehn Rollendateien unverändert bleiben.
 
 Die Auswertung läuft über ein gleitendes Fenster von 100 Ticks; danach gibt eine kompakte Konsolenzeile CPU pro Tick, CPU pro Raum, CPU pro Creep, Bucket-Mittel und die drei teuersten Rollen aus. Die Zähler des laufenden Fensters liegen im Heap, nicht in `Memory` — `Memory` wird jeden Tick serialisiert. In `Memory` steht ausschließlich der Zustand.
