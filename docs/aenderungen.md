@@ -206,6 +206,23 @@ Die Testbasis lebt außerhalb von `tsconfig.json` (`include: ["src"]`), wie
 Regeln, an denen sonst still etwas kaputtgeht (`Memory` leeren statt ersetzen,
 Modul erst nach den Globals laden), stehen in `CLAUDE.md`.
 
+### Umbau: Profiler auf Klassen
+
+Struktureller Umbau **ohne Verhaltensänderung**, direkt nach den Tests, weil
+erst sie ihn belegbar machen: dieselben 15 Tests mit unveränderten Zusicherungen
+laufen vor und nach dem Umbau, dazu Typecheck, Build und Smoketest.
+
+| Was | Warum | Wirkung |
+| --- | --- | --- |
+| `profiler/state.ts` → Klasse `ProfilerState`, `window.ts` → `MeasurementWindow`, `flag.ts` → `FlagSwitch`, `index.ts` → `Profiler` (erfüllt `ProfilerHandle`). Modulzustand (`currentMode`, `windowState`, `openSections`, `lastMode`) wurde zu Feldern. | Der Zustand lag in Modulvariablen: ein Test musste ihn zwischen zwei Fällen zurücksetzen, und wer das vergaß, bekam Werte aus dem Vorgänger. Jetzt baut jeder Test seine eigenen Objekte. | Keine. Zusicherungen der Tests unverändert; im Bundle nachgeprüft, dass alle sechs `Game.cpu.getUsed()`-Stellen weiter hinter einem Zustandsvergleich liegen. |
+| Abhängigkeiten werden übergeben statt importiert: `MeasurementWindow` und `FlagSwitch` bekommen den `ProfilerState`, `Profiler` alle drei. | Vorher griffen die Module über Modulfunktionen aufeinander zu — nicht ersetzbar und im Test nur global umschaltbar. | Aus `state.getMode()` wird `this.state.mode`, ein Feldzugriff statt eines Funktionsaufrufs. |
+| Neue Datei `profiler/runtime.ts` als Zusammenbau (Composition Root) mit den drei Instanzen des laufenden Bots. | Der Dekorator `@profile` steht an den Rollenklassen und kann keine Argumente bekommen; er muss sich das Fenster selbst holen. Aus `index.ts` wäre das eine Importschleife (`index` → `decorator` → `index`). | Eine Datei mehr, dafür eine einzige Stelle, an der die Objekte entstehen. |
+| `ProfilerState` liest `Memory` erst beim Zugriff statt den Verweis beim Laden festzuhalten. | Ein beim Laden festgehaltenes `Memory` bindet das Modul an das Objekt, das zufällig gerade dort stand. | Robuster gegenüber Ladereihenfolge: das Modul lädt auch, wenn `Memory` noch nicht steht. |
+| `metrics()` nimmt kein Argument mehr (es war immer der eigene Rohzustand), `snapshot` und `isDue` sind Getter. | Drei Aufrufstellen lauteten `metrics(snapshot())` — eine Möglichkeit, versehentlich ein fremdes Fenster auszuwerten, ohne Nutzen. | Nur Schreibweise. |
+
+Nicht umgebaut wurden `report.ts` und `stats.ts`: reine Funktionen ohne
+Zustand, eine Klasse gewänne dort nichts.
+
 **Nicht gebaut:** die klickbare Knopfzeile in der Konsole. Sie wäre bequemer,
 hängt aber an Client-Internas, lebt im Log (scrollt weg, müsste also regelmäßig
 neu ausgegeben werden und würde die Konsole zumüllen) und schickt rohes HTML an

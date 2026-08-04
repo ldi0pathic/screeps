@@ -1,10 +1,9 @@
-// Build: 2026-08-04 22:46:23 +02:00
+// Build: 2026-08-04 22:38:04 +02:00
 "use strict";
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
 var __getOwnPropNames = Object.getOwnPropertyNames;
 var __hasOwnProp = Object.prototype.hasOwnProperty;
-var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
 var __export = (target, all) => {
   for (var name in all)
     __defProp(target, name, { get: all[name], enumerable: true });
@@ -26,7 +25,6 @@ var __decorateClass = (decorators, target, key, kind) => {
   if (kind && result) __defProp(target, key, result);
   return result;
 };
-var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
 
 // src/main.ts
 var main_exports = {};
@@ -758,7 +756,7 @@ function moveByMemory(creep, target) {
     creep.memory.pathTarget.y = target.y;
     creep.memory.pathTarget.roomName = target.roomName;
   }
-  var state2 = creep.moveByPath(serializedPath);
+  var state = creep.moveByPath(serializedPath);
   if (bot.const.showPaths) {
     if (!deserializePath)
       deserializePath = Room.deserializePath(serializedPath);
@@ -775,7 +773,7 @@ function moveByMemory(creep, target) {
       }
     }
   }
-  switch (state2) {
+  switch (state) {
     case OK:
     case ERR_TIRED: {
       if (creep.memory.lastPos && creep.memory.lastPos.x == creep.pos.x && creep.memory.lastPos.y == creep.pos.y) {
@@ -1077,8 +1075,8 @@ function harvestRoomStorage(creep, type) {
   let storage = creep.room.storage;
   let min = type === "energy" ? creep.store.getCapacity() * 0.5 : 50;
   if (storage && storage.store[type] > min) {
-    var state2 = creep.withdraw(storage, type);
-    switch (state2) {
+    var state = creep.withdraw(storage, type);
+    switch (state) {
       case ERR_NOT_IN_RANGE:
         moveByMemory(creep, storage.pos);
         return true;
@@ -1276,8 +1274,8 @@ function upgradeController(creep) {
   var controller = creep.room.controller;
   if (!controller || !controller.my)
     return;
-  const state2 = creep.upgradeController(controller);
-  if (state2 === ERR_NOT_IN_RANGE || state2 === ERR_INVALID_TARGET && controller.upgradeBlocked > 0) {
+  const state = creep.upgradeController(controller);
+  if (state === ERR_NOT_IN_RANGE || state === ERR_INVALID_TARGET && controller.upgradeBlocked > 0) {
     moveByMemory(creep, controller.pos);
   }
   if (!controller.sign || controller.sign.username == void 0 || controller.sign.username != creep.owner.username) {
@@ -1286,7 +1284,7 @@ function upgradeController(creep) {
       moveByMemory(creep, controller.pos);
     }
   }
-  return state2 == OK;
+  return state == OK;
 }
 function spawn(spawn3, profil, newName, memory) {
   if (spawn3.spawnCreep(profil, newName, { dryRun: true }) === 0) {
@@ -1295,6 +1293,94 @@ function spawn(spawn3, profil, newName, memory) {
     return true;
   }
   return false;
+}
+
+// src/profiler/state.ts
+var MAX_BASELINES = 8;
+var profilerMemory = Memory;
+var currentMode = "off";
+function ensureMemory() {
+  var _a;
+  return (_a = profilerMemory.profiler) != null ? _a : profilerMemory.profiler = { mode: "off" };
+}
+function syncFromMemory() {
+  currentMode = ensureMemory().mode;
+  return currentMode;
+}
+function getMode() {
+  return currentMode;
+}
+function setMode(mode) {
+  ensureMemory().mode = mode;
+  currentMode = mode;
+}
+function startDetail(ticks) {
+  const memory = ensureMemory();
+  if (memory.detailUntil === void 0) {
+    memory.detailReturnTo = currentMode;
+  }
+  memory.detailUntil = Game.time + ticks;
+  memory.mode = "full";
+  currentMode = "full";
+}
+function cancelDetail() {
+  const memory = ensureMemory();
+  delete memory.detailUntil;
+  delete memory.detailReturnTo;
+}
+function detailActive() {
+  return ensureMemory().detailUntil !== void 0;
+}
+function detailRemaining() {
+  const memory = ensureMemory();
+  if (memory.detailUntil === void 0) {
+    return 0;
+  }
+  const remaining = memory.detailUntil - Game.time;
+  return remaining > 0 ? remaining : 0;
+}
+function expireDetail() {
+  var _a;
+  const memory = ensureMemory();
+  if (memory.detailUntil === void 0 || Game.time < memory.detailUntil) {
+    return false;
+  }
+  const returnTo = (_a = memory.detailReturnTo) != null ? _a : "off";
+  delete memory.detailUntil;
+  delete memory.detailReturnTo;
+  memory.mode = returnTo;
+  currentMode = returnTo;
+  return true;
+}
+function saveBaseline(name, baseline) {
+  var _a;
+  const memory = ensureMemory();
+  const baselines = (_a = memory.baselines) != null ? _a : memory.baselines = {};
+  baselines[name] = baseline;
+  const names = Object.keys(baselines);
+  if (names.length <= MAX_BASELINES) {
+    return;
+  }
+  let oldestName = names[0];
+  let oldestTick = baselines[oldestName].tick;
+  for (const candidate of names) {
+    const tick2 = baselines[candidate].tick;
+    if (tick2 < oldestTick) {
+      oldestTick = tick2;
+      oldestName = candidate;
+    }
+  }
+  delete baselines[oldestName];
+}
+function readBaselines() {
+  var _a;
+  return (_a = ensureMemory().baselines) != null ? _a : {};
+}
+function getFlagColor() {
+  return ensureMemory().flagColor;
+}
+function setFlagColor(color) {
+  ensureMemory().flagColor = color;
 }
 
 // src/profiler/types.ts
@@ -1323,240 +1409,8 @@ var SECTION = {
   daily: "timing.daily"
 };
 
-// src/profiler/flag.ts
-var FLAG_NAME = "prof";
-var SWITCH_COLORS = [
-  { color: COLOR_GREY, request: "off", label: "grau", meaning: "aus", css: "#b4b4b4" },
-  { color: COLOR_WHITE, request: "light", label: "wei\xDF", meaning: "light", css: "#ffffff" },
-  { color: COLOR_GREEN, request: "full", label: "gr\xFCn", meaning: "full", css: "#00ff00" },
-  {
-    color: COLOR_RED,
-    request: "detail",
-    label: "rot",
-    meaning: `Detail ${DEFAULT_DETAIL_TICKS}T`,
-    css: "#ff3030"
-  }
-];
-function bySwitchColor(color) {
-  return SWITCH_COLORS.find((entry) => entry.color === color);
-}
-function byRequest(request) {
-  return SWITCH_COLORS.find((entry) => entry.request === request);
-}
-function statusLine(data) {
-  const window = data.ticks === 0 ? "noch keine Messung" : `Fenster ${data.ticks}T | CPU/Tick ${data.cpuPerTick.toFixed(2)}`;
-  return data.detailRemaining > 0 ? `${window} | Detail noch ${data.detailRemaining}T` : window;
-}
-function isActive(entry, data) {
-  if (entry.request === "detail") return data.detailRemaining > 0;
-  return data.detailRemaining === 0 && entry.request === data.mode;
-}
-var FlagSwitch = class {
-  constructor(state2, flagName = FLAG_NAME) {
-    this.state = state2;
-    this.flagName = flagName;
-  }
-  /** Die Schalterflagge, falls gesetzt. */
-  get flag() {
-    return Game.flags[this.flagName];
-  }
-  /**
-   * Liefert die Anforderung der Flagge — **nur** bei einer Farbänderung, danach
-   * `null`, solange die Farbe steht. Eine unbelegte Farbe wird einmal gemeldet
-   * und dann wie „keine Änderung" behandelt.
-   */
-  readRequest() {
-    const flag = this.flag;
-    if (flag === void 0) return null;
-    if (flag.color === this.state.flagColor) return null;
-    this.state.flagColor = flag.color;
-    const entry = bySwitchColor(flag.color);
-    if (entry === void 0) {
-      const belegt = SWITCH_COLORS.map((item) => `${item.label}=${item.meaning}`).join(", ");
-      console.log(
-        `[prof] Flagge "${this.flagName}": diese Farbe ist nicht belegt. Belegt sind ${belegt}.`
-      );
-      return null;
-    }
-    return entry.request;
-  }
-  /**
-   * Färbt die Flagge passend zu `request` und merkt die Farbe als verarbeitet, so
-   * dass daraus keine Flanke wird. Damit lügt die Flagge nie: auch ein Umschalten
-   * über die Konsole färbt sie mit, rot bedeutet „misst gerade", und nach der
-   * Detailmessung fällt sie von allein auf die Farbe des Zustands zurück, in dem
-   * der Profiler weiterläuft.
-   *
-   * Ohne gesetzte Flagge tut die Methode nichts — dann kostet sie auch keinen
-   * Intent.
-   */
-  acknowledge(request) {
-    const flag = this.flag;
-    if (flag === void 0) return;
-    const color = byRequest(request).color;
-    if (flag.color !== color) {
-      flag.setColor(color, flag.secondaryColor);
-    }
-    this.state.flagColor = color;
-  }
-  /** Kurzbeschreibung der Flagge für `prof.status()`, `null` ohne Flagge. */
-  describe() {
-    const flag = this.flag;
-    if (flag === void 0) return null;
-    const entry = bySwitchColor(flag.color);
-    const color = entry !== void 0 ? `${entry.label} = ${entry.meaning}` : "unbelegte Farbe";
-    return `Flagge ${this.flagName} in ${flag.pos.roomName}: ${color}`;
-  }
-  /**
-   * Zeichnet die Legende neben die Flagge. Nur wenn die Flagge steht — sie ist
-   * damit der Ein- und Ausschalter der ganzen Anzeige. Room Visuals leben einen
-   * Tick, das hier läuft deshalb jeden Tick erneut.
-   */
-  draw(data) {
-    const flag = this.flag;
-    if (flag === void 0) return;
-    const visual = new RoomVisual(flag.pos.roomName);
-    const toLeft = flag.pos.x >= 25;
-    const x = toLeft ? flag.pos.x - 0.8 : flag.pos.x + 0.8;
-    const align = toLeft ? "right" : "left";
-    const top = Math.min(Math.max(flag.pos.y - 2, 0.8), 45);
-    const lineHeight = 0.7;
-    const style = {
-      align,
-      font: 0.5,
-      backgroundColor: "#000000",
-      backgroundPadding: 0.12
-    };
-    visual.text(`prof: ${data.mode}`, x, top, { ...style, color: "#ffffff" });
-    SWITCH_COLORS.forEach((entry, index) => {
-      const active = isActive(entry, data);
-      visual.text(
-        `${active ? "\u25B6" : "\xB7"} ${entry.label} = ${entry.meaning}`,
-        x,
-        top + lineHeight * (index + 1),
-        { ...style, color: entry.css, opacity: active ? 1 : 0.4 }
-      );
-    });
-    visual.text(statusLine(data), x, top + lineHeight * (SWITCH_COLORS.length + 1), {
-      ...style,
-      color: "#cccccc",
-      opacity: 0.8
-    });
-  }
-};
-
-// src/profiler/state.ts
-var _ProfilerState = class _ProfilerState {
-  constructor() {
-    /** Gespiegelter Zustand, einmal je Tick aus `Memory.profiler` übernommen. */
-    __publicField(this, "mirroredMode", "off");
-  }
-  /** `Memory.profiler`, bei Bedarf mit Standard `off` angelegt. */
-  get entry() {
-    var _a;
-    const memory = Memory;
-    return (_a = memory.profiler) != null ? _a : memory.profiler = { mode: "off" };
-  }
-  /** Der gespiegelte Zustand. Billig — nur ein Feldzugriff. */
-  get mode() {
-    return this.mirroredMode;
-  }
-  /** Setzt den Zustand in `Memory` und im Spiegel. */
-  set mode(mode) {
-    this.entry.mode = mode;
-    this.mirroredMode = mode;
-  }
-  /** Spiegelt den Zustand aus `Memory`. Einmal je Tick, als erstes. */
-  syncFromMemory() {
-    this.mirroredMode = this.entry.mode;
-    return this.mirroredMode;
-  }
-  /** Startet die Detailmessung für `ticks` Ticks und merkt den Rückkehrzustand. */
-  startDetail(ticks) {
-    const entry = this.entry;
-    if (entry.detailUntil === void 0) {
-      entry.detailReturnTo = this.mirroredMode;
-    }
-    entry.detailUntil = Game.time + ticks;
-    entry.mode = "full";
-    this.mirroredMode = "full";
-  }
-  /**
-   * Bricht eine laufende Detailmessung ab, **ohne** den Rückkehrzustand
-   * anzuwenden. Für einen Zustandswechsel über Konsole oder Flagge: wer
-   * ausdrücklich `off`, `light` oder `full` verlangt, will nicht, dass die
-   * Detailmessung Ticks später ihren alten Zustand zurückholt.
-   */
-  cancelDetail() {
-    const entry = this.entry;
-    delete entry.detailUntil;
-    delete entry.detailReturnTo;
-  }
-  /** Läuft gerade eine Detailmessung? */
-  detailActive() {
-    return this.entry.detailUntil !== void 0;
-  }
-  /** Restticks der Detailmessung, 0 wenn sie nicht läuft. */
-  detailRemaining() {
-    const until = this.entry.detailUntil;
-    if (until === void 0) {
-      return 0;
-    }
-    const remaining = until - Game.time;
-    return remaining > 0 ? remaining : 0;
-  }
-  /**
-   * Liefert `true` genau in dem Tick, in dem die Detailmessung abgelaufen ist,
-   * und stellt dabei den Rückkehrzustand wieder her. Danach `false`.
-   */
-  expireDetail() {
-    var _a;
-    const entry = this.entry;
-    if (entry.detailUntil === void 0 || Game.time < entry.detailUntil) {
-      return false;
-    }
-    const returnTo = (_a = entry.detailReturnTo) != null ? _a : "off";
-    this.cancelDetail();
-    entry.mode = returnTo;
-    this.mirroredMode = returnTo;
-    return true;
-  }
-  /** Hält ein Fenster als benannte Grundlinie fest. */
-  saveBaseline(name, baseline) {
-    var _a, _b;
-    const baselines = (_b = (_a = this.entry).baselines) != null ? _b : _a.baselines = {};
-    baselines[name] = baseline;
-    const names = Object.keys(baselines);
-    if (names.length <= _ProfilerState.MAX_BASELINES) {
-      return;
-    }
-    let oldestName = names[0];
-    for (const candidate of names) {
-      if (baselines[candidate].tick < baselines[oldestName].tick) {
-        oldestName = candidate;
-      }
-    }
-    delete baselines[oldestName];
-  }
-  /** Alle festgehaltenen Grundlinien, leeres Objekt statt `undefined`. */
-  readBaselines() {
-    var _a;
-    return (_a = this.entry.baselines) != null ? _a : {};
-  }
-  /** Zuletzt verarbeitete Farbe der Schalterflagge, `undefined` wenn noch keine. */
-  get flagColor() {
-    return this.entry.flagColor;
-  }
-  /** Merkt eine Flaggenfarbe als verarbeitet, damit sie keine Flanke mehr auslöst. */
-  set flagColor(color) {
-    this.entry.flagColor = color;
-  }
-};
-/** Höchstzahl gespeicherter Grundlinien, damit `Memory.profiler` klein bleibt. */
-__publicField(_ProfilerState, "MAX_BASELINES", 8);
-var ProfilerState = _ProfilerState;
-
 // src/profiler/window.ts
+var openSections = /* @__PURE__ */ new Map();
 function createEmptySnapshot() {
   return {
     startTick: 0,
@@ -1576,6 +1430,7 @@ function createEmptySnapshot() {
     creepDetail: {}
   };
 }
+var windowState = createEmptySnapshot();
 function record(map, key, cpu) {
   const existing = map[key];
   if (existing === void 0) {
@@ -1605,129 +1460,84 @@ function rank(map, ticks, cpuTotal) {
   entries.sort((a, b) => b.cpuPerTick - a.cpuPerTick);
   return entries;
 }
-var MeasurementWindow = class {
-  constructor(state2) {
-    this.state = state2;
-    /** Startzeitpunkt (`Game.cpu.getUsed()`) je noch offener `begin()`-Messung. */
-    __publicField(this, "openSections", /* @__PURE__ */ new Map());
-    __publicField(this, "window", createEmptySnapshot());
+function begin(section) {
+  if (getMode() !== "full") return;
+  openSections.set(section, Game.cpu.getUsed());
+}
+function end(section) {
+  if (getMode() !== "full") return;
+  const start = openSections.get(section);
+  if (start === void 0) return;
+  openSections.delete(section);
+  record(windowState.sections, section, Game.cpu.getUsed() - start);
+}
+function beginTick() {
+  if (getMode() === "off") return;
+  if (windowState.ticks === 0) {
+    windowState.startTick = Game.time;
   }
-  /** Rohzustand des laufenden Fensters. */
-  get snapshot() {
-    return this.window;
-  }
-  /** `true`, wenn das Fenster `WINDOW_TICKS` Ticks voll hat. */
-  get isDue() {
-    return this.window.ticks >= WINDOW_TICKS;
-  }
-  /** Abschnittsmessung starten. Nur im Zustand `full` aktiv. */
-  begin(section) {
-    if (this.state.mode !== "full") return;
-    this.openSections.set(section, Game.cpu.getUsed());
-  }
-  /** Abschnittsmessung beenden und verbuchen. Gleicher Wächter wie `begin`. */
-  end(section) {
-    if (this.state.mode !== "full") return;
-    const start = this.openSections.get(section);
-    if (start === void 0) return;
-    this.openSections.delete(section);
-    record(this.window.sections, section, Game.cpu.getUsed() - start);
-  }
-  /**
-   * Tickgrenze am Anfang von `loop()`. Zählt nur den Tick fürs Fenster — bewusst
-   * **kein** `Game.cpu.getUsed()` hier. Der eine sinnvolle Gesamtwert je Tick
-   * wird zentral in `endTick` gelesen, siehe dortiger Kommentar.
-   */
-  beginTick() {
-    if (this.state.mode === "off") return;
-    if (this.window.ticks === 0) {
-      this.window.startTick = Game.time;
-    }
-    this.window.ticks += 1;
-  }
-  /**
-   * Tickende. Verbucht Gesamttick, Bucket, Räume und Creeps. Läuft in `light`
-   * und `full`, aber nicht in `off`.
-   */
-  endTick(creepCount) {
-    const mode = this.state.mode;
-    if (mode === "off") return;
-    const cpu = Game.cpu.getUsed();
-    const window = this.window;
-    window.mode = mode;
-    window.cpuTotal += cpu;
-    if (cpu > window.cpuMax) window.cpuMax = cpu;
-    const bucket = Game.cpu.bucket;
-    window.bucketTotal += bucket;
-    if (bucket < window.bucketMin) window.bucketMin = bucket;
-    window.roomTotal += Object.keys(bot.room).length;
-    window.creepTotal += creepCount;
-    window.limit = Game.cpu.limit;
-    window.tickLimit = Game.cpu.tickLimit;
-  }
-  /** Rollenzeit verbuchen. Genutzt vom Rollen-Wrapper in `decorator.ts`. */
-  recordRole(role12, cpu) {
-    record(this.window.roles, role12, cpu);
-  }
-  /** Zeit einer Klassenmethode verbuchen. Genutzt vom `@profile`-Dekorator. */
-  recordMethod(key, cpu) {
-    record(this.window.methods, key, cpu);
-  }
-  /**
-   * Zeit eines einzelnen Creeps verbuchen. Der Rollen-Wrapper in `decorator.ts`
-   * ruft das bewusst bei jedem `doJob` im Zustand `full` auf, ohne selbst nach
-   * Detailmessung zu unterscheiden. Der Vertrag in `types.ts` verlangt aber, dass
-   * `creepDetail` nur während der Detailmessung gefüllt wird (sonst landen alle
-   * ~60 Creeps jeden Tick in der sortierten Liste), also sitzt der Wächter hier.
-   * Der Zustand zuerst, damit in `light` gar nicht erst auf `Memory.profiler`
-   * zugegriffen wird.
-   */
-  recordCreep(creepName, cpu) {
-    if (this.state.mode !== "full") return;
-    if (!this.state.detailActive()) return;
-    record(this.window.creepDetail, creepName, cpu);
-  }
-  /**
-   * Leitet die Kennzahlen aus dem laufenden Fenster ab. Die einzige Stelle, die
-   * dividiert — jede Division ist gegen einen Nenner von 0 abgesichert, damit
-   * ein leeres Fenster niemals `NaN`/`Infinity` liefert.
-   */
-  metrics() {
-    const window = this.window;
-    const ticks = window.ticks;
-    const rooms = safeDiv(window.roomTotal, ticks);
-    const creeps = safeDiv(window.creepTotal, ticks);
-    const cpuPerTick = safeDiv(window.cpuTotal, ticks);
-    return {
-      ticks,
-      mode: window.mode,
-      cpuPerTick,
-      cpuMaxTick: window.cpuMax,
-      cpuPerRoom: safeDiv(cpuPerTick, rooms),
-      cpuPerCreep: safeDiv(cpuPerTick, creeps),
-      rooms,
-      creeps,
-      bucketMean: safeDiv(window.bucketTotal, ticks),
-      bucketMin: window.bucketMin === Infinity ? 0 : window.bucketMin,
-      limit: window.limit,
-      tickLimit: window.tickLimit,
-      sections: rank(window.sections, ticks, window.cpuTotal),
-      roles: rank(window.roles, ticks, window.cpuTotal),
-      methods: rank(window.methods, ticks, window.cpuTotal),
-      creepDetail: rank(window.creepDetail, ticks, window.cpuTotal)
-    };
-  }
-  /** Fenster verwerfen und neu beginnen. */
-  reset() {
-    this.openSections.clear();
-    this.window = createEmptySnapshot();
-  }
-};
-
-// src/profiler/runtime.ts
-var state = new ProfilerState();
-var measurement = new MeasurementWindow(state);
-var flagSwitch = new FlagSwitch(state);
+  windowState.ticks += 1;
+}
+function endTick(creepCount) {
+  const mode = getMode();
+  if (mode === "off") return;
+  const cpu = Game.cpu.getUsed();
+  windowState.mode = mode;
+  windowState.cpuTotal += cpu;
+  if (cpu > windowState.cpuMax) windowState.cpuMax = cpu;
+  const bucket = Game.cpu.bucket;
+  windowState.bucketTotal += bucket;
+  if (bucket < windowState.bucketMin) windowState.bucketMin = bucket;
+  windowState.roomTotal += Object.keys(bot.room).length;
+  windowState.creepTotal += creepCount;
+  windowState.limit = Game.cpu.limit;
+  windowState.tickLimit = Game.cpu.tickLimit;
+}
+function recordRole(role12, cpu) {
+  record(windowState.roles, role12, cpu);
+}
+function recordMethod(key, cpu) {
+  record(windowState.methods, key, cpu);
+}
+function recordCreep(creepName, cpu) {
+  if (getMode() !== "full") return;
+  if (!detailActive()) return;
+  record(windowState.creepDetail, creepName, cpu);
+}
+function snapshot() {
+  return windowState;
+}
+function metrics(snapshotState) {
+  const ticks = snapshotState.ticks;
+  const rooms = safeDiv(snapshotState.roomTotal, ticks);
+  const creeps = safeDiv(snapshotState.creepTotal, ticks);
+  const cpuPerTick = safeDiv(snapshotState.cpuTotal, ticks);
+  return {
+    ticks,
+    mode: snapshotState.mode,
+    cpuPerTick,
+    cpuMaxTick: snapshotState.cpuMax,
+    cpuPerRoom: safeDiv(cpuPerTick, rooms),
+    cpuPerCreep: safeDiv(cpuPerTick, creeps),
+    rooms,
+    creeps,
+    bucketMean: safeDiv(snapshotState.bucketTotal, ticks),
+    bucketMin: snapshotState.bucketMin === Infinity ? 0 : snapshotState.bucketMin,
+    limit: snapshotState.limit,
+    tickLimit: snapshotState.tickLimit,
+    sections: rank(snapshotState.sections, ticks, snapshotState.cpuTotal),
+    roles: rank(snapshotState.roles, ticks, snapshotState.cpuTotal),
+    methods: rank(snapshotState.methods, ticks, snapshotState.cpuTotal),
+    creepDetail: rank(snapshotState.creepDetail, ticks, snapshotState.cpuTotal)
+  };
+}
+function reset() {
+  openSections.clear();
+  windowState = createEmptySnapshot();
+}
+function isDue() {
+  return windowState.ticks >= WINDOW_TICKS;
+}
 
 // src/profiler/decorator.ts
 function wrapFunction(obj, key, className) {
@@ -1750,12 +1560,12 @@ function wrapFunction(obj, key, className) {
   }
   Reflect.set(obj, savedName, originalFunction);
   Reflect.set(obj, key, function(...args) {
-    if (state.mode !== "full") {
+    if (getMode() !== "full") {
       return originalFunction.apply(this, args);
     }
     const start = Game.cpu.getUsed();
     const result = originalFunction.apply(this, args);
-    measurement.recordMethod(memKey, Game.cpu.getUsed() - start);
+    recordMethod(memKey, Game.cpu.getUsed() - start);
     return result;
   });
 }
@@ -1777,23 +1587,23 @@ function wrapRoles(jobs2) {
     const original = jobs2[role12];
     wrapped[role12] = {
       doJob(creep) {
-        if (state.mode !== "full") {
+        if (getMode() !== "full") {
           original.doJob(creep);
           return;
         }
         const start = Game.cpu.getUsed();
         original.doJob(creep);
         const cpu = Game.cpu.getUsed() - start;
-        measurement.recordRole(role12, cpu);
-        measurement.recordCreep(creep.name, cpu);
+        recordRole(role12, cpu);
+        recordCreep(creep.name, cpu);
       },
       spawn(spawn3, workroom) {
-        if (state.mode !== "full") {
+        if (getMode() !== "full") {
           return original.spawn(spawn3, workroom);
         }
         const start = Game.cpu.getUsed();
         const result = original.spawn(spawn3, workroom);
-        measurement.recordRole(`${role12}.spawn`, Game.cpu.getUsed() - start);
+        recordRole(`${role12}.spawn`, Game.cpu.getUsed() - start);
         return result;
       }
     };
@@ -1845,8 +1655,8 @@ var Builder = class {
     } else {
       let target = Game.getObjectById(creep.memory.id);
       if (target && target.progressTotal != void 0) {
-        let state2 = creep.build(target);
-        if (state2 === ERR_NOT_IN_RANGE) {
+        let state = creep.build(target);
+        if (state === ERR_NOT_IN_RANGE) {
           moveByMemory(creep, target.pos);
         }
         return true;
@@ -1913,14 +1723,14 @@ var Claimer = class {
         }
         return;
       }
-      var state2 = creep.reserveController(controller);
-      if (state2 === ERR_NOT_IN_RANGE) {
+      var state = creep.reserveController(controller);
+      if (state === ERR_NOT_IN_RANGE) {
         moveByMemory2(creep, controller.pos);
-      } else if (state2 == ERR_INVALID_TARGET) {
+      } else if (state == ERR_INVALID_TARGET) {
         creep.say("\u{1FA93}");
         creep.attackController(controller);
         Memory.rooms[creep.memory.workroom].claimed = false;
-      } else if (state2 == OK) {
+      } else if (state == OK) {
         Memory.rooms[creep.memory.workroom].claimed = true;
       }
       if (controller.sign.username != creep.owner.username) {
@@ -2504,18 +2314,18 @@ var Miner = class {
               }
             }
             for (var spot of adjacentSpots) {
-              var state2 = spot.createConstructionSite(STRUCTURE_CONTAINER);
-              if (state2 === OK) {
+              var state = spot.createConstructionSite(STRUCTURE_CONTAINER);
+              if (state === OK) {
                 return;
               }
-              if (state2 === ERR_FULL) {
+              if (state === ERR_FULL) {
                 finalLocation = adjacentSpots.find(
                   (p) => p.lookFor(LOOK_TERRAIN)[0] !== "wall"
                 );
                 creep.memory.pos = finalLocation;
                 return;
               }
-              creep.say(state2);
+              creep.say(state);
             }
             return;
           }
@@ -2525,8 +2335,8 @@ var Miner = class {
       }
       if (creep.pos.x == creep.memory.pos.x && creep.pos.y == creep.memory.pos.y) {
         var source = creep.pos.findClosestByPath(creep.memory.mineEnergy ? FIND_SOURCES : FIND_MINERALS);
-        var state2 = creep.harvest(source);
-        if (state2 === ERR_NOT_IN_RANGE) {
+        var state = creep.harvest(source);
+        if (state === ERR_NOT_IN_RANGE) {
           creep.say("\u2049");
         } else {
           creep.memory.source = source.id;
@@ -2682,14 +2492,14 @@ var Miner = class {
         creep.say("\u{1F634}");
         return;
       }
-      var state2 = creep.harvest(source2);
-      if (state2 != OK) {
-        if (state2 == ERR_TIRED || state2 == ERR_NOT_ENOUGH_ENERGY) {
+      var state = creep.harvest(source2);
+      if (state != OK) {
+        if (state == ERR_TIRED || state == ERR_NOT_ENOUGH_ENERGY) {
           creep.say("\u{1F634}");
-        } else if (state2 == ERR_NO_BODYPART) {
+        } else if (state == ERR_NO_BODYPART) {
           creep.suicide();
         } else {
-          creep.say(state2 + " :(");
+          creep.say(state + " :(");
         }
       }
     }
@@ -2806,8 +2616,8 @@ var Repairer = class {
     } else {
       let target = Game.getObjectById(creep.memory.prioId);
       if (target && target.hits < target.hitsMax) {
-        let state2 = creep.repair(target);
-        if (state2 === ERR_NOT_IN_RANGE) {
+        let state = creep.repair(target);
+        if (state === ERR_NOT_IN_RANGE) {
           moveByMemory2(creep, target.pos);
         }
         return true;
@@ -2841,8 +2651,8 @@ var Repairer = class {
     } else {
       let target = Game.getObjectById(creep.memory.id);
       if (target && target.hits < target.hitsMax) {
-        let state2 = creep.repair(target);
-        if (state2 === ERR_NOT_IN_RANGE) {
+        let state = creep.repair(target);
+        if (state === ERR_NOT_IN_RANGE) {
           moveByMemory2(creep, target.pos);
         }
         return true;
@@ -3202,6 +3012,100 @@ function spawn2() {
   }
 }
 
+// src/profiler/flag.ts
+var FLAG_NAME = "prof";
+var SWITCH_COLORS = [
+  { color: COLOR_GREY, request: "off", label: "grau", meaning: "aus", css: "#b4b4b4" },
+  { color: COLOR_WHITE, request: "light", label: "wei\xDF", meaning: "light", css: "#ffffff" },
+  { color: COLOR_GREEN, request: "full", label: "gr\xFCn", meaning: "full", css: "#00ff00" },
+  {
+    color: COLOR_RED,
+    request: "detail",
+    label: "rot",
+    meaning: `Detail ${DEFAULT_DETAIL_TICKS}T`,
+    css: "#ff3030"
+  }
+];
+function bySwitchColor(color) {
+  return SWITCH_COLORS.find((entry) => entry.color === color);
+}
+function byRequest(request) {
+  return SWITCH_COLORS.find((entry) => entry.request === request);
+}
+function switchFlag() {
+  return Game.flags[FLAG_NAME];
+}
+function readRequest() {
+  const flag = switchFlag();
+  if (flag === void 0) return null;
+  if (flag.color === getFlagColor()) return null;
+  setFlagColor(flag.color);
+  const entry = bySwitchColor(flag.color);
+  if (entry === void 0) {
+    const belegt = SWITCH_COLORS.map((item) => `${item.label}=${item.meaning}`).join(", ");
+    console.log(`[prof] Flagge "${FLAG_NAME}": diese Farbe ist nicht belegt. Belegt sind ${belegt}.`);
+    return null;
+  }
+  return entry.request;
+}
+function acknowledge(request) {
+  const flag = switchFlag();
+  if (flag === void 0) return;
+  const color = byRequest(request).color;
+  if (flag.color === color) {
+    setFlagColor(color);
+    return;
+  }
+  flag.setColor(color, flag.secondaryColor);
+  setFlagColor(color);
+}
+function describe() {
+  const flag = switchFlag();
+  if (flag === void 0) return null;
+  const entry = bySwitchColor(flag.color);
+  const color = entry !== void 0 ? `${entry.label} = ${entry.meaning}` : "unbelegte Farbe";
+  return `Flagge ${FLAG_NAME} in ${flag.pos.roomName}: ${color}`;
+}
+function statusLine(data) {
+  const window = data.ticks === 0 ? "noch keine Messung" : `Fenster ${data.ticks}T | CPU/Tick ${data.cpuPerTick.toFixed(2)}`;
+  return data.detailRemaining > 0 ? `${window} | Detail noch ${data.detailRemaining}T` : window;
+}
+function isActive(entry, data) {
+  if (entry.request === "detail") return data.detailRemaining > 0;
+  return data.detailRemaining === 0 && entry.request === data.mode;
+}
+function draw(data) {
+  const flag = switchFlag();
+  if (flag === void 0) return;
+  const visual = new RoomVisual(flag.pos.roomName);
+  const toLeft = flag.pos.x >= 25;
+  const x = toLeft ? flag.pos.x - 0.8 : flag.pos.x + 0.8;
+  const align = toLeft ? "right" : "left";
+  const top = Math.min(Math.max(flag.pos.y - 2, 0.8), 45);
+  const lineHeight = 0.7;
+  const style = {
+    align,
+    font: 0.5,
+    backgroundColor: "#000000",
+    backgroundPadding: 0.12
+  };
+  visual.text(`prof: ${data.mode}`, x, top, { ...style, color: "#ffffff" });
+  SWITCH_COLORS.forEach((entry, index) => {
+    const active = isActive(entry, data);
+    visual.text(
+      `${active ? "\u25B6" : "\xB7"} ${entry.label} = ${entry.meaning}`,
+      x,
+      top + lineHeight * (index + 1),
+      { ...style, color: entry.css, opacity: active ? 1 : 0.4 }
+    );
+  });
+  visual.text(statusLine(data), x, top + lineHeight * (SWITCH_COLORS.length + 1), {
+    ...style,
+    color: "#cccccc",
+    opacity: 0.8
+  });
+}
+
 // src/profiler/report.ts
 function fmt(value, decimals = 2) {
   if (!Number.isFinite(value)) return "-";
@@ -3215,9 +3119,9 @@ function topEntries(entries, count) {
   if (entries.length === 0) return "-";
   return entries.slice(0, count).map((entry) => `${entry.name} ${fmtPercent(entry.share)}`).join(", ");
 }
-function formatWindowLine(metrics) {
-  const top = topEntries(metrics.roles, 3);
-  return `[prof] Fenster=${fmt(metrics.ticks, 0)}T | CPU/Tick=${fmt(metrics.cpuPerTick)} | CPU/Raum=${fmt(metrics.cpuPerRoom)} | CPU/Creep=${fmt(metrics.cpuPerCreep)} | Bucket~${fmt(metrics.bucketMean, 0)} (min ${fmt(metrics.bucketMin, 0)}) | Limit=${fmt(metrics.limit, 0)} | Top: ${top}`;
+function formatWindowLine(metrics2) {
+  const top = topEntries(metrics2.roles, 3);
+  return `[prof] Fenster=${fmt(metrics2.ticks, 0)}T | CPU/Tick=${fmt(metrics2.cpuPerTick)} | CPU/Raum=${fmt(metrics2.cpuPerRoom)} | CPU/Creep=${fmt(metrics2.cpuPerCreep)} | Bucket~${fmt(metrics2.bucketMean, 0)} (min ${fmt(metrics2.bucketMin, 0)}) | Limit=${fmt(metrics2.limit, 0)} | Top: ${top}`;
 }
 var NUMBER_COLUMN_WIDTHS = {
   cpuPerTick: 9,
@@ -3253,12 +3157,12 @@ function formatRankedBlock(title, entries) {
   const rows = sorted.map((entry) => formatRankedRow(entry, widths));
   return [`== ${title} ==`, header, separator, ...rows].join("\n");
 }
-function formatDetailReport(metrics) {
+function formatDetailReport(metrics2) {
   const blocks = [
-    formatRankedBlock("Abschnitte", metrics.sections),
-    formatRankedBlock("Rollen", metrics.roles),
-    formatRankedBlock("Methoden", metrics.methods),
-    formatRankedBlock("Creeps", metrics.creepDetail)
+    formatRankedBlock("Abschnitte", metrics2.sections),
+    formatRankedBlock("Rollen", metrics2.roles),
+    formatRankedBlock("Methoden", metrics2.methods),
+    formatRankedBlock("Creeps", metrics2.creepDetail)
   ].filter((block) => block.length > 0);
   if (blocks.length === 0) {
     return "Keine Detaildaten im laufenden Fenster. Mit prof.detail() eine Messung starten.";
@@ -3337,24 +3241,24 @@ function set(target, key, value) {
   if (!isWritable(value)) return;
   target[key] = value;
 }
-function writeStats(metrics) {
+function writeStats(metrics2) {
   const stats = {};
-  set(stats, "cpu.getUsed", metrics.cpuPerTick);
-  set(stats, "cpu.limit", metrics.limit);
-  set(stats, "cpu.tickLimit", metrics.tickLimit);
-  set(stats, "cpu.bucket", metrics.bucketMean);
-  set(stats, "profiler.ticks", metrics.ticks);
-  set(stats, "profiler.cpuPerTick", metrics.cpuPerTick);
-  set(stats, "profiler.cpuMaxTick", metrics.cpuMaxTick);
-  set(stats, "profiler.cpuPerRoom", metrics.cpuPerRoom);
-  set(stats, "profiler.cpuPerCreep", metrics.cpuPerCreep);
-  set(stats, "profiler.rooms", metrics.rooms);
-  set(stats, "profiler.creeps", metrics.creeps);
-  set(stats, "profiler.bucketMin", metrics.bucketMin);
-  for (const section of metrics.sections) {
+  set(stats, "cpu.getUsed", metrics2.cpuPerTick);
+  set(stats, "cpu.limit", metrics2.limit);
+  set(stats, "cpu.tickLimit", metrics2.tickLimit);
+  set(stats, "cpu.bucket", metrics2.bucketMean);
+  set(stats, "profiler.ticks", metrics2.ticks);
+  set(stats, "profiler.cpuPerTick", metrics2.cpuPerTick);
+  set(stats, "profiler.cpuMaxTick", metrics2.cpuMaxTick);
+  set(stats, "profiler.cpuPerRoom", metrics2.cpuPerRoom);
+  set(stats, "profiler.cpuPerCreep", metrics2.cpuPerCreep);
+  set(stats, "profiler.rooms", metrics2.rooms);
+  set(stats, "profiler.creeps", metrics2.creeps);
+  set(stats, "profiler.bucketMin", metrics2.bucketMin);
+  for (const section of metrics2.sections) {
     set(stats, `profiler.section.${section.name}.cpuPerTick`, section.cpuPerTick);
   }
-  for (const role12 of metrics.roles) {
+  for (const role12 of metrics2.roles) {
     set(stats, `profiler.role.${role12.name}.cpuPerTick`, role12.cpuPerTick);
   }
   statsMemory.stats = stats;
@@ -3364,202 +3268,164 @@ function clearStats() {
 }
 
 // src/profiler/index.ts
-function toBaseline(metrics) {
+var begin2 = begin;
+var end2 = end;
+var lastMode = "off";
+function currentMetrics() {
+  return metrics(snapshot());
+}
+function switchMode(mode) {
+  if (detailActive()) {
+    cancelDetail();
+    console.log("[prof] Laufende Detailmessung abgebrochen, kein Abschlussbericht \u2014 prof.report() zeigt das Fenster.");
+  }
+  if (getMode() !== mode) {
+    setMode(mode);
+    lastMode = mode;
+    reset();
+  }
+  acknowledge(mode);
+}
+function applyFlagRequest() {
+  const request = readRequest();
+  if (request === null) return;
+  if (request === "detail") {
+    console.log(`[prof] Flagge: ${handle.detail()}`);
+    return;
+  }
+  const message = request === "off" ? handle.off() : request === "light" ? handle.light() : handle.on();
+  console.log(`[prof] Flagge: ${message}`);
+}
+function drawFlagLegend() {
+  const snapshotState = snapshot();
+  draw({
+    mode: getMode(),
+    ticks: snapshotState.ticks,
+    cpuPerTick: snapshotState.ticks > 0 ? snapshotState.cpuTotal / snapshotState.ticks : 0,
+    detailRemaining: detailRemaining()
+  });
+}
+function tick() {
+  syncFromMemory();
+  applyFlagRequest();
+  drawFlagLegend();
+  if (expireDetail()) {
+    console.log(`[prof] Detailmessung beendet.
+${formatDetailReport(currentMetrics())}`);
+    lastMode = getMode();
+    acknowledge(lastMode);
+    reset();
+    beginTick();
+    return;
+  }
+  const mode = getMode();
+  if (mode !== lastMode) {
+    lastMode = mode;
+    reset();
+  }
+  beginTick();
+}
+function endTick2(creepCount) {
+  endTick(creepCount);
+  if (!isDue()) return;
+  const metrics2 = currentMetrics();
+  console.log(formatWindowLine(metrics2));
+  writeStats(metrics2);
+  reset();
+}
+function toBaseline(metrics2) {
   return {
     tick: Game.time,
-    ticks: metrics.ticks,
-    mode: metrics.mode,
-    cpuPerTick: metrics.cpuPerTick,
-    cpuPerRoom: metrics.cpuPerRoom,
-    cpuPerCreep: metrics.cpuPerCreep,
-    bucketMean: metrics.bucketMean,
-    rooms: metrics.rooms,
-    creeps: metrics.creeps
+    ticks: metrics2.ticks,
+    mode: metrics2.mode,
+    cpuPerTick: metrics2.cpuPerTick,
+    cpuPerRoom: metrics2.cpuPerRoom,
+    cpuPerCreep: metrics2.cpuPerCreep,
+    bucketMean: metrics2.bucketMean,
+    rooms: metrics2.rooms,
+    creeps: metrics2.creeps
   };
 }
-var Profiler = class {
-  constructor(state2, measurement2, flagSwitch2) {
-    this.state = state2;
-    this.measurement = measurement2;
-    this.flagSwitch = flagSwitch2;
-    /**
-     * Zustand des letzten Ticks. Wechselt der Zustand, wird das laufende Fenster
-     * verworfen — sonst mischte ein Fenster Ticks aus `light` und `full` und die
-     * abgeleiteten Zahlen wären nicht vergleichbar.
-     */
-    __publicField(this, "lastMode", "off");
-  }
-  /**
-   * Tickgrenze am Anfang von `loop()`. Spiegelt den über Konsole oder Flagge
-   * gesetzten Zustand aus `Memory` und beendet eine abgelaufene Detailmessung.
-   */
-  tick() {
-    this.state.syncFromMemory();
-    this.applyFlagRequest();
-    this.drawFlagLegend();
-    if (this.state.expireDetail()) {
-      console.log(
-        `[prof] Detailmessung beendet.
-${formatDetailReport(this.measurement.metrics())}`
-      );
-      this.lastMode = this.state.mode;
-      this.flagSwitch.acknowledge(this.lastMode);
-      this.measurement.reset();
-      this.measurement.beginTick();
-      return;
-    }
-    if (this.state.mode !== this.lastMode) {
-      this.lastMode = this.state.mode;
-      this.measurement.reset();
-    }
-    this.measurement.beginTick();
-  }
-  /** Tickende. Verbucht den Tick und gibt das Fenster aus, sobald es voll ist. */
-  endTick(creepCount) {
-    this.measurement.endTick(creepCount);
-    if (!this.measurement.isDue) return;
-    const metrics = this.measurement.metrics();
-    console.log(formatWindowLine(metrics));
-    writeStats(metrics);
-    this.measurement.reset();
-  }
+var handle = {
   on() {
-    this.switchMode("full");
+    switchMode("full");
     return "Profiler: full \u2014 Gesamttick, Abschnitte und Rollen. Fensterzeile alle 100 Ticks.";
-  }
+  },
   light() {
-    this.switchMode("light");
+    switchMode("light");
     return "Profiler: light \u2014 nur Gesamttick, Bucket, CPU pro Raum und pro Creep.";
-  }
+  },
   off() {
-    this.switchMode("off");
+    switchMode("off");
     clearStats();
     return "Profiler: aus. Es l\xE4uft kein Game.cpu.getUsed() mehr.";
-  }
+  },
   status() {
-    const detail = this.state.detailActive() ? ` | Detailmessung noch ${this.state.detailRemaining()} Ticks` : "";
-    const flag = this.flagSwitch.describe();
+    const mode = getMode();
+    const metrics2 = currentMetrics();
+    const detail = detailActive() ? ` | Detailmessung noch ${detailRemaining()} Ticks` : "";
+    const flag = describe();
     const switchState = flag !== null ? ` | ${flag}` : "";
-    return `Profiler: ${this.state.mode} | Fenster ${this.measurement.snapshot.ticks}/100 Ticks${detail}${switchState}`;
-  }
+    return `Profiler: ${mode} | Fenster ${metrics2.ticks}/100 Ticks${detail}${switchState}`;
+  },
   report() {
-    const metrics = this.measurement.metrics();
-    if (metrics.ticks === 0) {
+    const metrics2 = currentMetrics();
+    if (metrics2.ticks === 0) {
       return "Kein gemessener Tick im Fenster. Mit prof.light() oder prof.on() einschalten.";
     }
-    const line = formatWindowLine(metrics);
-    if (metrics.sections.length === 0 && metrics.roles.length === 0) {
+    const line = formatWindowLine(metrics2);
+    if (metrics2.sections.length === 0 && metrics2.roles.length === 0) {
       return line;
     }
     return `${line}
-${formatDetailReport(metrics)}`;
-  }
+${formatDetailReport(metrics2)}`;
+  },
   reset() {
-    this.measurement.reset();
+    reset();
     return "Fenster verworfen, Messung beginnt neu.";
-  }
+  },
   detail(ticks = DEFAULT_DETAIL_TICKS) {
     if (!Number.isFinite(ticks) || ticks < 1) {
       return `Ung\xFCltige Tickzahl. Beispiel: prof.detail(${DEFAULT_DETAIL_TICKS})`;
     }
-    const returnTo = this.state.mode;
-    this.state.startDetail(Math.floor(ticks));
-    this.lastMode = "full";
-    this.measurement.reset();
-    this.flagSwitch.acknowledge("detail");
+    const returnTo = getMode();
+    startDetail(Math.floor(ticks));
+    lastMode = "full";
+    reset();
+    acknowledge("detail");
     return `Detailmessung f\xFCr ${Math.floor(ticks)} Ticks gestartet, danach zur\xFCck auf ${returnTo}.`;
-  }
+  },
   baseline(name) {
     if (!name) {
       return 'Name fehlt. Beispiel: prof.baseline("vor-plan-02")';
     }
-    const metrics = this.measurement.metrics();
-    if (metrics.ticks === 0) {
+    const metrics2 = currentMetrics();
+    if (metrics2.ticks === 0) {
       return "Kein gemessener Tick im Fenster \u2014 es gibt nichts festzuhalten.";
     }
-    this.state.saveBaseline(name, toBaseline(metrics));
-    if (metrics.ticks < 1e3) {
-      return `Grundlinie "${name}" gespeichert \u2014 Achtung, nur ${metrics.ticks} Ticks. F\xFCr einen belastbaren Vergleich mindestens 1000 Ticks messen.`;
+    if (metrics2.ticks < 1e3) {
+      saveBaseline(name, toBaseline(metrics2));
+      return `Grundlinie "${name}" gespeichert \u2014 Achtung, nur ${metrics2.ticks} Ticks. F\xFCr einen belastbaren Vergleich mindestens 1000 Ticks messen.`;
     }
-    return `Grundlinie "${name}" \xFCber ${metrics.ticks} Ticks gespeichert.`;
-  }
+    saveBaseline(name, toBaseline(metrics2));
+    return `Grundlinie "${name}" \xFCber ${metrics2.ticks} Ticks gespeichert.`;
+  },
   baselines() {
-    const metrics = this.measurement.metrics();
-    return formatBaselines(this.state.readBaselines(), metrics.ticks > 0 ? metrics : null);
-  }
-  /**
-   * Wechselt den Zustand und beginnt ein frisches Fenster.
-   *
-   * Ein ausdrücklicher Zustandswechsel beendet außerdem eine laufende
-   * Detailmessung: wer `off`, `light` oder `full` verlangt, will nicht, dass ihm
-   * Ticks später die Selbstabschaltung den alten Zustand zurückholt.
-   */
-  switchMode(mode) {
-    if (this.state.detailActive()) {
-      this.state.cancelDetail();
-      console.log(
-        "[prof] Laufende Detailmessung abgebrochen, kein Abschlussbericht \u2014 prof.report() zeigt das Fenster."
-      );
-    }
-    if (this.state.mode !== mode) {
-      this.state.mode = mode;
-      this.lastMode = mode;
-      this.measurement.reset();
-    }
-    this.flagSwitch.acknowledge(mode);
-  }
-  /** Führt aus, was die Schalterflagge verlangt — nur bei einer Farbänderung. */
-  applyFlagRequest() {
-    const request = this.flagSwitch.readRequest();
-    if (request === null) return;
-    if (request === "detail") {
-      console.log(`[prof] Flagge: ${this.detail()}`);
-      return;
-    }
-    const message = request === "off" ? this.off() : request === "light" ? this.light() : this.on();
-    console.log(`[prof] Flagge: ${message}`);
-  }
-  /**
-   * Zeichnet die Legende neben die Schalterflagge.
-   *
-   * Bewusst aus dem Rohzustand statt aus `metrics()`: die Kennzahlen sortieren
-   * vier Ranglisten, und das jeden Tick nur für eine Textzeile zu tun wäre genau
-   * die Art Kosten, die der Profiler aufspüren soll.
-   */
-  drawFlagLegend() {
-    const window = this.measurement.snapshot;
-    this.flagSwitch.draw({
-      mode: this.state.mode,
-      ticks: window.ticks,
-      cpuPerTick: window.ticks > 0 ? window.cpuTotal / window.ticks : 0,
-      detailRemaining: this.state.detailRemaining()
-    });
+    const metrics2 = currentMetrics();
+    return formatBaselines(readBaselines(), metrics2.ticks > 0 ? metrics2 : null);
   }
 };
-var profiler = new Profiler(state, measurement, flagSwitch);
-bot.prof = profiler;
-function tick() {
-  profiler.tick();
-}
-function endTick(creepCount) {
-  profiler.endTick(creepCount);
-}
-function begin(section) {
-  measurement.begin(section);
-}
-function end(section) {
-  measurement.end(section);
-}
+bot.prof = handle;
 
 // src/controller/timing.ts
 var botMemory3 = Memory;
 function controll() {
   const tick2 = Game.time;
   init();
-  begin(SECTION.tower);
+  begin2(SECTION.tower);
   tower();
-  end(SECTION.tower);
-  begin(SECTION.terminal);
+  end2(SECTION.tower);
+  begin2(SECTION.terminal);
   const terminalIds = botMemory3.terminals;
   if (terminalIds && terminalIds.length > 0) {
     const terminalId = terminalIds[Game.time % terminalIds.length];
@@ -3576,30 +3442,30 @@ function controll() {
       }
     }
   }
-  end(SECTION.terminal);
+  end2(SECTION.terminal);
   if (tick2 % 3 === 0 && Game.cpu.bucket === 1e4) {
-    begin(SECTION.pixel);
+    begin2(SECTION.pixel);
     Game.cpu.generatePixel();
-    end(SECTION.pixel);
+    end2(SECTION.pixel);
   }
   if (tick2 % 5 === 0) {
-    begin(SECTION.spawn);
+    begin2(SECTION.spawn);
     spawn2();
-    end(SECTION.spawn);
+    end2(SECTION.spawn);
   }
   if (tick2 % 7 === 0) {
-    begin(SECTION.defence);
+    begin2(SECTION.defence);
     check();
-    end(SECTION.defence);
+    end2(SECTION.defence);
   }
   if (tick2 % 11 === 0) {
-    begin(SECTION.status);
+    begin2(SECTION.status);
     writeStatus();
-    end(SECTION.status);
+    end2(SECTION.status);
   }
-  begin(SECTION.daily);
+  begin2(SECTION.daily);
   daylie();
-  end(SECTION.daily);
+  end2(SECTION.daily);
 }
 function daylie() {
   const dayTicks = 86400 / 3;
@@ -3884,7 +3750,7 @@ var measuredJobs = wrapRoles(jobs);
 function loop() {
   var _a, _b, _c;
   tick();
-  begin(SECTION.rooms);
+  begin2(SECTION.rooms);
   for (const name in bot.room) {
     const room = Game.rooms[name];
     try {
@@ -3911,8 +3777,8 @@ function loop() {
       );
     }
   }
-  end(SECTION.rooms);
-  begin(SECTION.creeps);
+  end2(SECTION.rooms);
+  begin2(SECTION.creeps);
   let processedCreeps = 0;
   for (const name in Memory.creeps) {
     const creep = Game.creeps[name];
@@ -3949,8 +3815,8 @@ ${(_b = error == null ? void 0 : error.stack) != null ? _b : String(error)}`
       );
     }
   }
-  end(SECTION.creeps);
-  begin(SECTION.timing);
+  end2(SECTION.creeps);
+  begin2(SECTION.timing);
   try {
     controll();
   } catch (error) {
@@ -3960,8 +3826,8 @@ ${(_b = error == null ? void 0 : error.stack) != null ? _b : String(error)}`
 ${(_c = error == null ? void 0 : error.stack) != null ? _c : String(error)}`
     );
   }
-  end(SECTION.timing);
-  endTick(processedCreeps);
+  end2(SECTION.timing);
+  endTick2(processedCreeps);
 }
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {

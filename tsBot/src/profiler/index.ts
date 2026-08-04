@@ -1,20 +1,21 @@
 /**
  * Öffentliche Schnittstelle des Profilers.
  *
- * Hier läuft zusammen, was `state`, `window`, `report`, `stats` und `decorator`
- * beitragen — und nur hier wird auf die Konsole geschrieben. Die Teilmodule
- * liefern Text, sie drucken ihn nicht: so bleibt steuerbar, wann die Konsole
- * etwas sieht. Sie ist das einzige Diagnosefenster im Spiel.
+ * Hier läuft zusammen, was `state`, `window`, `flag`, `report`, `stats` und
+ * `decorator` beitragen — und nur hier wird auf die Konsole geschrieben. Die
+ * Teilmodule liefern Text, sie drucken ihn nicht: so bleibt steuerbar, wann die
+ * Konsole etwas sieht. Sie ist das einzige Diagnosefenster im Spiel.
  *
- * Das Modul wirkt zusätzlich über einen Seiteneffekt: es legt den Handle als
+ * Das Modul wirkt zusätzlich über einen Seiteneffekt: es legt den Profiler als
  * `bot.prof` ab. Weil `bot` dasselbe Objekt wie `global` ist, tippt man im
  * Spiel `prof.report()`.
  */
 
 import { bot } from "../globals";
-import * as flagSwitch from "./flag";
+import type { FlagSwitch } from "./flag";
 import { formatBaselines, formatDetailReport, formatWindowLine } from "./report";
-import * as state from "./state";
+import { flagSwitch, measurement, state } from "./runtime";
+import type { ProfilerState } from "./state";
 import { clearStats, writeStats } from "./stats";
 import {
   DEFAULT_DETAIL_TICKS,
@@ -23,129 +24,13 @@ import {
   type ProfilerMode,
   type WindowMetrics,
 } from "./types";
-import * as measure from "./window";
+import type { MeasurementWindow } from "./window";
 
 export { SECTION } from "./types";
 export { profile, wrapRoles } from "./decorator";
 export type { ProfilerHandle, ProfilerMode } from "./types";
 
-/** Abschnittsmessung. Im Zustand `off` und `light` ein sofortiges `return`. */
-export const begin = measure.begin;
-/** Gegenstück zu `begin`. */
-export const end = measure.end;
-
-/**
- * Zustand des letzten Ticks. Wechselt der Zustand, wird das laufende Fenster
- * verworfen — sonst mischte ein Fenster Ticks aus `light` und `full` und die
- * abgeleiteten Zahlen wären nicht vergleichbar.
- */
-let lastMode: ProfilerMode = "off";
-
-/** Kennzahlen des laufenden Fensters. */
-function currentMetrics(): WindowMetrics {
-  return measure.metrics(measure.snapshot());
-}
-
-/**
- * Wechselt den Zustand und beginnt ein frisches Fenster.
- *
- * Ein ausdrücklicher Zustandswechsel beendet außerdem eine laufende
- * Detailmessung: wer `off`, `light` oder `full` verlangt, will nicht, dass ihm
- * Ticks später die Selbstabschaltung den alten Zustand zurückholt.
- */
-function switchMode(mode: ProfilerMode): void {
-  if (state.detailActive()) {
-    state.cancelDetail();
-    console.log("[prof] Laufende Detailmessung abgebrochen, kein Abschlussbericht — prof.report() zeigt das Fenster.");
-  }
-
-  if (state.getMode() !== mode) {
-    state.setMode(mode);
-    lastMode = mode;
-    measure.reset();
-  }
-
-  flagSwitch.acknowledge(mode);
-}
-
-/** Führt aus, was die Schalterflagge verlangt — nur bei einer Farbänderung. */
-function applyFlagRequest(): void {
-  const request = flagSwitch.readRequest();
-  if (request === null) return;
-
-  if (request === "detail") {
-    console.log(`[prof] Flagge: ${handle.detail()}`);
-    return;
-  }
-
-  const message =
-    request === "off" ? handle.off() : request === "light" ? handle.light() : handle.on();
-  console.log(`[prof] Flagge: ${message}`);
-}
-
-/**
- * Zeichnet die Legende neben die Schalterflagge.
- *
- * Bewusst aus dem Rohzustand statt aus `currentMetrics()`: die Kennzahlen
- * sortieren vier Ranglisten, und das jeden Tick nur für eine Textzeile zu tun
- * wäre genau die Art Kosten, die der Profiler aufspüren soll.
- */
-function drawFlagLegend(): void {
-  const snapshotState = measure.snapshot();
-  flagSwitch.draw({
-    mode: state.getMode(),
-    ticks: snapshotState.ticks,
-    cpuPerTick: snapshotState.ticks > 0 ? snapshotState.cpuTotal / snapshotState.ticks : 0,
-    detailRemaining: state.detailRemaining(),
-  });
-}
-
-/**
- * Tickgrenze am Anfang von `loop()`. Spiegelt den über Konsole oder Flagge
- * gesetzten Zustand aus `Memory` und beendet eine abgelaufene Detailmessung.
- */
-export function tick(): void {
-  state.syncFromMemory();
-
-  // Vor der Messung, damit ein Farbwechsel schon in diesem Tick greift.
-  applyFlagRequest();
-  drawFlagLegend();
-
-  // Selbstabschaltung der Detailmessung: Abschlussbericht ausgeben, solange die
-  // Daten noch im Fenster stehen, danach frisch beginnen.
-  if (state.expireDetail()) {
-    console.log(`[prof] Detailmessung beendet.\n${formatDetailReport(currentMetrics())}`);
-    lastMode = state.getMode();
-    flagSwitch.acknowledge(lastMode);
-    measure.reset();
-    measure.beginTick();
-    return;
-  }
-
-  const mode = state.getMode();
-  if (mode !== lastMode) {
-    lastMode = mode;
-    measure.reset();
-  }
-
-  measure.beginTick();
-}
-
-/**
- * Tickende. Verbucht den Tick und gibt das Fenster aus, sobald es voll ist.
- */
-export function endTick(creepCount: number): void {
-  measure.endTick(creepCount);
-
-  if (!measure.isDue()) return;
-
-  const metrics = currentMetrics();
-  console.log(formatWindowLine(metrics));
-  writeStats(metrics);
-  measure.reset();
-}
-
-/** Baut aus den laufenden Kennzahlen eine Grundlinie — bewusst nur Skalare. */
+/** Baut aus Kennzahlen eine Grundlinie — bewusst nur Skalare. */
 function toBaseline(metrics: WindowMetrics): Baseline {
   return {
     tick: Game.time,
@@ -160,36 +45,97 @@ function toBaseline(metrics: WindowMetrics): Baseline {
   };
 }
 
-const handle: ProfilerHandle = {
+/**
+ * Der Profiler: Tickgrenzen, Konsolenbefehle und die Auswertung des Fensters.
+ *
+ * Die Konsolenmethoden erfüllen `ProfilerHandle` und liefern deshalb alle eine
+ * Zeichenkette — die Konsole zeigt sonst `undefined`.
+ */
+export class Profiler implements ProfilerHandle {
+  /**
+   * Zustand des letzten Ticks. Wechselt der Zustand, wird das laufende Fenster
+   * verworfen — sonst mischte ein Fenster Ticks aus `light` und `full` und die
+   * abgeleiteten Zahlen wären nicht vergleichbar.
+   */
+  private lastMode: ProfilerMode = "off";
+
+  constructor(
+    private readonly state: ProfilerState,
+    private readonly measurement: MeasurementWindow,
+    private readonly flagSwitch: FlagSwitch,
+  ) {}
+
+  /**
+   * Tickgrenze am Anfang von `loop()`. Spiegelt den über Konsole oder Flagge
+   * gesetzten Zustand aus `Memory` und beendet eine abgelaufene Detailmessung.
+   */
+  tick(): void {
+    this.state.syncFromMemory();
+
+    // Vor der Messung, damit ein Farbwechsel schon in diesem Tick greift.
+    this.applyFlagRequest();
+    this.drawFlagLegend();
+
+    // Selbstabschaltung der Detailmessung: Abschlussbericht ausgeben, solange die
+    // Daten noch im Fenster stehen, danach frisch beginnen.
+    if (this.state.expireDetail()) {
+      console.log(
+        `[prof] Detailmessung beendet.\n${formatDetailReport(this.measurement.metrics())}`,
+      );
+      this.lastMode = this.state.mode;
+      this.flagSwitch.acknowledge(this.lastMode);
+      this.measurement.reset();
+      this.measurement.beginTick();
+      return;
+    }
+
+    if (this.state.mode !== this.lastMode) {
+      this.lastMode = this.state.mode;
+      this.measurement.reset();
+    }
+
+    this.measurement.beginTick();
+  }
+
+  /** Tickende. Verbucht den Tick und gibt das Fenster aus, sobald es voll ist. */
+  endTick(creepCount: number): void {
+    this.measurement.endTick(creepCount);
+
+    if (!this.measurement.isDue) return;
+
+    const metrics = this.measurement.metrics();
+    console.log(formatWindowLine(metrics));
+    writeStats(metrics);
+    this.measurement.reset();
+  }
+
   on(): string {
-    switchMode("full");
+    this.switchMode("full");
     return "Profiler: full — Gesamttick, Abschnitte und Rollen. Fensterzeile alle 100 Ticks.";
-  },
+  }
 
   light(): string {
-    switchMode("light");
+    this.switchMode("light");
     return "Profiler: light — nur Gesamttick, Bucket, CPU pro Raum und pro Creep.";
-  },
+  }
 
   off(): string {
-    switchMode("off");
+    this.switchMode("off");
     clearStats();
     return "Profiler: aus. Es läuft kein Game.cpu.getUsed() mehr.";
-  },
+  }
 
   status(): string {
-    const mode = state.getMode();
-    const metrics = currentMetrics();
-    const detail = state.detailActive()
-      ? ` | Detailmessung noch ${state.detailRemaining()} Ticks`
+    const detail = this.state.detailActive()
+      ? ` | Detailmessung noch ${this.state.detailRemaining()} Ticks`
       : "";
-    const flag = flagSwitch.describe();
+    const flag = this.flagSwitch.describe();
     const switchState = flag !== null ? ` | ${flag}` : "";
-    return `Profiler: ${mode} | Fenster ${metrics.ticks}/100 Ticks${detail}${switchState}`;
-  },
+    return `Profiler: ${this.state.mode} | Fenster ${this.measurement.snapshot.ticks}/100 Ticks${detail}${switchState}`;
+  }
 
   report(): string {
-    const metrics = currentMetrics();
+    const metrics = this.measurement.metrics();
     if (metrics.ticks === 0) {
       return "Kein gemessener Tick im Fenster. Mit prof.light() oder prof.on() einschalten.";
     }
@@ -199,52 +145,136 @@ const handle: ProfilerHandle = {
       return line;
     }
     return `${line}\n${formatDetailReport(metrics)}`;
-  },
+  }
 
   reset(): string {
-    measure.reset();
+    this.measurement.reset();
     return "Fenster verworfen, Messung beginnt neu.";
-  },
+  }
 
   detail(ticks = DEFAULT_DETAIL_TICKS): string {
     if (!Number.isFinite(ticks) || ticks < 1) {
       return `Ungültige Tickzahl. Beispiel: prof.detail(${DEFAULT_DETAIL_TICKS})`;
     }
 
-    const returnTo = state.getMode();
-    state.startDetail(Math.floor(ticks));
-    lastMode = "full";
-    measure.reset();
+    const returnTo = this.state.mode;
+    this.state.startDetail(Math.floor(ticks));
+    this.lastMode = "full";
+    this.measurement.reset();
     // Rot heißt „misst gerade"; die Selbstabschaltung färbt die Flagge zurück.
-    flagSwitch.acknowledge("detail");
+    this.flagSwitch.acknowledge("detail");
     return `Detailmessung für ${Math.floor(ticks)} Ticks gestartet, danach zurück auf ${returnTo}.`;
-  },
+  }
 
   baseline(name: string): string {
     if (!name) {
       return 'Name fehlt. Beispiel: prof.baseline("vor-plan-02")';
     }
 
-    const metrics = currentMetrics();
+    const metrics = this.measurement.metrics();
     if (metrics.ticks === 0) {
       return "Kein gemessener Tick im Fenster — es gibt nichts festzuhalten.";
     }
+
+    this.state.saveBaseline(name, toBaseline(metrics));
+
     if (metrics.ticks < 1000) {
       // Kein Abbruch, nur ein Hinweis: kürzere Fenster schwanken zu stark, weil
       // Spawnwellen, die Tagessequenz (alle 28 800 Ticks) und Angriffe die
-      // Werte verzerren. Die Grundlinie wird trotzdem gespeichert.
-      state.saveBaseline(name, toBaseline(metrics));
+      // Werte verzerren. Die Grundlinie ist trotzdem gespeichert.
       return `Grundlinie "${name}" gespeichert — Achtung, nur ${metrics.ticks} Ticks. Für einen belastbaren Vergleich mindestens 1000 Ticks messen.`;
     }
 
-    state.saveBaseline(name, toBaseline(metrics));
     return `Grundlinie "${name}" über ${metrics.ticks} Ticks gespeichert.`;
-  },
+  }
 
   baselines(): string {
-    const metrics = currentMetrics();
-    return formatBaselines(state.readBaselines(), metrics.ticks > 0 ? metrics : null);
-  },
-};
+    const metrics = this.measurement.metrics();
+    return formatBaselines(this.state.readBaselines(), metrics.ticks > 0 ? metrics : null);
+  }
 
-bot.prof = handle;
+  /**
+   * Wechselt den Zustand und beginnt ein frisches Fenster.
+   *
+   * Ein ausdrücklicher Zustandswechsel beendet außerdem eine laufende
+   * Detailmessung: wer `off`, `light` oder `full` verlangt, will nicht, dass ihm
+   * Ticks später die Selbstabschaltung den alten Zustand zurückholt.
+   */
+  private switchMode(mode: ProfilerMode): void {
+    if (this.state.detailActive()) {
+      this.state.cancelDetail();
+      console.log(
+        "[prof] Laufende Detailmessung abgebrochen, kein Abschlussbericht — prof.report() zeigt das Fenster.",
+      );
+    }
+
+    if (this.state.mode !== mode) {
+      this.state.mode = mode;
+      this.lastMode = mode;
+      this.measurement.reset();
+    }
+
+    this.flagSwitch.acknowledge(mode);
+  }
+
+  /** Führt aus, was die Schalterflagge verlangt — nur bei einer Farbänderung. */
+  private applyFlagRequest(): void {
+    const request = this.flagSwitch.readRequest();
+    if (request === null) return;
+
+    if (request === "detail") {
+      console.log(`[prof] Flagge: ${this.detail()}`);
+      return;
+    }
+
+    const message =
+      request === "off" ? this.off() : request === "light" ? this.light() : this.on();
+    console.log(`[prof] Flagge: ${message}`);
+  }
+
+  /**
+   * Zeichnet die Legende neben die Schalterflagge.
+   *
+   * Bewusst aus dem Rohzustand statt aus `metrics()`: die Kennzahlen sortieren
+   * vier Ranglisten, und das jeden Tick nur für eine Textzeile zu tun wäre genau
+   * die Art Kosten, die der Profiler aufspüren soll.
+   */
+  private drawFlagLegend(): void {
+    const window = this.measurement.snapshot;
+    this.flagSwitch.draw({
+      mode: this.state.mode,
+      ticks: window.ticks,
+      cpuPerTick: window.ticks > 0 ? window.cpuTotal / window.ticks : 0,
+      detailRemaining: this.state.detailRemaining(),
+    });
+  }
+}
+
+/** Der Profiler des laufenden Bots. */
+export const profiler = new Profiler(state, measurement, flagSwitch);
+
+bot.prof = profiler;
+
+/**
+ * Freistehende Fassade für `main.ts` und `controller/timing.ts`. Die Messpunkte
+ * dort sollen keine Instanz kennen müssen — und im Zustand `off` bleibt der
+ * Aufruf ein sofortiges `return`.
+ */
+export function tick(): void {
+  profiler.tick();
+}
+
+/** Gegenstück zu `tick`, muss die letzte Anweisung von `loop()` sein. */
+export function endTick(creepCount: number): void {
+  profiler.endTick(creepCount);
+}
+
+/** Abschnittsmessung. Im Zustand `off` und `light` ein sofortiges `return`. */
+export function begin(section: string): void {
+  measurement.begin(section);
+}
+
+/** Gegenstück zu `begin`. */
+export function end(section: string): void {
+  measurement.end(section);
+}

@@ -17,11 +17,11 @@
  * in `Memory.profiler.flagColor` und nicht im Heap: nach einem Global-Reset
  * soll die Flagge nicht erneut auslösen.
  *
- * Wie `state` meldet dieses Modul nur, was gewünscht ist — umgeschaltet wird in
- * `index`. Abhängigkeitsrichtung: `types <- state <- flag`.
+ * Wie `ProfilerState` meldet diese Klasse nur, was gewünscht ist — umgeschaltet
+ * wird in `Profiler` (`index.ts`).
  */
 
-import { getFlagColor, setFlagColor } from "./state";
+import type { ProfilerState } from "./state";
 import { DEFAULT_DETAIL_TICKS, type ProfilerMode } from "./types";
 
 /** Name der Schalterflagge. Ort und Raum sind gleichgültig: `Game.flags` ist weltweit. */
@@ -79,69 +79,6 @@ function byRequest(request: FlagRequest): SwitchColor {
   return SWITCH_COLORS.find(entry => entry.request === request)!;
 }
 
-/** Die Schalterflagge, falls gesetzt. */
-function switchFlag(): Flag | undefined {
-  return Game.flags[FLAG_NAME];
-}
-
-/**
- * Liefert die Anforderung der Flagge — **nur** bei einer Farbänderung, danach
- * `null`, solange die Farbe steht. Eine unbelegte Farbe wird einmal gemeldet
- * und dann wie „keine Änderung" behandelt.
- */
-export function readRequest(): FlagRequest | null {
-  const flag = switchFlag();
-  if (flag === undefined) return null;
-  if (flag.color === getFlagColor()) return null;
-
-  setFlagColor(flag.color);
-
-  const entry = bySwitchColor(flag.color);
-  if (entry === undefined) {
-    const belegt = SWITCH_COLORS.map(item => `${item.label}=${item.meaning}`).join(", ");
-    console.log(`[prof] Flagge "${FLAG_NAME}": diese Farbe ist nicht belegt. Belegt sind ${belegt}.`);
-    return null;
-  }
-
-  return entry.request;
-}
-
-/**
- * Färbt die Flagge passend zu `request` und merkt die Farbe als verarbeitet, so
- * dass daraus keine Flanke wird. Damit lügt die Flagge nie: auch ein Umschalten
- * über die Konsole färbt sie mit, rot bedeutet „misst gerade", und nach der
- * Detailmessung fällt sie von allein auf die Farbe des Zustands zurück, in dem
- * der Profiler weiterläuft.
- *
- * Ohne gesetzte Flagge tut die Funktion nichts — dann kostet sie auch keinen
- * Intent.
- */
-export function acknowledge(request: FlagRequest): void {
-  const flag = switchFlag();
-  if (flag === undefined) return;
-
-  const color = byRequest(request).color;
-  if (flag.color === color) {
-    setFlagColor(color);
-    return;
-  }
-
-  flag.setColor(color, flag.secondaryColor);
-  // Schon jetzt merken, obwohl der Farbwechsel erst am Tickende wirkt: sonst
-  // sähe der nächste Tick eine Flanke und würde die Farbe erneut auslösen.
-  setFlagColor(color);
-}
-
-/** Kurzbeschreibung der Flagge für `prof.status()`, `null` ohne Flagge. */
-export function describe(): string | null {
-  const flag = switchFlag();
-  if (flag === undefined) return null;
-
-  const entry = bySwitchColor(flag.color);
-  const color = entry !== undefined ? `${entry.label} = ${entry.meaning}` : "unbelegte Farbe";
-  return `Flagge ${FLAG_NAME} in ${flag.pos.roomName}: ${color}`;
-}
-
 /** Statuszeile unter der Legende. */
 function statusLine(data: LegendData): string {
   const window =
@@ -154,53 +91,124 @@ function statusLine(data: LegendData): string {
 /** Ist diese Farbe gerade die wirksame? */
 function isActive(entry: SwitchColor, data: LegendData): boolean {
   if (entry.request === "detail") return data.detailRemaining > 0;
-  // Während der Detailmessung läuft der Zustand `full`; hervorgehoben wird dann
+  // Während der Detailmessung läuft der Zustand `full`; hervorgehoben gehört dann
   // die rote Zeile, nicht die grüne.
   return data.detailRemaining === 0 && entry.request === data.mode;
 }
 
-/**
- * Zeichnet die Legende neben die Flagge. Nur wenn die Flagge steht — sie ist
- * damit der Ein- und Ausschalter der ganzen Anzeige. Room Visuals leben einen
- * Tick, das hier läuft deshalb jeden Tick erneut.
- */
-export function draw(data: LegendData): void {
-  const flag = switchFlag();
-  if (flag === undefined) return;
+export class FlagSwitch {
+  constructor(
+    private readonly state: ProfilerState,
+    /** Abweichender Flaggenname, im Spiel nicht genutzt — erleichtert Tests. */
+    private readonly flagName: string = FLAG_NAME,
+  ) {}
 
-  const visual = new RoomVisual(flag.pos.roomName);
+  /** Die Schalterflagge, falls gesetzt. */
+  private get flag(): Flag | undefined {
+    return Game.flags[this.flagName];
+  }
 
-  // In der rechten Raumhälfte nach links kippen, sonst liefe der Text über den
-  // Rand hinaus.
-  const toLeft = flag.pos.x >= 25;
-  const x = toLeft ? flag.pos.x - 0.8 : flag.pos.x + 0.8;
-  const align: "left" | "right" = toLeft ? "right" : "left";
-  // Der Block ist sechs Zeilen hoch und soll im Raum bleiben.
-  const top = Math.min(Math.max(flag.pos.y - 2, 0.8), 45);
-  const lineHeight = 0.7;
+  /**
+   * Liefert die Anforderung der Flagge — **nur** bei einer Farbänderung, danach
+   * `null`, solange die Farbe steht. Eine unbelegte Farbe wird einmal gemeldet
+   * und dann wie „keine Änderung" behandelt.
+   */
+  readRequest(): FlagRequest | null {
+    const flag = this.flag;
+    if (flag === undefined) return null;
+    if (flag.color === this.state.flagColor) return null;
 
-  const style: TextStyle = {
-    align,
-    font: 0.5,
-    backgroundColor: "#000000",
-    backgroundPadding: 0.12,
-  };
+    this.state.flagColor = flag.color;
 
-  visual.text(`prof: ${data.mode}`, x, top, { ...style, color: "#ffffff" });
+    const entry = bySwitchColor(flag.color);
+    if (entry === undefined) {
+      const belegt = SWITCH_COLORS.map(item => `${item.label}=${item.meaning}`).join(", ");
+      console.log(
+        `[prof] Flagge "${this.flagName}": diese Farbe ist nicht belegt. Belegt sind ${belegt}.`,
+      );
+      return null;
+    }
 
-  SWITCH_COLORS.forEach((entry, index) => {
-    const active = isActive(entry, data);
-    visual.text(
-      `${active ? "▶" : "·"} ${entry.label} = ${entry.meaning}`,
-      x,
-      top + lineHeight * (index + 1),
-      { ...style, color: entry.css, opacity: active ? 1 : 0.4 },
-    );
-  });
+    return entry.request;
+  }
 
-  visual.text(statusLine(data), x, top + lineHeight * (SWITCH_COLORS.length + 1), {
-    ...style,
-    color: "#cccccc",
-    opacity: 0.8,
-  });
+  /**
+   * Färbt die Flagge passend zu `request` und merkt die Farbe als verarbeitet, so
+   * dass daraus keine Flanke wird. Damit lügt die Flagge nie: auch ein Umschalten
+   * über die Konsole färbt sie mit, rot bedeutet „misst gerade", und nach der
+   * Detailmessung fällt sie von allein auf die Farbe des Zustands zurück, in dem
+   * der Profiler weiterläuft.
+   *
+   * Ohne gesetzte Flagge tut die Methode nichts — dann kostet sie auch keinen
+   * Intent.
+   */
+  acknowledge(request: FlagRequest): void {
+    const flag = this.flag;
+    if (flag === undefined) return;
+
+    const color = byRequest(request).color;
+    if (flag.color !== color) {
+      flag.setColor(color, flag.secondaryColor);
+    }
+
+    // Schon jetzt merken, obwohl der Farbwechsel erst am Tickende wirkt: sonst
+    // sähe der nächste Tick eine Flanke und würde die Farbe erneut auslösen.
+    this.state.flagColor = color;
+  }
+
+  /** Kurzbeschreibung der Flagge für `prof.status()`, `null` ohne Flagge. */
+  describe(): string | null {
+    const flag = this.flag;
+    if (flag === undefined) return null;
+
+    const entry = bySwitchColor(flag.color);
+    const color = entry !== undefined ? `${entry.label} = ${entry.meaning}` : "unbelegte Farbe";
+    return `Flagge ${this.flagName} in ${flag.pos.roomName}: ${color}`;
+  }
+
+  /**
+   * Zeichnet die Legende neben die Flagge. Nur wenn die Flagge steht — sie ist
+   * damit der Ein- und Ausschalter der ganzen Anzeige. Room Visuals leben einen
+   * Tick, das hier läuft deshalb jeden Tick erneut.
+   */
+  draw(data: LegendData): void {
+    const flag = this.flag;
+    if (flag === undefined) return;
+
+    const visual = new RoomVisual(flag.pos.roomName);
+
+    // In der rechten Raumhälfte nach links kippen, sonst liefe der Text über den
+    // Rand hinaus.
+    const toLeft = flag.pos.x >= 25;
+    const x = toLeft ? flag.pos.x - 0.8 : flag.pos.x + 0.8;
+    const align: "left" | "right" = toLeft ? "right" : "left";
+    // Der Block ist sechs Zeilen hoch und soll im Raum bleiben.
+    const top = Math.min(Math.max(flag.pos.y - 2, 0.8), 45);
+    const lineHeight = 0.7;
+
+    const style: TextStyle = {
+      align,
+      font: 0.5,
+      backgroundColor: "#000000",
+      backgroundPadding: 0.12,
+    };
+
+    visual.text(`prof: ${data.mode}`, x, top, { ...style, color: "#ffffff" });
+
+    SWITCH_COLORS.forEach((entry, index) => {
+      const active = isActive(entry, data);
+      visual.text(
+        `${active ? "▶" : "·"} ${entry.label} = ${entry.meaning}`,
+        x,
+        top + lineHeight * (index + 1),
+        { ...style, color: entry.css, opacity: active ? 1 : 0.4 },
+      );
+    });
+
+    visual.text(statusLine(data), x, top + lineHeight * (SWITCH_COLORS.length + 1), {
+      ...style,
+      color: "#cccccc",
+      opacity: 0.8,
+    });
+  }
 }

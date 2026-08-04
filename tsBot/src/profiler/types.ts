@@ -7,14 +7,20 @@
  *
  * Abhängigkeitsrichtung, die nicht verletzt werden darf:
  *
- *     types  <-  state  <-  window  <-  decorator
- *     types  <-  state  <-  flag
+ *     types  <-  state  <-  window  <-  runtime  <-  decorator
+ *     types  <-  state  <-  flag    <-  runtime
  *     types  <-  report
  *     types  <-  stats
  *     alle   <-  index
  *
- * `state` importiert **nicht** `window` oder `report`. Läuft die Detailmessung
- * ab, meldet `state` das nur; gehandelt wird in `index`.
+ * `runtime` ist der Zusammenbau: dort entstehen die Instanzen von
+ * `ProfilerState`, `MeasurementWindow` und `FlagSwitch`. Nötig, weil der
+ * Dekorator `@profile` keine Argumente bekommen kann und sie sich selbst holen
+ * muss — aus `index` wäre das eine Importschleife.
+ *
+ * `state` kennt **weder** `window` noch `flag`. Läuft die Detailmessung ab oder
+ * verlangt die Flagge etwas, melden beide das nur; gehandelt wird in `Profiler`
+ * (`index`).
  */
 
 /**

@@ -60,8 +60,9 @@ Einen Linter gibt es nicht. Verifikation = `pnpm exec tsc --noEmit` plus `pnpm t
 
 **Tests** liegen in `tsBot/tests/` und laufen ohne Spiel gegen gestellte Globals (`tests/support/screeps-stubs.ts` legt `Game`, `Memory`, `RoomVisual`, `global.room` und die Farbkonstanten an). Zwei Regeln, an denen sonst still etwas kaputtgeht:
 
-- `Game` und `Memory` werden **geleert, nie ersetzt** — Botmodule greifen den Verweis beim Laden ab (`profiler/state.ts`), ein neues Objekt käme dort nie an.
+- `Game` und `Memory` werden **geleert, nie ersetzt** — mehrere Botmodule greifen den Verweis beim Laden ab (`profiler/stats.ts`, `controller/memory.ts`, `main.ts`), ein neues Objekt käme dort nie an. `profiler/state.ts` liest `Memory` bewusst erst beim Zugriff und ist davon frei.
 - Das Modul unter Test wird **nach** dem Anlegen der Globals geladen (`await import(...)` im Test), nicht per statischem Import.
+- Getestet wird gegen **Instanzen**, nicht gegen Modulzustand: `new ProfilerState()`, `new MeasurementWindow(state)`, `new FlagSwitch(state)`. Deshalb braucht kein Test ein `reset()` seines Vorgängers.
 
 `tests/` steht bewusst nicht in `tsconfig.json` (`include: ["src"]`) — wie `build.ts` und `upload.ts` gehören die Testdateien zum Werkzeug, nicht zum Bot. Ausgeführt werden sie gebündelt, jede Datei für sich, damit kein Modulzustand in den nächsten Test wandert.
 
@@ -90,6 +91,7 @@ Die Migration ist abgeschlossen: kein `src/legacy/`, kein `@ts-nocheck`, kein `r
 | `creep/{base,goto,transport}.ts` | `creep.base*.js` |
 | `roles/{miner,debitor,…}.ts` + `roles/index.ts` | `creep.<rolle>.js` + `creep.jobs.js` |
 | `prototypes/{creep-checks,terminal-market}.ts` | `prototype.*.js` |
+| `profiler/` (neu, kein Gegenstück) | – |
 
 `prod/profiler.js` und `prod/prototype.creep.override.js` wurden nicht übernommen — beide sind schon in `prod/` inaktiv.
 
@@ -98,6 +100,7 @@ Konventionen, die beim Weiterarbeiten gelten:
 - **Der TypeScript-Bot ist die Wahrheit, `prod/` ist Historie.** Der Code muss nicht mehr mit dem alten JavaScript-Bot übereinstimmen; `prod/` dient nur noch zum Nachschauen, wie etwas ursprünglich gedacht war. Der Bot wird ab jetzt schrittweise verbessert.
 - **Jede Verhaltensänderung gehört nach `docs/aenderungen.md`** — eine Zeile: was, warum, erwartete Wirkung. Betrifft die Änderung eine Rolle oder einen Controller, ist zusätzlich die passende Seite in `docs/` (`rollen.md`, `controller-und-automatik.md`, `creep-grundbausteine.md`, `konfiguration-und-memory.md`) mitzupflegen.
 - **Kleine Schritte.** Der Bot läuft live und synct über GitHub — eine Änderung pro Commit, damit sich ein Rückschritt eindeutig zuordnen lässt.
+- **Profiler (`src/profiler/`)**: Klassen `ProfilerState`, `MeasurementWindow`, `FlagSwitch`, `Profiler`. Die Instanzen des laufenden Bots entstehen **ausschließlich** in `profiler/runtime.ts` — nötig, weil der Dekorator `@profile` keine Argumente bekommen kann und sie aus `index.ts` zu holen eine Importschleife wäre. Die erlaubte Abhängigkeitsrichtung steht im Kopf von `profiler/types.ts`; `main.ts` und `controller/timing.ts` benutzen nur die freistehende Fassade (`prof.tick`, `endTick`, `begin`, `end`, `SECTION`, `wrapRoles`).
 - **`bot` statt `global`**: `import { bot } from "../globals"` liefert einen typisierten Handle auf dasselbe Objekt wie `global`. Nötig, weil `global.const` nicht als globale Variable deklarierbar ist (reserviertes Wort). Die Config-Typen (`RoomConfig`, `PrioConfig`, …) stehen dort.
 - `src/types/screeps.d.ts` enthält die Ambient-Deklarationen: Prototyp-Erweiterungen (`Creep.checkHarvest`, `StructureTerminal.sell/buy/buyPixel`), `Memory.init`/`Memory.terminals`, Index-Signaturen auf `CreepMemory`/`RoomMemory` (deshalb kompilieren untypisierte Memory-Schlüssel) und `const _: any` für das im Screeps-Runtime globale lodash.
 - tsconfig ist `strict` **plus `noUncheckedIndexedAccess`**: Index-Zugriffe sind `T | undefined`. Das wird mit `!` bzw. `as` bedient, **nicht** mit zusätzlichen `if`-Abfragen — esbuild entfernt `!`/`as`, ein neuer Guard würde dagegen das Verhalten ändern.

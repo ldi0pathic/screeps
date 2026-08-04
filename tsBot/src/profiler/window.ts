@@ -1,24 +1,26 @@
 /**
- * Herzstück der Messung: Akkumulatoren im Heap (Modul-Scope), ein gleitendes
- * Fenster über `WINDOW_TICKS` Ticks und die einmalige Ableitung der
- * Kennzahlen aus diesem Rohzustand.
+ * Herzstück der Messung: ein gleitendes Fenster über `WINDOW_TICKS` Ticks samt
+ * der einmaligen Ableitung der Kennzahlen aus diesem Rohzustand.
  *
- * Der Heap überlebt Ticks innerhalb eines Global-Resets, aber nicht den Reset
- * selbst — das ist hier gewollt: `Memory` wird jeden Tick serialisiert, ein
- * Fenster mit hunderten Einzelwerten dort abzulegen wäre selbst ein
- * CPU-Problem.
+ * Der Rohzustand lebt im Heap (Feld der Instanz), **nicht** in `Memory`:
+ * `Memory` wird jeden Tick serialisiert, ein Fenster mit hunderten Einzelwerten
+ * dort abzulegen wäre selbst ein CPU-Problem. Ein Global-Reset verwirft das
+ * laufende Fenster damit — das ist gewollt.
+ *
+ * Als Klasse mit übergebenem `ProfilerState`: die Messung fragt den Zustand,
+ * statt ihn zu kennen, und ein Test baut sich beides frisch, ohne Modulzustand
+ * zurücksetzen zu müssen.
  */
 
+import { bot } from "../globals";
+import type { ProfilerState } from "./state";
 import type { RankedEntry, SectionStats, WindowMetrics, WindowSnapshot } from "./types";
 import { WINDOW_TICKS } from "./types";
-import { detailActive, getMode } from "./state";
-import { bot } from "../globals";
 
-/** Startzeitpunkt (`Game.cpu.getUsed()`) je noch offener `begin()`-Messung. */
-const openSections = new Map<string, number>();
-
-/** Neues, leeres Fenster. Referenziert bewusst kein `Game.*`, damit dieser
- *  Aufruf auch außerhalb eines laufenden Ticks (Modul-Ladezeit) sicher ist. */
+/**
+ * Neues, leeres Fenster. Referenziert bewusst kein `Game.*`, damit dieser
+ * Aufruf auch außerhalb eines laufenden Ticks (Modul-Ladezeit) sicher ist.
+ */
 function createEmptySnapshot(): WindowSnapshot {
   return {
     startTick: 0,
@@ -39,8 +41,6 @@ function createEmptySnapshot(): WindowSnapshot {
   };
 }
 
-let windowState: WindowSnapshot = createEmptySnapshot();
-
 /** Verbucht `cpu` unter `key` in `map`; legt den Eintrag beim ersten Treffer an. */
 function record(map: Record<string, SectionStats>, key: string, cpu: number): void {
   const existing = map[key];
@@ -58,7 +58,7 @@ function safeDiv(numerator: number, denominator: number): number {
   return denominator > 0 ? numerator / denominator : 0;
 }
 
-/** Baut die absteigend sortierte Rangliste für einen Abschnitt der Kennzahlen. */
+/** Baut die absteigend sortierte Rangliste für einen Eimer der Kennzahlen. */
 function rank(map: Record<string, SectionStats>, ticks: number, cpuTotal: number): RankedEntry[] {
   const entries: RankedEntry[] = [];
   for (const name in map) {
@@ -76,144 +76,157 @@ function rank(map: Record<string, SectionStats>, ticks: number, cpuTotal: number
   return entries;
 }
 
-/** Abschnittsmessung starten. Nur im Zustand `full` aktiv. */
-export function begin(section: string): void {
-  if (getMode() !== "full") return;
-  openSections.set(section, Game.cpu.getUsed());
-}
+export class MeasurementWindow {
+  /** Startzeitpunkt (`Game.cpu.getUsed()`) je noch offener `begin()`-Messung. */
+  private readonly openSections = new Map<string, number>();
 
-/** Abschnittsmessung beenden und verbuchen. Gleicher Wächter wie `begin`. */
-export function end(section: string): void {
-  if (getMode() !== "full") return;
-  const start = openSections.get(section);
-  // Ein `end` ohne passendes `begin` kommt vor, wenn der Zustand zwischen den
-  // beiden Aufrufen von `light` auf `full` wechselt — `begin` lief da noch
-  // mit dem alten Wächter und hat nichts eingetragen. Stillschweigend verwerfen.
-  if (start === undefined) return;
-  openSections.delete(section);
-  record(windowState.sections, section, Game.cpu.getUsed() - start);
-}
+  private window: WindowSnapshot = createEmptySnapshot();
 
-/**
- * Tickgrenze am Anfang von `loop()`. Zählt nur den Tick fürs Fenster — bewusst
- * **kein** `Game.cpu.getUsed()` hier. Der eine sinnvolle Gesamtwert je Tick
- * wird zentral in `endTick` gelesen, siehe dortiger Kommentar.
- */
-export function beginTick(): void {
-  // Im Zustand `off` läuft `endTick` nicht mit — es käme also nie CPU zum
-  // gezählten Tick dazu. Ohne diesen Wächter würde `ticks` unabhängig davon
-  // weiterlaufen: Wer den Profiler nach vielen Ticks in `off` einschaltet,
-  // hätte sofort ein (scheinbar) volles Fenster mit fast keiner echten CPU
-  // darin — `cpuPerTick` wäre erfunden und `isDue()` fälschlich sofort wahr.
-  if (getMode() === "off") return;
+  constructor(private readonly state: ProfilerState) {}
 
-  if (windowState.ticks === 0) {
-    windowState.startTick = Game.time;
+  /** Rohzustand des laufenden Fensters. */
+  get snapshot(): WindowSnapshot {
+    return this.window;
   }
-  windowState.ticks += 1;
-}
 
-/**
- * Tickende. Verbucht Gesamttick, Bucket, Räume und Creeps. Läuft in `light`
- * und `full`, aber nicht in `off`.
- */
-export function endTick(creepCount: number): void {
-  const mode = getMode();
-  if (mode === "off") return;
+  /** `true`, wenn das Fenster `WINDOW_TICKS` Ticks voll hat. */
+  get isDue(): boolean {
+    return this.window.ticks >= WINDOW_TICKS;
+  }
 
-  // `getUsed()` liefert hier den Gesamtwert des Ticks, keine Differenz zu
-  // einem Startwert: es zählt alles, was das Skript in diesem Tick verbraucht
-  // hat, einschließlich der Deserialisierung von `Memory` vor `loop()` — genau
-  // die Zahl, die gegen `Game.cpu.limit` läuft. `beginTick()` liest deshalb
-  // bewusst kein `getUsed()`; im Zustand `light` läuft so nur dieser eine Aufruf.
-  const cpu = Game.cpu.getUsed();
+  /** Abschnittsmessung starten. Nur im Zustand `full` aktiv. */
+  begin(section: string): void {
+    if (this.state.mode !== "full") return;
+    this.openSections.set(section, Game.cpu.getUsed());
+  }
 
-  windowState.mode = mode;
-  windowState.cpuTotal += cpu;
-  if (cpu > windowState.cpuMax) windowState.cpuMax = cpu;
+  /** Abschnittsmessung beenden und verbuchen. Gleicher Wächter wie `begin`. */
+  end(section: string): void {
+    if (this.state.mode !== "full") return;
 
-  const bucket = Game.cpu.bucket;
-  windowState.bucketTotal += bucket;
-  if (bucket < windowState.bucketMin) windowState.bucketMin = bucket;
+    const start = this.openSections.get(section);
+    // Ein `end` ohne passendes `begin` kommt vor, wenn der Zustand zwischen den
+    // beiden Aufrufen von `light` auf `full` wechselt — `begin` lief da noch
+    // mit dem alten Wächter und hat nichts eingetragen. Stillschweigend verwerfen.
+    if (start === undefined) return;
 
-  windowState.roomTotal += Object.keys(bot.room).length;
-  windowState.creepTotal += creepCount;
+    this.openSections.delete(section);
+    record(this.window.sections, section, Game.cpu.getUsed() - start);
+  }
 
-  windowState.limit = Game.cpu.limit;
-  windowState.tickLimit = Game.cpu.tickLimit;
-}
+  /**
+   * Tickgrenze am Anfang von `loop()`. Zählt nur den Tick fürs Fenster — bewusst
+   * **kein** `Game.cpu.getUsed()` hier. Der eine sinnvolle Gesamtwert je Tick
+   * wird zentral in `endTick` gelesen, siehe dortiger Kommentar.
+   */
+  beginTick(): void {
+    // Im Zustand `off` läuft `endTick` nicht mit — es käme also nie CPU zum
+    // gezählten Tick dazu. Ohne diesen Wächter würde `ticks` unabhängig davon
+    // weiterlaufen: Wer den Profiler nach vielen Ticks in `off` einschaltet,
+    // hätte sofort ein (scheinbar) volles Fenster mit fast keiner echten CPU
+    // darin — `cpuPerTick` wäre erfunden und `isDue` fälschlich sofort wahr.
+    if (this.state.mode === "off") return;
 
-/** Rollenzeit verbuchen. Genutzt vom Rollen-Wrapper in `decorator.ts`. */
-export function recordRole(role: string, cpu: number): void {
-  record(windowState.roles, role, cpu);
-}
+    if (this.window.ticks === 0) {
+      this.window.startTick = Game.time;
+    }
+    this.window.ticks += 1;
+  }
 
-/** Zeit einer Klassenmethode verbuchen. Genutzt vom `@profile`-Dekorator. */
-export function recordMethod(key: string, cpu: number): void {
-  // Eigener Eimer statt `roles`: der Dekorator umhüllt jede Methode einer
-  // Rollenklasse, `wrapRoles` verbucht daneben die Rolle als Ganzes — beides
-  // in einer Rangliste würde dieselbe CPU doppelt zählen.
-  record(windowState.methods, key, cpu);
-}
+  /**
+   * Tickende. Verbucht Gesamttick, Bucket, Räume und Creeps. Läuft in `light`
+   * und `full`, aber nicht in `off`.
+   */
+  endTick(creepCount: number): void {
+    const mode = this.state.mode;
+    if (mode === "off") return;
 
-/**
- * Zeit eines einzelnen Creeps verbuchen. Der Rollen-Wrapper in `decorator.ts`
- * ruft das bewusst bei jedem `doJob` im Zustand `full` auf, ohne selbst nach
- * Detailmessung zu unterscheiden — er entscheidet das bewusst nicht selbst.
- * Der Vertrag in `types.ts` verlangt aber, dass `creepDetail` nur während der
- * Detailmessung gefüllt wird (sonst landen alle ~60 Creeps jeden Tick in der
- * sortierten Liste), also sitzt der Wächter hier. `getMode()` zuerst, damit im
- * Zustand `light` gar nicht erst auf `Memory.profiler` zugegriffen wird.
- */
-export function recordCreep(creepName: string, cpu: number): void {
-  if (getMode() !== "full") return;
-  if (!detailActive()) return;
-  record(windowState.creepDetail, creepName, cpu);
-}
+    // `getUsed()` liefert hier den Gesamtwert des Ticks, keine Differenz zu
+    // einem Startwert: es zählt alles, was das Skript in diesem Tick verbraucht
+    // hat, einschließlich der Deserialisierung von `Memory` vor `loop()` — genau
+    // die Zahl, die gegen `Game.cpu.limit` läuft. `beginTick()` liest deshalb
+    // bewusst kein `getUsed()`; im Zustand `light` läuft so nur dieser eine Aufruf.
+    const cpu = Game.cpu.getUsed();
+    const window = this.window;
 
-/** Rohzustand des laufenden Fensters. */
-export function snapshot(): WindowSnapshot {
-  return windowState;
-}
+    window.mode = mode;
+    window.cpuTotal += cpu;
+    if (cpu > window.cpuMax) window.cpuMax = cpu;
 
-/**
- * Leitet die Kennzahlen aus einem `WindowSnapshot` ab. Die einzige Stelle, die
- * dividiert — jede Division ist gegen einen Nenner von 0 abgesichert, damit
- * ein leeres Fenster niemals `NaN`/`Infinity` liefert.
- */
-export function metrics(snapshotState: WindowSnapshot): WindowMetrics {
-  const ticks = snapshotState.ticks;
-  const rooms = safeDiv(snapshotState.roomTotal, ticks);
-  const creeps = safeDiv(snapshotState.creepTotal, ticks);
-  const cpuPerTick = safeDiv(snapshotState.cpuTotal, ticks);
+    const bucket = Game.cpu.bucket;
+    window.bucketTotal += bucket;
+    if (bucket < window.bucketMin) window.bucketMin = bucket;
 
-  return {
-    ticks,
-    mode: snapshotState.mode,
-    cpuPerTick,
-    cpuMaxTick: snapshotState.cpuMax,
-    cpuPerRoom: safeDiv(cpuPerTick, rooms),
-    cpuPerCreep: safeDiv(cpuPerTick, creeps),
-    rooms,
-    creeps,
-    bucketMean: safeDiv(snapshotState.bucketTotal, ticks),
-    bucketMin: snapshotState.bucketMin === Infinity ? 0 : snapshotState.bucketMin,
-    limit: snapshotState.limit,
-    tickLimit: snapshotState.tickLimit,
-    sections: rank(snapshotState.sections, ticks, snapshotState.cpuTotal),
-    roles: rank(snapshotState.roles, ticks, snapshotState.cpuTotal),
-    methods: rank(snapshotState.methods, ticks, snapshotState.cpuTotal),
-    creepDetail: rank(snapshotState.creepDetail, ticks, snapshotState.cpuTotal),
-  };
-}
+    window.roomTotal += Object.keys(bot.room).length;
+    window.creepTotal += creepCount;
 
-/** Fenster verwerfen und neu beginnen. */
-export function reset(): void {
-  openSections.clear();
-  windowState = createEmptySnapshot();
-}
+    window.limit = Game.cpu.limit;
+    window.tickLimit = Game.cpu.tickLimit;
+  }
 
-/** `true`, wenn das Fenster `WINDOW_TICKS` Ticks voll hat. */
-export function isDue(): boolean {
-  return windowState.ticks >= WINDOW_TICKS;
+  /** Rollenzeit verbuchen. Genutzt vom Rollen-Wrapper in `decorator.ts`. */
+  recordRole(role: string, cpu: number): void {
+    record(this.window.roles, role, cpu);
+  }
+
+  /** Zeit einer Klassenmethode verbuchen. Genutzt vom `@profile`-Dekorator. */
+  recordMethod(key: string, cpu: number): void {
+    // Eigener Eimer statt `roles`: der Dekorator umhüllt jede Methode einer
+    // Rollenklasse, `wrapRoles` verbucht daneben die Rolle als Ganzes — beides
+    // in einer Rangliste würde dieselbe CPU doppelt zählen.
+    record(this.window.methods, key, cpu);
+  }
+
+  /**
+   * Zeit eines einzelnen Creeps verbuchen. Der Rollen-Wrapper in `decorator.ts`
+   * ruft das bewusst bei jedem `doJob` im Zustand `full` auf, ohne selbst nach
+   * Detailmessung zu unterscheiden. Der Vertrag in `types.ts` verlangt aber, dass
+   * `creepDetail` nur während der Detailmessung gefüllt wird (sonst landen alle
+   * ~60 Creeps jeden Tick in der sortierten Liste), also sitzt der Wächter hier.
+   * Der Zustand zuerst, damit in `light` gar nicht erst auf `Memory.profiler`
+   * zugegriffen wird.
+   */
+  recordCreep(creepName: string, cpu: number): void {
+    if (this.state.mode !== "full") return;
+    if (!this.state.detailActive()) return;
+    record(this.window.creepDetail, creepName, cpu);
+  }
+
+  /**
+   * Leitet die Kennzahlen aus dem laufenden Fenster ab. Die einzige Stelle, die
+   * dividiert — jede Division ist gegen einen Nenner von 0 abgesichert, damit
+   * ein leeres Fenster niemals `NaN`/`Infinity` liefert.
+   */
+  metrics(): WindowMetrics {
+    const window = this.window;
+    const ticks = window.ticks;
+    const rooms = safeDiv(window.roomTotal, ticks);
+    const creeps = safeDiv(window.creepTotal, ticks);
+    const cpuPerTick = safeDiv(window.cpuTotal, ticks);
+
+    return {
+      ticks,
+      mode: window.mode,
+      cpuPerTick,
+      cpuMaxTick: window.cpuMax,
+      cpuPerRoom: safeDiv(cpuPerTick, rooms),
+      cpuPerCreep: safeDiv(cpuPerTick, creeps),
+      rooms,
+      creeps,
+      bucketMean: safeDiv(window.bucketTotal, ticks),
+      bucketMin: window.bucketMin === Infinity ? 0 : window.bucketMin,
+      limit: window.limit,
+      tickLimit: window.tickLimit,
+      sections: rank(window.sections, ticks, window.cpuTotal),
+      roles: rank(window.roles, ticks, window.cpuTotal),
+      methods: rank(window.methods, ticks, window.cpuTotal),
+      creepDetail: rank(window.creepDetail, ticks, window.cpuTotal),
+    };
+  }
+
+  /** Fenster verwerfen und neu beginnen. */
+  reset(): void {
+    this.openSections.clear();
+    this.window = createEmptySnapshot();
+  }
 }

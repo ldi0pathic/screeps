@@ -21,17 +21,19 @@ import {
 } from "./support/screeps-stubs";
 
 /**
- * Das Modul wird erst **nach** dem Anlegen der Globals geladen: `state.ts`
- * greift `Memory` beim Laden ab, und `flag.ts` baut seine Farbtabelle aus den
- * `COLOR_*`-Konstanten.
+ * Die Module werden erst **nach** dem Anlegen der Globals geladen: `flag.ts` baut
+ * seine Farbtabelle beim Laden aus den `COLOR_*`-Konstanten.
+ *
+ * Jeder Test bekommt eine frische `FlagSwitch`-Instanz mit eigenem
+ * `ProfilerState` — deshalb muss hier kein Modulzustand zurückgesetzt werden.
  */
-let loaded: typeof import("../src/profiler/flag") | undefined;
-
-async function flagSwitch(): Promise<typeof import("../src/profiler/flag")> {
+async function flagSwitch(): Promise<import("../src/profiler/flag").FlagSwitch> {
   installGlobals();
   resetWorld();
-  loaded ??= await import("../src/profiler/flag");
-  return loaded;
+
+  const { FlagSwitch } = await import("../src/profiler/flag");
+  const { ProfilerState } = await import("../src/profiler/state");
+  return new FlagSwitch(new ProfilerState());
 }
 
 test("ohne Flagge passiert nichts", async () => {

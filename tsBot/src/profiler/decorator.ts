@@ -2,18 +2,18 @@
  * Wrapping-Mechanik des Profilers: ersetzt Rollen- und Klassenmethoden durch
  * messende Fassungen. Herkunft der Grundidee ist
  * `screepers/screeps-typescript-profiler` (`wrapFunction`); anders als dort
- * kommt der Zustand hier **nicht** je Aufruf aus `Memory`, sondern aus der
- * gespiegelten Modulvariable `getMode()` (siehe `./state`) — das war der
- * Hauptfehler des Originals. Die Zähler gehen an `./window`, nicht nach
- * `Memory`.
+ * kommt der Zustand hier **nicht** je Aufruf aus `Memory`, sondern aus dem
+ * einmal je Tick gespiegelten Feld `state.mode` (siehe `./state`) — das war der
+ * Hauptfehler des Originals. Die Zähler gehen an das Messfenster, nicht nach
+ * `Memory`. Beide Objekte kommen aus `./runtime`, weil ein Dekorator keine
+ * Argumente bekommen kann.
  *
  * Der Klassen-/Methoden-Dekorator `@profile` ist im Einsatz: die Rollen sind
  * auf Klassen umgestellt und tragen ihn.
  */
 
 import type { CreepRole } from "../roles";
-import { getMode } from "./state";
-import { recordRole, recordCreep, recordMethod } from "./window";
+import { measurement, state } from "./runtime";
 
 /**
  * Ersetzt `obj[key]` durch eine messende Fassung. Idempotent: ein zweiter
@@ -46,7 +46,7 @@ export function wrapFunction(obj: object, key: PropertyKey, className?: string):
   Reflect.set(obj, savedName, originalFunction);
 
   Reflect.set(obj, key, function (this: any, ...args: any[]) {
-    if (getMode() !== "full") {
+    if (state.mode !== "full") {
       return originalFunction.apply(this, args);
     }
 
@@ -56,7 +56,7 @@ export function wrapFunction(obj: object, key: PropertyKey, className?: string):
     // schon als Ganzes unter ihrem Namen. Würde hier ebenfalls `recordRole`
     // stehen, zählte dieselbe CPU doppelt (`miner` und `Miner.doJob`), sobald
     // eine Rollenklasse dekoriert ist, und die Anteile summierten über 100 %.
-    recordMethod(memKey, Game.cpu.getUsed() - start);
+    measurement.recordMethod(memKey, Game.cpu.getUsed() - start);
     return result;
   });
 }
@@ -112,7 +112,7 @@ export function wrapRoles(jobs: Record<string, CreepRole>): Record<string, Creep
 
     wrapped[role] = {
       doJob(creep: Creep): void {
-        if (getMode() !== "full") {
+        if (state.mode !== "full") {
           original.doJob(creep);
           return;
         }
@@ -120,18 +120,18 @@ export function wrapRoles(jobs: Record<string, CreepRole>): Record<string, Creep
         const start = Game.cpu.getUsed();
         original.doJob(creep);
         const cpu = Game.cpu.getUsed() - start;
-        recordRole(role, cpu);
-        recordCreep(creep.name, cpu);
+        measurement.recordRole(role, cpu);
+        measurement.recordCreep(creep.name, cpu);
       },
 
       spawn(spawn: StructureSpawn, workroom: string): boolean {
-        if (getMode() !== "full") {
+        if (state.mode !== "full") {
           return original.spawn(spawn, workroom);
         }
 
         const start = Game.cpu.getUsed();
         const result = original.spawn(spawn, workroom);
-        recordRole(`${role}.spawn`, Game.cpu.getUsed() - start);
+        measurement.recordRole(`${role}.spawn`, Game.cpu.getUsed() - start);
         return result;
       },
     };

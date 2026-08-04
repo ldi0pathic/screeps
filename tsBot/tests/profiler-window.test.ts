@@ -12,33 +12,32 @@ import test from "node:test";
 
 import { cpu, installGlobals, memory, resetWorld, stubRooms } from "./support/screeps-stubs";
 
-type WindowModule = typeof import("../src/profiler/window");
-type StateModule = typeof import("../src/profiler/state");
+type ProfilerState = import("../src/profiler/state").ProfilerState;
+type MeasurementWindow = import("../src/profiler/window").MeasurementWindow;
 
-let modules: { measure: WindowModule; state: StateModule } | undefined;
-
-/** Module erst nach dem Anlegen der Globals laden, dann Fenster und Welt leeren. */
-async function profiler(): Promise<{ measure: WindowModule; state: StateModule }> {
+/**
+ * Frische Instanzen je Test: Fenster und Zustand sind Objekte, kein Modulzustand,
+ * es gibt zwischen zwei Tests also nichts zurückzusetzen.
+ */
+async function profiler(): Promise<{ measure: MeasurementWindow; state: ProfilerState }> {
   installGlobals();
   resetWorld();
 
-  modules ??= {
-    measure: await import("../src/profiler/window"),
-    state: await import("../src/profiler/state"),
-  };
+  const { MeasurementWindow } = await import("../src/profiler/window");
+  const { ProfilerState } = await import("../src/profiler/state");
 
-  modules.measure.reset();
-  return modules;
+  const state = new ProfilerState();
+  return { state, measure: new MeasurementWindow(state) };
 }
 
-/** Setzt den Zustand so, wie es `index.ts::tick()` je Tick tut. */
-function setMode(state: StateModule, mode: "off" | "light" | "full"): void {
+/** Setzt den Zustand so, wie es `Profiler.tick()` je Tick tut. */
+function setMode(state: ProfilerState, mode: "off" | "light" | "full"): void {
   memory().profiler = { mode };
   state.syncFromMemory();
 }
 
 /** Ein Tick: CPU-Verbrauch und Bucket vorgeben, Tick zählen und abschließen. */
-function runTick(measure: WindowModule, used: number, bucket: number, creeps: number): void {
+function runTick(measure: MeasurementWindow, used: number, bucket: number, creeps: number): void {
   measure.beginTick();
   cpu.used = used;
   cpu.bucket = bucket;
@@ -49,7 +48,7 @@ test("ein leeres Fenster liefert Nullen statt NaN", async () => {
   const { measure, state } = await profiler();
   setMode(state, "light");
 
-  const metrics = measure.metrics(measure.snapshot());
+  const metrics = measure.metrics();
 
   for (const [name, value] of Object.entries(metrics)) {
     if (typeof value !== "number") continue;
@@ -73,7 +72,7 @@ test("im Zustand off wird nicht gemessen", async () => {
   runTick(measure, 12, 9000, 5);
 
   assert.equal(cpu.getUsedCalls, 0, "im Zustand off darf kein getUsed() laufen");
-  assert.equal(measure.snapshot().ticks, 0, "und es darf auch kein Tick gezählt werden");
+  assert.equal(measure.snapshot.ticks, 0, "und es darf auch kein Tick gezählt werden");
 });
 
 test("CPU pro Raum und pro Creep werden aus dem Fenster gemittelt", async () => {
@@ -84,7 +83,7 @@ test("CPU pro Raum und pro Creep werden aus dem Fenster gemittelt", async () => 
   runTick(measure, 5, 9000, 4);
   runTick(measure, 7, 8000, 4);
 
-  const metrics = measure.metrics(measure.snapshot());
+  const metrics = measure.metrics();
 
   assert.equal(metrics.ticks, 2);
   assert.equal(metrics.cpuPerTick, 6);
@@ -114,7 +113,7 @@ test("Rollen und Abschnitte werden mit ihrem Anteil am Tick verbucht", async () 
   cpu.bucket = 9000;
   measure.endTick(6);
 
-  const metrics = measure.metrics(measure.snapshot());
+  const metrics = measure.metrics();
   const [first, second] = metrics.roles;
 
   assert.equal(metrics.roles.length, 2);
@@ -139,11 +138,11 @@ test("einzelne Creeps nur während der Detailmessung", async () => {
   setMode(state, "full");
 
   measure.recordCreep("miner-1", 1);
-  assert.deepEqual(measure.metrics(measure.snapshot()).creepDetail, [], "sonst 60 Creeps je Tick");
+  assert.deepEqual(measure.metrics().creepDetail, [], "sonst 60 Creeps je Tick");
 
   state.startDetail(50);
   measure.recordCreep("miner-1", 1);
-  assert.equal(measure.snapshot().creepDetail["miner-1"]?.calls, 1);
+  assert.equal(measure.snapshot.creepDetail["miner-1"]?.calls, 1);
 });
 
 test("das Fenster ist nach 100 Ticks fällig", async () => {
@@ -153,8 +152,8 @@ test("das Fenster ist nach 100 Ticks fällig", async () => {
   for (let tick = 0; tick < 99; tick += 1) {
     runTick(measure, 1, 9000, 1);
   }
-  assert.equal(measure.isDue(), false);
+  assert.equal(measure.isDue, false);
 
   runTick(measure, 1, 9000, 1);
-  assert.equal(measure.isDue(), true);
+  assert.equal(measure.isDue, true);
 });
