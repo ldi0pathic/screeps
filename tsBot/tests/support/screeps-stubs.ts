@@ -50,7 +50,64 @@ export const SCREEPS_CONSTANTS: Record<string, unknown> = {
   ERR_TIRED: -11,
   ERR_NO_BODYPART: -12,
 
+  // Suchtypen. Die Werte sind die der API; für die Stubs zählt allein, dass sie
+  // eindeutig sind — `find` antwortet hier aus einer Tabelle.
+  FIND_HOSTILE_CREEPS: 103,
+  FIND_SOURCES_ACTIVE: 104,
+  FIND_SOURCES: 105,
+  FIND_DROPPED_RESOURCES: 106,
+  FIND_STRUCTURES: 107,
+  FIND_MY_STRUCTURES: 108,
+  FIND_HOSTILE_STRUCTURES: 109,
   FIND_FLAGS: 110,
+  FIND_CONSTRUCTION_SITES: 111,
+  FIND_MY_SPAWNS: 112,
+  FIND_NUKES: 117,
+  FIND_TOMBSTONES: 118,
+  FIND_RUINS: 123,
+
+  /**
+   * Strukturtypen, die ein Feld blockieren — die Liste der API.
+   * `roles/linkkeeper.ts` liest sie beim Laden des Moduls, ein gefälschter Wert
+   * würde dort beim ersten `includes()` werfen.
+   */
+  OBSTACLE_OBJECT_TYPES: [
+    "spawn",
+    "creep",
+    "powerCreep",
+    "source",
+    "mineral",
+    "deposit",
+    "controller",
+    "constructedWall",
+    "extension",
+    "link",
+    "storage",
+    "tower",
+    "observer",
+    "powerSpawn",
+    "powerBank",
+    "lab",
+    "terminal",
+    "nuker",
+    "factory",
+    "invaderCore",
+  ],
+
+  STRUCTURE_SPAWN: "spawn",
+  STRUCTURE_EXTENSION: "extension",
+  STRUCTURE_ROAD: "road",
+  STRUCTURE_WALL: "constructedWall",
+  STRUCTURE_RAMPART: "rampart",
+  STRUCTURE_LINK: "link",
+  STRUCTURE_STORAGE: "storage",
+  STRUCTURE_TOWER: "tower",
+  STRUCTURE_CONTAINER: "container",
+  STRUCTURE_TERMINAL: "terminal",
+  STRUCTURE_LAB: "lab",
+  STRUCTURE_NUKER: "nuker",
+  STRUCTURE_CONTROLLER: "controller",
+  RESOURCE_ENERGY: "energy",
 
   MOVE: "move",
   WORK: "work",

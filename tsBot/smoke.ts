@@ -23,34 +23,7 @@ const BUNDLE = resolve("..", "tsProd", "main.js");
  * Unittests — `creep/bodies.ts` liest sie beim Laden, mit gefälschten Werten
  * würden die Rumpfprofile hier anders rechnen als im Spiel.
  */
-const CONSTANTS: Record<string, unknown> = {
-  ...SCREEPS_CONSTANTS,
-  ERR_NOT_OWNER: -1,
-  ERR_NO_PATH: -2,
-  ERR_NAME_EXISTS: -3,
-  ERR_BUSY: -4,
-  ERR_NOT_FOUND: -5,
-  ERR_NOT_ENOUGH_RESOURCES: -6,
-  ERR_NOT_ENOUGH_ENERGY: -6,
-  ERR_INVALID_TARGET: -7,
-  ERR_FULL: -8,
-  ERR_NOT_IN_RANGE: -9,
-  ERR_INVALID_ARGS: -10,
-  ERR_TIRED: -11,
-  RESOURCE_ENERGY: "energy",
-  STRUCTURE_SPAWN: "spawn",
-  STRUCTURE_EXTENSION: "extension",
-  STRUCTURE_ROAD: "road",
-  STRUCTURE_WALL: "constructedWall",
-  STRUCTURE_RAMPART: "rampart",
-  STRUCTURE_LINK: "link",
-  STRUCTURE_STORAGE: "storage",
-  STRUCTURE_TOWER: "tower",
-  STRUCTURE_CONTAINER: "container",
-  STRUCTURE_TERMINAL: "terminal",
-  STRUCTURE_LAB: "lab",
-  STRUCTURE_CONTROLLER: "controller",
-};
+const CONSTANTS: Record<string, unknown> = { ...SCREEPS_CONSTANTS };
 
 /** Minimales lodash: der Bot benutzt genau `filter`, `find` und `sum`. */
 const lodash = {
