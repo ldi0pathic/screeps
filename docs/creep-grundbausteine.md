@@ -26,6 +26,11 @@ Terminaltransport ist erst ab RCL 6 möglich und merkt sich die Terminal-ID unte
 
 ## Bewegung
 
+Die Beschaffungsketten (`harvestRoom*`, `harvestControllerLink`, `harvestMyContainer`, `harvestNotfall`) teilen sich zwei Bausteine aus `tsBot/src/creep/target.ts`:
+
+- **`RememberedTarget`** kapselt einen Memory-Schlüssel wie `useRoomDrop`, `useTombstone`, `useRuin`, `useContainer` oder `useRoomSource`. Regel, die dabei zählt: ist ein Ziel gemerkt, das es nicht mehr gibt, wird in diesem Tick **nicht** ersatzweise gesucht — der Creep vergisst es und versucht es im nächsten Tick neu. Das begrenzt die Zahl der Pfadsuchen je Tick.
+- **`collectFrom`** und **`withdrawFrom`** werten aus, was eine Aktion am Ziel gemeldet hat: `ERR_NOT_IN_RANGE` heißt hinlaufen (und im nächsten Tick weiter), `OK` heißt erledigt — dabei wird `fromId` gesetzt, damit die Ladung nicht gleich wieder in dieselbe Quelle zurückgeht —, alles andere heißt „daraus wird nichts", und der Aufrufer probiert das nächste Ziel seiner Kette.
+
 Die vier Memory-Schlüssel des Pfad-Caches (`path`, `pathTarget`, `lastPos`, `dontMove`) liegen hinter der Klasse `PathMemory` in `tsBot/src/creep/path-memory.ts`. Sie kennt **zwei** Löschregeln, die man nicht verwechseln darf: `forgetPath()` verwirft nur den Weg (so bei jedem Zustandswechsel in `checkHarvest`, denn der Creep steht ja weiter dort, wo er steht), `clear()` zusätzlich die Stauerkennung (am Ziel, bei ungültigem Pfad und wenn der Miner seinen Standplatz wechselt).
 
 `moveByMemory(creep, target)` serialisiert einen Pfad in `memory.path` und verwendet ihn wieder, solange `memory.pathTarget` unverändert ist. `memory.dontMove` zählt mit, wie oft der Creep in Folge auf derselben Position stehen geblieben ist, und wird bei jeder tatsächlichen Bewegung wieder auf `0` zurückgesetzt. Bei mehr als drei gezählten Stillständen in Folge wird ein neuer Pfad unter Berücksichtigung von Creeps (`ignoreCreeps: false`) gesucht und im selben Tick per `moveByPath` sofort genutzt. Erreicht der Creep das Ziel oder ist der Pfad ungültig, werden Pfad- und Stillstands-Memory gelöscht.

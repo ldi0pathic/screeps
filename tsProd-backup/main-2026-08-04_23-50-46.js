@@ -1,4 +1,4 @@
-// Build: 2026-08-05 00:07:44 +02:00
+// Build: 2026-08-04 23:50:46 +02:00
 "use strict";
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
@@ -866,69 +866,6 @@ function moveByMemory(creep, target) {
   }
 }
 
-// src/creep/target.ts
-var RememberedTarget = class {
-  constructor(memory, key) {
-    this.key = key;
-    __publicField(this, "memory");
-    this.memory = memory;
-  }
-  /**
-   * Ist überhaupt ein Ziel gemerkt?
-   *
-   * Der Unterschied zu `resolve()` ist wichtig: ist ein Ziel gemerkt, das es
-   * nicht mehr gibt, wird **nicht** ersatzweise gesucht. Der Creep vergisst es
-   * und versucht es im nächsten Tick neu — genau so verhielt sich der Code schon
-   * vorher, und es begrenzt die Suchen je Tick.
-   */
-  get isRemembered() {
-    return Boolean(this.memory[this.key]);
-  }
-  /** Das gemerkte Ziel, oder `null` wenn keines gemerkt ist oder es nicht mehr existiert. */
-  resolve() {
-    const id = this.memory[this.key];
-    if (!id) {
-      return null;
-    }
-    return Game.getObjectById(id);
-  }
-  /** Merkt das Ziel für die nächsten Ticks. */
-  remember(target) {
-    this.memory[this.key] = target.id;
-  }
-  /** Vergisst das Ziel. */
-  forget() {
-    delete this.memory[this.key];
-  }
-};
-function collectFrom(creep, target, remembered, state2) {
-  switch (state2) {
-    case ERR_NOT_IN_RANGE:
-      moveByMemory(creep, target.pos);
-      remembered.remember(target);
-      return true;
-    case OK:
-      remembered.remember(target);
-      creep.memory.fromId = target.id;
-      return true;
-    default:
-      remembered.forget();
-      return false;
-  }
-}
-function withdrawFrom(creep, target, type) {
-  switch (creep.withdraw(target, type)) {
-    case ERR_NOT_IN_RANGE:
-      moveByMemory(creep, target.pos);
-      return true;
-    case OK:
-      creep.memory.fromId = target.id;
-      return true;
-    default:
-      return false;
-  }
-}
-
 // src/creep/transport.ts
 function _Transfer(creep, target, type) {
   if (target) {
@@ -1094,66 +1031,127 @@ function harvest(creep) {
   if (harvestRoomEnergySource(creep))
     return;
 }
-function rememberedOrSearched(remembered, search) {
-  return remembered.isRemembered ? remembered.resolve() : search();
-}
 function harvestRoomDrops(creep, type) {
-  const remembered = new RememberedTarget(creep.memory, "useRoomDrop");
-  const drop = rememberedOrSearched(remembered, () => creep.pos.findClosestByPath(FIND_DROPPED_RESOURCES, { filter: (d) => d.amount > 100 }));
-  if (!drop) {
-    remembered.forget();
-    return false;
+  var drop;
+  if (creep.memory.useRoomDrop) {
+    drop = Game.getObjectById(creep.memory.useRoomDrop);
+  } else {
+    drop = creep.pos.findClosestByPath(FIND_DROPPED_RESOURCES, { filter: (d) => d.amount > 100 });
   }
-  return collectFrom(creep, drop, remembered, creep.pickup(drop));
+  if (drop) {
+    switch (creep.pickup(drop)) {
+      case ERR_NOT_IN_RANGE:
+        moveByMemory(creep, drop.pos);
+        creep.memory.useRoomDrop = drop.id;
+        return true;
+      case OK:
+        creep.memory.useRoomDrop = drop.id;
+        creep.memory.fromId = drop.id;
+        return true;
+      case ERR_INVALID_TARGET:
+      default:
+        delete creep.memory.useRoomDrop;
+        return false;
+    }
+  }
+  delete creep.memory.useRoomDrop;
+  return false;
 }
 function harvestRoomTombstones(creep, type) {
-  const remembered = new RememberedTarget(creep.memory, "useTombstone");
-  const tombstone = rememberedOrSearched(remembered, () => creep.pos.findClosestByPath(
-    FIND_TOMBSTONES,
-    { filter: (d) => d.store.getUsedCapacity(type) > 100 }
-  ));
-  if (!tombstone) {
-    remembered.forget();
-    return false;
+  var tombstone;
+  if (creep.memory.useTombstone) {
+    tombstone = Game.getObjectById(creep.memory.useTombstone);
+  } else {
+    tombstone = creep.pos.findClosestByPath(FIND_TOMBSTONES, { filter: (d) => d.store.getUsedCapacity(type) > 100 });
   }
-  return collectFrom(creep, tombstone, remembered, creep.withdraw(tombstone, type));
+  if (tombstone) {
+    switch (creep.withdraw(tombstone, type)) {
+      case ERR_NOT_IN_RANGE:
+        creep.memory.useTombstone = tombstone.id;
+        moveByMemory(creep, tombstone.pos);
+        return true;
+      case OK:
+        creep.memory.useTombstone = tombstone.id;
+        creep.memory.fromId = tombstone.id;
+        return true;
+      case ERR_INVALID_TARGET:
+      default:
+        delete creep.memory.useTombstone;
+        return false;
+    }
+  }
+  delete creep.memory.useTombstone;
+  return false;
 }
 function harvestCompleteRoomTombstones(creep) {
-  const remembered = new RememberedTarget(creep.memory, "useTombstone");
-  const tombstone = rememberedOrSearched(remembered, () => creep.pos.findClosestByPath(FIND_TOMBSTONES, { filter: (d) => d.store.getUsedCapacity() > 100 }));
-  if (!tombstone) {
-    remembered.forget();
-    return false;
+  var tombstone;
+  if (creep.memory.useTombstone) {
+    tombstone = Game.getObjectById(creep.memory.useTombstone);
+  } else {
+    tombstone = creep.pos.findClosestByPath(FIND_TOMBSTONES, { filter: (d) => d.store.getUsedCapacity() > 100 });
   }
-  const resourceType = Object.keys(tombstone.store)[0];
-  if (resourceType === void 0) {
-    remembered.forget();
-    return false;
+  if (tombstone) {
+    for (var resourceType in tombstone.store) {
+      switch (creep.withdraw(tombstone, resourceType)) {
+        case ERR_NOT_IN_RANGE:
+          moveByMemory(creep, tombstone.pos);
+          creep.memory.useTombstone = tombstone.id;
+          return true;
+        case OK:
+          creep.memory.useTombstone = tombstone.id;
+          creep.memory.fromId = tombstone.id;
+          return true;
+        case ERR_INVALID_TARGET:
+        default:
+          delete creep.memory.useTombstone;
+          return false;
+      }
+    }
   }
-  return collectFrom(
-    creep,
-    tombstone,
-    remembered,
-    creep.withdraw(tombstone, resourceType)
-  );
+  delete creep.memory.useTombstone;
+  return false;
 }
 function harvestRoomRuins(creep, type) {
-  const remembered = new RememberedTarget(creep.memory, "useRuin");
-  const ruin = rememberedOrSearched(remembered, () => creep.pos.findClosestByPath(
-    FIND_RUINS,
-    { filter: (d) => d.store.getUsedCapacity(type) > 50 }
-  ));
-  if (!ruin) {
-    remembered.forget();
-    return false;
+  var ruin;
+  if (creep.memory.useRuin) {
+    ruin = Game.getObjectById(creep.memory.useRuin);
+  } else {
+    ruin = creep.pos.findClosestByPath(FIND_RUINS, { filter: (d) => d.store.getUsedCapacity(type) > 50 });
   }
-  return collectFrom(creep, ruin, remembered, creep.withdraw(ruin, type));
+  if (ruin) {
+    switch (creep.withdraw(ruin, type)) {
+      case ERR_NOT_IN_RANGE:
+        moveByMemory(creep, ruin.pos);
+        creep.memory.useRuin = ruin.id;
+        return true;
+      case OK:
+        creep.memory.useRuin = ruin.id;
+        creep.memory.fromId = ruin.id;
+        return true;
+      case ERR_INVALID_TARGET:
+      default:
+        delete creep.memory.useRuin;
+        return false;
+    }
+  }
+  delete creep.memory.useRuin;
+  return false;
 }
 function harvestRoomStorage(creep, type) {
-  const storage = creep.room.storage;
-  const min = type === "energy" ? creep.store.getCapacity() * 0.5 : 50;
+  let storage = creep.room.storage;
+  let min = type === "energy" ? creep.store.getCapacity() * 0.5 : 50;
   if (storage && storage.store[type] > min) {
-    return withdrawFrom(creep, storage, type);
+    var state2 = creep.withdraw(storage, type);
+    switch (state2) {
+      case ERR_NOT_IN_RANGE:
+        moveByMemory(creep, storage.pos);
+        return true;
+      case OK:
+        creep.memory.fromId = storage.id;
+        return true;
+      default:
+        return false;
+    }
   }
   return false;
 }
@@ -1189,8 +1187,16 @@ function harvestRoomContainer(creep, type, mul) {
     return containers.length > 0;
   }
   if (container && container.store.getUsedCapacity(type) > creep.store.getFreeCapacity() * mul) {
-    if (withdrawFrom(creep, container, type)) {
-      return true;
+    switch (creep.withdraw(container, type)) {
+      case ERR_NOT_IN_RANGE:
+        moveByMemory(creep, container.pos);
+        return true;
+      case OK:
+        creep.memory.fromId = container.id;
+        return true;
+      default:
+        delete creep.memory.useContainer;
+        return false;
     }
   }
   delete creep.memory.useContainer;
@@ -1201,50 +1207,84 @@ function harvestControllerLink(creep, type) {
     return false;
   var link = Game.getObjectById(bot.room[creep.memory.workroom].controllerLink);
   if (link && link.store[type] > 100) {
-    return withdrawFrom(creep, link, type);
+    switch (creep.withdraw(link, type)) {
+      case ERR_NOT_IN_RANGE:
+        moveByMemory(creep, link.pos);
+        return true;
+      case OK:
+        creep.memory.fromId = link.id;
+        return true;
+      default:
+        return false;
+    }
+  } else {
+    creep.memory.noLink = true;
   }
-  creep.memory.noLink = true;
   return false;
 }
 function harvestMyContainer(creep, type) {
   if (creep.memory.workroom != creep.room.name || creep.memory.container == "")
     return false;
   var container = Game.getObjectById(creep.memory.container);
-  if (!container || container.store[type] < 100) {
-    return false;
+  if (container) {
+    if (container.store[type] < 100) {
+      return false;
+    }
+    switch (creep.withdraw(container, type)) {
+      case ERR_NOT_IN_RANGE:
+        moveByMemory(creep, container.pos);
+        return true;
+      case OK:
+        creep.memory.fromId = container.id;
+        return true;
+      default:
+        return false;
+    }
   }
-  return withdrawFrom(creep, container, type);
+  return false;
 }
 function harvestNotfall(creep) {
   var notfall = creep.room.find(FIND_STRUCTURES, { filter: (structure) => {
     return (structure.structureType === STRUCTURE_LINK || structure.structureType === STRUCTURE_LAB || structure.structureType === STRUCTURE_NUKER || structure.structureType == STRUCTURE_TOWER) && structure.store[RESOURCE_ENERGY] > 0;
   } });
-  if (notfall.length === 0) {
-    return false;
+  if (notfall.length > 0) {
+    notfall.sort(function(a, b) {
+      return b.store[RESOURCE_ENERGY] - a.store[RESOURCE_ENERGY];
+    });
+    switch (creep.withdraw(notfall[0], RESOURCE_ENERGY)) {
+      case ERR_NOT_IN_RANGE:
+        moveByMemory(creep, notfall[0].pos);
+        return true;
+      case OK:
+        creep.memory.fromId = notfall[0].id;
+        return true;
+      default:
+        return false;
+    }
   }
-  notfall.sort(function(a, b) {
-    return b.store[RESOURCE_ENERGY] - a.store[RESOURCE_ENERGY];
-  });
-  return withdrawFrom(creep, notfall[0], RESOURCE_ENERGY);
+  return false;
 }
 function harvestRoomEnergySource(creep) {
-  if (!canHarvestEnergy(creep)) {
-    return false;
-  }
-  const remembered = new RememberedTarget(creep.memory, "useRoomSource");
-  const source = rememberedOrSearched(remembered, () => creep.pos.findClosestByRange(FIND_SOURCES_ACTIVE));
-  if (source && source.energy > 100) {
-    if (creep.harvest(source) === ERR_NOT_IN_RANGE) {
-      if (creep.moveTo(source) == ERR_NO_PATH) {
-        remembered.forget();
-        return false;
-      }
+  if (canHarvestEnergy(creep)) {
+    var source;
+    if (creep.memory.useRoomSource) {
+      source = Game.getObjectById(creep.memory.useRoomSource);
+    } else {
+      source = creep.pos.findClosestByRange(FIND_SOURCES_ACTIVE);
     }
-    remembered.remember(source);
-    creep.memory.fromId = source.id;
-    return true;
+    if (source && source.energy > 100) {
+      if (creep.harvest(source) === ERR_NOT_IN_RANGE) {
+        if (creep.moveTo(source) == ERR_NO_PATH) {
+          delete creep.memory.useRoomSource;
+          return false;
+        }
+      }
+      creep.memory.useRoomSource = source.id;
+      creep.memory.fromId = source.id;
+      return true;
+    }
+    delete creep.memory.useRoomSource;
   }
-  remembered.forget();
   return false;
 }
 function canHarvestEnergy(creep) {

@@ -273,3 +273,31 @@ Link, Terminal und Spawn sind das nicht betretbare Ziele, und die Wissensbasis
 warnt genau davor. Der Weg kommt trotzdem heraus, kostet aber mehr Ops als nötig.
 Ein `range` ändert, wo der Creep stehen bleibt, und muss je Aufrufstelle geprüft
 werden: aufgenommen als Befund 6 in [Plan 05](plans/05-cpu-verteilung.md).
+
+## Runde 2026-08-05: Beschaffungsketten zusammengezogen
+
+Vierte Modernisierungsrunde, **ohne Verhaltensänderung**. Wieder test-zuerst: die
+fünfzehn Tests zu den Beschaffungsketten sind gegen die **alte** Fassung
+geschrieben und liefen dort grün, bevor umgebaut wurde.
+
+| Was | Warum | Wirkung |
+| --- | --- | --- |
+| Neue Datei `src/creep/target.ts` mit `RememberedTarget` (kapselt die `useX`-Memory-Schlüssel) sowie `collectFrom` und `withdrawFrom` (werten aus, was eine Aktion am Ziel gemeldet hat). | Derselbe `switch` stand **zwölfmal** fast gleich in `base.ts` und `transport.ts`: `ERR_NOT_IN_RANGE` → hinlaufen, `OK` → `fromId` setzen, sonst aufgeben. Dazu fünfmal „gemerktes Ziel aus dem Memory holen, sonst suchen". | Keine. Neun Funktionen in `base.ts` sind auf die Bausteine umgestellt; aus je 20 bis 30 Zeilen werden fünf bis acht. Die Rückgabecodes werden weiterhin genau gleich behandelt. |
+| `ERR_INVALID_TARGET` steht nicht mehr einzeln vor dem `default` — es fällt in denselben Zweig. | Es tat vorher schon genau dasselbe wie `default`; die eigene `case`-Zeile suggerierte eine Sonderbehandlung, die es nicht gab. | Keine. |
+| `RememberedTarget.isRemembered` macht eine bisher unbenannte Regel sichtbar: ist ein Ziel gemerkt, das es nicht mehr gibt, wird in diesem Tick **nicht** ersatzweise gesucht. | Beim Zusammenziehen wäre daraus fast ein `??` geworden — also eine Ersatzsuche, und damit mehr Pfadsuchen je Tick als vorher. Ein Test hält die Regel jetzt fest. | Keine, aber der teuerste Fehler, den dieser Umbau hätte machen können. |
+| Der Store-Stub der Tests legt seine Methoden **nicht aufzählbar** an. | Der Bot läuft mehrfach mit `for (var resourceType in store)` über einen Store. Im Spiel liefert das nur Ressourcen; im Stub wäre `getUsedCapacity` als „Ressource" mitgelaufen und hätte ein falsches Verhalten bestätigt. | Betrifft nur die Tests — aber ohne diese Korrektur wären sie an der entscheidenden Stelle nichts wert. |
+| Der Smoketest fälscht **keine** Konstante mehr: `FIND_*`, `STRUCTURE_*` und `OBSTACLE_OBJECT_TYPES` stehen jetzt zusammen mit den Körperteilen in `tests/support/screeps-stubs.ts` und werden von Unittests und Smoketest gemeinsam benutzt. | `OBSTACLE_OBJECT_TYPES` wird in `roles/linkkeeper.ts` beim Laden des Moduls gelesen. Als `0` gefälscht hätte der erste `includes()`-Aufruf geworfen — in der leeren Smoke-Welt fiel das nur nicht auf. | Die Warnliste des Smoketests ist leer. |
+
+**Ein Fehler, den ich selbst eingebaut und beim Prüfen gefunden habe**, hier als
+Warnung: beim Umstellen von `harvestRoomStorage` hatte ich
+`if (storage && storage.store[type] > min)` zu `if (!storage || store[type] <= min) return false` negiert.
+Fehlt die Ressource im Storage, ist der Wert `undefined` — und dann sind **beide**
+Vergleiche falsch, die Bedingung kippt also. Solche Schwellenvergleiche bleiben
+positiv formuliert; ein Test deckt den Fall jetzt ab.
+
+**Gefunden, nicht geändert:** `creep/transport.ts` ruft mehrfach
+`store.getFreeCapacity([RESOURCE_ENERGY])` — mit einem **Array** statt der
+Ressourcenkonstante. Das funktioniert nur, weil der Wert bei der
+Schlüsselsuche zu `"energy"` wird; dokumentiert ist es nicht. `transport.ts` ist
+in dieser Runde bewusst unangetastet geblieben (Container-Auswahl und diese
+Aufrufe gehören zusammen betrachtet) und ist der Kandidat für die nächste Runde.
