@@ -27,6 +27,43 @@ export const COLOR = {
   white: 10,
 } as const;
 
+/**
+ * Spielkonstanten mit den echten Werten der Screeps-API.
+ *
+ * Eine Quelle für Unittests **und** `smoke.ts`: stünden die Werte zweimal, liefen
+ * sie auseinander, und der Smoketest würde eine Welt stellen, in der die
+ * Rumpfprofile anders rechnen als im Spiel.
+ */
+export const SCREEPS_CONSTANTS: Record<string, unknown> = {
+  OK: 0,
+
+  MOVE: "move",
+  WORK: "work",
+  CARRY: "carry",
+  ATTACK: "attack",
+  RANGED_ATTACK: "ranged_attack",
+  TOUGH: "tough",
+  HEAL: "heal",
+  CLAIM: "claim",
+  BODYPART_COST: {
+    move: 50,
+    work: 100,
+    attack: 80,
+    carry: 50,
+    heal: 250,
+    ranged_attack: 150,
+    tough: 10,
+    claim: 600,
+  },
+  MAX_CREEP_SIZE: 50,
+  LINK_CAPACITY: 800,
+  CARRY_CAPACITY: 50,
+
+  ...Object.fromEntries(
+    Object.entries(COLOR).map(([name, value]) => [`COLOR_${name.toUpperCase()}`, value]),
+  ),
+};
+
 /** Ein von `RoomVisual.text()` gezeichneter Text. */
 export interface DrawnText {
   roomName: string;
@@ -75,10 +112,11 @@ export function installGlobals(): void {
   }
   installed = true;
 
-  for (const [name, value] of Object.entries(COLOR)) {
-    anyGlobal[`COLOR_${name.toUpperCase()}`] = value;
+  // `bodies.ts` liest die Teilkonstanten schon beim Laden — sie müssen vor dem
+  // Import des Moduls unter Test stehen.
+  for (const [name, value] of Object.entries(SCREEPS_CONSTANTS)) {
+    anyGlobal[name] = value;
   }
-  anyGlobal.OK = 0;
 
   anyGlobal.RoomVisual = class RoomVisualStub {
     constructor(public readonly roomName: string) {}

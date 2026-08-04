@@ -13,11 +13,18 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import vm from "node:vm";
 
+import { SCREEPS_CONSTANTS } from "./tests/support/screeps-stubs.ts";
+
 const BUNDLE = resolve("..", "tsProd", "main.js");
 
-/** Screeps-Konstanten, die der Bot beim Laden oder im Tick wirklich braucht. */
+/**
+ * Screeps-Konstanten, die der Bot beim Laden oder im Tick wirklich braucht.
+ * Körperteile, Kosten und Kapazitäten kommen aus derselben Quelle wie in den
+ * Unittests — `creep/bodies.ts` liest sie beim Laden, mit gefälschten Werten
+ * würden die Rumpfprofile hier anders rechnen als im Spiel.
+ */
 const CONSTANTS: Record<string, unknown> = {
-  OK: 0,
+  ...SCREEPS_CONSTANTS,
   ERR_NOT_OWNER: -1,
   ERR_NO_PATH: -2,
   ERR_NAME_EXISTS: -3,
@@ -43,16 +50,6 @@ const CONSTANTS: Record<string, unknown> = {
   STRUCTURE_TERMINAL: "terminal",
   STRUCTURE_LAB: "lab",
   STRUCTURE_CONTROLLER: "controller",
-  COLOR_RED: 1,
-  COLOR_PURPLE: 2,
-  COLOR_BLUE: 3,
-  COLOR_CYAN: 4,
-  COLOR_GREEN: 5,
-  COLOR_YELLOW: 6,
-  COLOR_ORANGE: 7,
-  COLOR_BROWN: 8,
-  COLOR_GREY: 9,
-  COLOR_WHITE: 10,
 };
 
 /** Minimales lodash: der Bot benutzt genau `filter`, `find` und `sum`. */
@@ -68,12 +65,55 @@ const lodash = {
   },
 };
 
+/** Ein Rumpf, den der Bot über `spawnCreep` angefordert hat. */
+interface SpawnAttempt {
+  room: string;
+  name: string;
+  body: BodyPartConstant[];
+  dryRun: boolean;
+  capacity: number;
+}
+
+const spawnAttempts: SpawnAttempt[] = [];
+
+/** Energiekosten eines Rumpfs, mit denselben Werten wie im Spiel. */
+function bodyCost(body: BodyPartConstant[]): number {
+  const costs = CONSTANTS.BODYPART_COST as Record<string, number>;
+  return body.reduce((total, part) => total + (costs[part] ?? 0), 0);
+}
+
+/**
+ * Ein Spawn, der jede Anforderung mitschreibt statt einen Creep zu erzeugen.
+ * Damit läuft der Spawncontroller durch und die Rumpfprofile werden wirklich
+ * gerechnet — sonst prüfte der Smoketest diesen Pfad überhaupt nicht.
+ */
+function stubSpawn(room: any) {
+  return {
+    name: `Spawn_${room.name}`,
+    room,
+    spawning: null,
+    owner: { username: "smoketest" },
+    pos: { x: 25, y: 25, roomName: room.name },
+    spawnCreep(body: BodyPartConstant[], name: string, options?: { dryRun?: boolean }) {
+      spawnAttempts.push({
+        room: room.name,
+        name,
+        body: [...body],
+        dryRun: Boolean(options?.dryRun),
+        capacity: room.energyCapacityAvailable,
+      });
+      return CONSTANTS.OK;
+    },
+  };
+}
+
 /** Ein Raum ohne Sicht auf irgendetwas: alles Suchen liefert leere Listen. */
 function stubRoom(name: string) {
   return {
     name,
-    energyAvailable: 300,
-    energyCapacityAvailable: 300,
+    // RCL8-Kapazität, damit die Rumpfprofile ihre Obergrenzen erreichen.
+    energyAvailable: 12_900,
+    energyCapacityAvailable: 12_900,
     controller: {
       my: true,
       level: 1,
@@ -95,6 +135,14 @@ const logged: string[] = [];
 
 /** Baut die gestellte Welt. `roomNames` kommt aus `global.room` des Bundles. */
 function makeGame(roomNames: string[]) {
+  const rooms = Object.fromEntries(roomNames.map(name => [name, stubRoom(name)]));
+  const spawns = Object.fromEntries(
+    Object.values(rooms).map(room => {
+      const spawn = stubSpawn(room);
+      return [spawn.name, spawn];
+    }),
+  );
+
   return {
     time: 1000,
     cpu: {
@@ -104,9 +152,9 @@ function makeGame(roomNames: string[]) {
       getUsed: () => 1.5,
       generatePixel: () => CONSTANTS.OK,
     },
-    rooms: Object.fromEntries(roomNames.map(name => [name, stubRoom(name)])),
+    rooms,
     creeps: {},
-    spawns: {},
+    spawns,
     structures: {},
     constructionSites: {},
     flags: {} as Record<string, unknown>,
@@ -278,8 +326,29 @@ function smoke(): void {
 
   const errors = logged.filter(line => /error|exception|undefined is not|cannot read/i.test(line));
 
+  // Rumpfprofile: der Spawncontroller hat sie im Lauf oben wirklich gerechnet.
+  assert.ok(
+    spawnAttempts.length > 0,
+    "kein einziger Spawnversuch — dann prüft der Smoketest die Rumpfprofile nicht",
+  );
+  for (const attempt of spawnAttempts) {
+    assert.ok(attempt.body.length > 0, `${attempt.name} in ${attempt.room}: leerer Rumpf`);
+    assert.ok(
+      attempt.body.length <= (CONSTANTS.MAX_CREEP_SIZE as number),
+      `${attempt.name}: ${attempt.body.length} Teile`,
+    );
+    assert.ok(
+      bodyCost(attempt.body) <= attempt.capacity,
+      `${attempt.name}: Rumpf kostet ${bodyCost(attempt.body)} bei ${attempt.capacity} Kapazität`,
+    );
+  }
+  const requestedRoles = [...new Set(spawnAttempts.map(attempt => attempt.name.split("_")[0]))].sort();
+
   console.log(`✅ Smoketest: ${modes.length * 5 + 2} Ticks gelaufen, kein Absturz`);
   console.log(`   Räume aus config.ts: ${configuredRooms.length}`);
+  console.log(
+    `   Rumpfprofile gerechnet: ${spawnAttempts.length} Anforderungen für ${requestedRoles.join(", ")}`,
+  );
   // Namen, die inzwischen existieren, waren nur zu früh gelesen — etwa
   // `global.room`, bevor `config.ts` es gesetzt hat. Das ist keine Lücke.
   const stillMissing = [...faked].filter(name => !(name in base)).sort();
