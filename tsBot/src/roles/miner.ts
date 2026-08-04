@@ -8,6 +8,7 @@
 
 import { bot } from "../globals";
 import * as creepBase from "../creep/base";
+import { BODIES } from "../creep/bodies";
 import type { CreepRole } from "../roles";
 import { profile } from "../profiler/decorator";
 
@@ -397,25 +398,6 @@ export class Miner implements CreepRole {
         }
     }
 
-    private _getProfil(spawn: StructureSpawn, workroom: string): BodyPartConstant[] {
-
-        const totalCost =  3* BODYPART_COST[WORK] + BODYPART_COST[CARRY] + 2*BODYPART_COST[MOVE];
-        var maxEnergy = spawn.room.energyCapacityAvailable;
-        var numberOfSets = Math.min(8,Math.floor(maxEnergy / totalCost));
-
-        if(numberOfSets == 0)
-        {
-            // Minimalprofil für 300 Energie (RCL1 bzw. frühes RCL2 ohne Extensions):
-            // [WORK,WORK,CARRY,MOVE] = 100+100+50+50 = 300. 2 WORK sättigen die Quelle
-            // nicht voll (energy-economy.md: 5 WORK nötig für 10 e/t bei eigener Quelle),
-            // liefern aber Energie — vorher kam hier ein leeres Body-Array heraus,
-            // mit dem spawnCreep grundsätzlich fehlschlägt.
-            return [WORK,WORK,CARRY,MOVE];
-        }
-
-        return Array((numberOfSets*3)).fill(WORK).concat(Array((numberOfSets)).fill(CARRY).concat(Array((numberOfSets*2)).fill(MOVE)));
-    }
-
     /** Spawnt einen Miner für die nächste fällige Energie- oder Mineralquelle in `workroom`. */
     spawn(spawn: StructureSpawn, workroom: string): boolean {
         bot.logWorkroom(workroom,'Miner Spawn start');
@@ -470,7 +452,7 @@ export class Miner implements CreepRole {
             return false;
         }
 
-        if(!creepBase.spawn(spawn, this._getProfil(spawn, workroom), role + '_' + Game.time,{ role: role, workroom: workroom, home: spawn.room.name, source: source, mineEnergy:mineEnergy,notfall:false }))
+        if(!creepBase.spawn(spawn, BODIES.miner.build(spawn.room.energyCapacityAvailable), role + '_' + Game.time,{ role: role, workroom: workroom, home: spawn.room.name, source: source, mineEnergy:mineEnergy,notfall:false }))
         {
             Memory.rooms[spawn.room.name]!.aktivPrioSpawn = true;
             Memory.rooms[spawn.room.name]!.aktivPrioSpawnCount = (Memory.rooms[spawn.room.name]!.aktivPrioSpawnCount || 0) + 1;

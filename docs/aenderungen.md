@@ -227,3 +227,29 @@ Zustand, eine Klasse gewänne dort nichts.
 hängt aber an Client-Internas, lebt im Log (scrollt weg, müsste also regelmäßig
 neu ausgegeben werden und würde die Konsole zumüllen) und schickt rohes HTML an
 jeden, der die Logs über die API abholt.
+
+## Runde 2026-08-04: Körperprofile zusammengezogen
+
+Zweite Modernisierungsrunde, **ohne Verhaltensänderung** im erreichbaren Bereich.
+Umsetzt den strukturellen Teil von [Plan 03](plans/03-durchsatz-und-bodies.md);
+die Durchsatzlogik dieses Plans bleibt offen.
+
+| Was | Warum | Wirkung |
+| --- | --- | --- |
+| Neue Klasse `BodyProfile` (`src/creep/body.ts`): Bausatz aus Teilen mit Anzahl je Satz, Höchstzahl Sätze, Pflicht-Rückfall. Rechnet `min(maxSets, floor(Energie / Satzkosten))` und hängt die Teile in der Reihenfolge des Bausatzes an. | Acht der elf Rollen rechneten dieselben vier Zeilen selbst, jede mit eigenen Zahlen im Funktionsrumpf und eigenem Umgang mit dem Grenzfall. Zwei lieferten dort früher ein **leeres** Body-Array (A4, Builder-Fix). | Keine. Die Klasse liest weder `Game` noch `Memory`, sie bekommt die Energie übergeben — und ist deshalb ohne gestellte Welt prüfbar. |
+| Neue Datei `src/creep/bodies.ts`: die dreizehn Profile aller Rollen nebeneinander. Die Rollen behalten nur die **Auswahl** (Upgrader nach RCL, Extupgrader nach Sicht und RCL, Debitor nach Heimatraum und Container). | Wer wissen wollte, wie groß ein Miner bei 2300 Energie wird, musste `roles/miner.ts` lesen; wer Zahlen vergleichen wollte, elf Dateien. Plan 03 braucht genau diese eine Stelle, um Rumpfgrößen später aus dem Durchsatz herzuleiten. | Keine. Elf lokale Profilfunktionen entfallen, `_getProfil` heißt jetzt `bodyFor` (englische Bezeichner). |
+| Beleg: `tests/creep-bodies.test.ts` führt die **alten** Formeln als Referenz mit und vergleicht jedes Profil über 300 bis 12 900 Energie in Schritten von 50. | Ein Umbau an den Rümpfen ist nur dann harmlos, wenn dieselben Rümpfe herauskommen — und das ist mechanisch prüfbar, nicht Ansichtssache. | 9 neue Tests (24 gesamt). Dazu Zusicherungen, die vorher niemand prüfte: kein leerer Rumpf, höchstens 50 Teile, Kosten nie über der Energie. |
+| `pnpm smoke` stellt jetzt Spawns und prüft jeden angeforderten Rumpf. | Der Smoketest fuhr Ticks, ohne je einen Rumpf zu rechnen — der geänderte Pfad war darin nicht enthalten. Außerdem fälschte er die Körperteil-Konstanten mit `0`; die Werte stehen jetzt für Unittests und Smoketest an einer Stelle (`tests/support/screeps-stubs.ts`). | 120 Rumpfanforderungen je Lauf (Upgrader und Claimer; die übrigen Rollen brechen in der leeren Welt vorher ab). |
+
+**Eine bewusste Abweichung**, unerreichbar im Spiel: Transfer und Debitor liefern
+unter 100 Energie Kapazität jetzt `[CARRY, MOVE]` statt eines leeren Rumpfs. Ein
+Raum mit Spawn hat immer mindestens 300 — der Fall kann nicht eintreten, aber ein
+Pflicht-Rückfall verhindert die Fehlerklasse dauerhaft.
+
+**Gefunden, nicht geändert:** das Rückfallprofil des Defenders kostet 330 Energie
+(`[MOVE, MOVE, ATTACK, RANGED_ATTACK]`), er rechnet aber mit `energyAvailable`.
+Unter 330 vorrätiger Energie schlägt sein Spawn also fehl und wird im nächsten
+Tick erneut versucht. Der Test hält das fest; ob dort ein billigerer Rumpf
+sinnvoller ist, gehört zu Plan 03 (Verteidigung im Notfall) und nicht in einen
+Umbau ohne Verhaltensänderung.
+

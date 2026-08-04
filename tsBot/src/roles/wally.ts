@@ -9,6 +9,7 @@
 
 import { bot } from "../globals";
 import * as creepBase from "../creep/base";
+import { BODIES } from "../creep/bodies";
 import type { CreepRole } from "../roles";
 import { profile } from "../profiler/decorator";
 
@@ -107,17 +108,6 @@ export class Wally implements CreepRole {
         }
     }
 
-    private _getProfil(spawn: StructureSpawn): BodyPartConstant[] {
-        const totalCost =  BODYPART_COST[WORK] + 2*BODYPART_COST[CARRY] + BODYPART_COST[MOVE];
-        var maxEnergy = spawn.room.energyCapacityAvailable;
-        const numberOfSets = Math.min(9,Math.floor(maxEnergy / totalCost));
-        if(numberOfSets == 0)
-        {
-            return [WORK,CARRY,CARRY,MOVE,MOVE];
-        }
-        return Array((numberOfSets)).fill(WORK).concat(Array((2*numberOfSets)).fill(CARRY).concat(Array((numberOfSets)).fill(MOVE)));
-    }
-
     /** Spawnt einen Wallrepairer für `workroom`, falls Bedarf, Rumpfbudget und Energiereserve passen. */
     spawn(spawn: StructureSpawn, workroom: string): boolean {
         if(spawn.room.name != workroom && !Memory.rooms[workroom]!.claimed)
@@ -149,7 +139,7 @@ export class Wally implements CreepRole {
             return false;
 
 
-        var p = this._getProfil(spawn);
+        var p = BODIES.wally.build(spawn.room.energyCapacityAvailable);
 
         return creepBase.spawn(spawn, p, role + '_' + Game.time,{ role: role, workroom: workroom, home: spawn.room.name});
     }

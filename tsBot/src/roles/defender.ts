@@ -8,6 +8,7 @@
 
 import { bot } from "../globals";
 import * as creepBase from "../creep/base";
+import { BODIES } from "../creep/bodies";
 import type { CreepRole } from "../roles";
 import { profile } from "../profiler/decorator";
 
@@ -146,20 +147,6 @@ export class Defender implements CreepRole {
         }
     }
 
-    private _getProfil(spawn: StructureSpawn): BodyPartConstant[]
-    {
-        const totalCost =  BODYPART_COST[TOUGH] + 2*BODYPART_COST[MOVE] + BODYPART_COST[ATTACK] + BODYPART_COST[RANGED_ATTACK];
-
-        var max = Math.min(5, parseInt((spawn.room.energyAvailable / totalCost) as any));
-
-        if(max == 0 || max == null)
-        {
-            return [MOVE,MOVE,ATTACK,RANGED_ATTACK];
-        }
-
-        return Array((max)).fill(TOUGH).concat(Array((max*2)).fill(MOVE).concat(Array((max)).fill(ATTACK)).concat(Array((max)).fill(RANGED_ATTACK)));
-    }
-
     /** Spawnt einen Defender für `workroom`, falls Verteidigungsbedarf besteht und das Limit nicht erreicht ist. */
     spawn(spawn: StructureSpawn, workroom: string): boolean
     {
@@ -173,7 +160,9 @@ export class Defender implements CreepRole {
             Memory.rooms[workroom]!.invaderCore && 4 <= count)
             return false;
 
-        if( creepBase.spawn(spawn, this._getProfil(spawn), role + '_' + Game.time,{ role: role, workroom: workroom, home: spawn.room.name}))
+        // Bewusst `energyAvailable`: der Defender soll sofort losgehen, nicht auf
+        // gefüllte Extensions warten.
+        if( creepBase.spawn(spawn, BODIES.defender.build(spawn.room.energyAvailable), role + '_' + Game.time,{ role: role, workroom: workroom, home: spawn.room.name}))
         {
             (Memory as any).cOfDefender += 1;
             return true;

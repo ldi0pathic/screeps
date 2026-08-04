@@ -1,4 +1,4 @@
-// Build: 2026-08-04 23:42:40 +02:00
+// Build: 2026-08-04 22:46:23 +02:00
 "use strict";
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
@@ -1297,192 +1297,6 @@ function spawn(spawn3, profil, newName, memory) {
   return false;
 }
 
-// src/creep/body.ts
-var BodyProfile = class {
-  constructor(spec) {
-    this.spec = spec;
-  }
-  /** Energiekosten eines Satzes. */
-  get setCost() {
-    return this.spec.sets.reduce((total, entry) => total + BODYPART_COST[entry.part] * entry.perSet, 0);
-  }
-  /** Wie viele Sätze `energy` bezahlt, begrenzt durch `maxSets`. */
-  setsFor(energy) {
-    return Math.min(this.spec.maxSets, Math.floor(energy / this.setCost));
-  }
-  /** Der Rumpf für `energy`. Nie leer. */
-  build(energy) {
-    var _a;
-    const sets = this.setsFor(energy);
-    if (sets <= 0) {
-      const fallback = this.spec.fallback;
-      return typeof fallback === "function" ? fallback(energy) : [...fallback];
-    }
-    const body = [];
-    for (const entry of this.spec.sets) {
-      const count = Math.min(Math.floor(sets * entry.perSet), (_a = entry.max) != null ? _a : Infinity);
-      for (let index = 0; index < count; index += 1) {
-        body.push(entry.part);
-      }
-    }
-    return body;
-  }
-};
-function carryMove(count) {
-  const pairs = Number.isFinite(count) ? Math.max(1, Math.floor(count)) : 1;
-  return [...Array(pairs).fill(CARRY), ...Array(pairs).fill(MOVE)];
-}
-
-// src/creep/bodies.ts
-var LINK_CARRY_PARTS = Math.ceil(LINK_CAPACITY / CARRY_CAPACITY);
-var CLAIMER_BODY = [CLAIM, CLAIM, MOVE, MOVE];
-var BODIES = {
-  /** Miner: 3 WORK je CARRY, damit die Quelle ausgeschöpft wird. */
-  miner: new BodyProfile({
-    sets: [
-      { part: WORK, perSet: 3 },
-      { part: CARRY, perSet: 1 },
-      { part: MOVE, perSet: 2 }
-    ],
-    maxSets: 8,
-    // 2 WORK sättigen die Quelle nicht voll, liefern aber Energie.
-    fallback: [WORK, WORK, CARRY, MOVE]
-  }),
-  builder: new BodyProfile({
-    sets: [
-      { part: WORK, perSet: 3 },
-      { part: CARRY, perSet: 2 },
-      { part: MOVE, perSet: 2 }
-    ],
-    maxSets: 7,
-    fallback: [WORK, CARRY, CARRY, MOVE, MOVE]
-  }),
-  /** Repairer: derselbe Bausatz wie der Builder, aber höchstens drei Sätze. */
-  repairer: new BodyProfile({
-    sets: [
-      { part: WORK, perSet: 3 },
-      { part: CARRY, perSet: 2 },
-      { part: MOVE, perSet: 2 }
-    ],
-    maxSets: 3,
-    fallback: [WORK, CARRY, CARRY, MOVE, MOVE]
-  }),
-  /** Wallrepairer: ein WORK je Satz, dafür viel Ladung für lange Schichten. */
-  wally: new BodyProfile({
-    sets: [
-      { part: WORK, perSet: 1 },
-      { part: CARRY, perSet: 2 },
-      { part: MOVE, perSet: 1 }
-    ],
-    maxSets: 9,
-    fallback: [WORK, CARRY, CARRY, MOVE, MOVE]
-  }),
-  /** Upgrader bis RCL7: zwei WORK je Satz. */
-  upgrader: new BodyProfile({
-    sets: [
-      { part: WORK, perSet: 2 },
-      { part: CARRY, perSet: 2 },
-      { part: MOVE, perSet: 2 }
-    ],
-    maxSets: 8,
-    fallback: [WORK, CARRY, MOVE, MOVE]
-  }),
-  /**
-   * Upgrader ab RCL8: ein halbes WORK je Satz. Der Controller nimmt dort nur
-   * noch 15 Energie je Tick an, mehr WORK wäre bezahlte Untätigkeit.
-   */
-  upgraderRcl8: new BodyProfile({
-    sets: [
-      { part: WORK, perSet: 0.5 },
-      { part: CARRY, perSet: 2 },
-      { part: MOVE, perSet: 2 }
-    ],
-    maxSets: 9,
-    fallback: [WORK, CARRY, MOVE, MOVE]
-  }),
-  /** Extupgrader in einem Raum ohne Sicht oder unter RCL6. */
-  extupgrader: new BodyProfile({
-    sets: [
-      { part: WORK, perSet: 2 },
-      { part: CARRY, perSet: 2, max: 16 },
-      { part: MOVE, perSet: 1 }
-    ],
-    maxSets: 9,
-    fallback: [WORK, CARRY, MOVE, MOVE]
-  }),
-  /** Extupgrader ab RCL6 des Arbeitsraums: ein WORK je Satz reicht. */
-  extupgraderRcl6: new BodyProfile({
-    sets: [
-      { part: WORK, perSet: 1 },
-      { part: CARRY, perSet: 2, max: 16 },
-      { part: MOVE, perSet: 1 }
-    ],
-    maxSets: 9,
-    fallback: [WORK, CARRY, MOVE, MOVE]
-  }),
-  /**
-   * Defender. Rechnet mit `energyAvailable` statt `energyCapacityAvailable` —
-   * er soll sofort losgehen, nicht auf gefüllte Extensions warten.
-   */
-  defender: new BodyProfile({
-    sets: [
-      { part: TOUGH, perSet: 1 },
-      { part: MOVE, perSet: 2 },
-      { part: ATTACK, perSet: 1 },
-      { part: RANGED_ATTACK, perSet: 1 }
-    ],
-    maxSets: 5,
-    fallback: [MOVE, MOVE, ATTACK, RANGED_ATTACK]
-  }),
-  /** Transfer: reiner Träger zwischen zwei Räumen, ein MOVE je CARRY. */
-  transfer: new BodyProfile({
-    sets: [
-      { part: CARRY, perSet: 1 },
-      { part: MOVE, perSet: 1 }
-    ],
-    maxSets: 25,
-    fallback: [CARRY, MOVE]
-  }),
-  /** Debitor im Heimatraum. */
-  debitor: new BodyProfile({
-    sets: [
-      { part: CARRY, perSet: 1 },
-      { part: MOVE, perSet: 1 }
-    ],
-    maxSets: 25,
-    fallback: [CARRY, MOVE]
-  }),
-  /** Debitor ohne zugeordneten Container — kleiner, weil er mehr läuft. */
-  debitorWithoutContainer: new BodyProfile({
-    sets: [
-      { part: CARRY, perSet: 1 },
-      { part: MOVE, perSet: 1 }
-    ],
-    maxSets: 20,
-    fallback: [CARRY, MOVE]
-  }),
-  /**
-   * Linkkeeper: genau ein Satz — der ganze Link in einem Zug, dazu ein einziges
-   * MOVE, weil der Creep nach der Anreise dauerhaft still steht. Links gibt es
-   * erst ab RCL5, das Vollprofil passt dort praktisch immer.
-   */
-  linkkeeper: new BodyProfile({
-    sets: [
-      { part: CARRY, perSet: LINK_CARRY_PARTS },
-      { part: MOVE, perSet: 1 }
-    ],
-    maxSets: 1,
-    // Rückfall: so viele CARRY wie neben dem MOVE hineinpassen, mindestens eines.
-    fallback: (energy) => {
-      const affordable = Math.max(
-        1,
-        Math.floor((energy - BODYPART_COST[MOVE]) / BODYPART_COST[CARRY])
-      );
-      return [...Array(affordable).fill(CARRY), MOVE];
-    }
-  })
-};
-
 // src/profiler/types.ts
 var WINDOW_TICKS = 100;
 var DEFAULT_DETAIL_TICKS = 50;
@@ -2042,6 +1856,15 @@ var Builder = class {
     }
     return false;
   }
+  _getProfil(spawn3) {
+    const totalCost = 3 * BODYPART_COST[WORK] + 2 * BODYPART_COST[CARRY] + 2 * BODYPART_COST[MOVE];
+    var maxEnergy = spawn3.room.energyCapacityAvailable;
+    var numberOfSets = Math.min(7, Math.floor(maxEnergy / totalCost));
+    if (numberOfSets == 0) {
+      return [WORK, CARRY, CARRY, MOVE, MOVE];
+    }
+    return Array(numberOfSets * 3).fill(WORK).concat(Array(numberOfSets * 2).fill(CARRY).concat(Array(numberOfSets * 2).fill(MOVE)));
+  }
   /** Spawnt einen Builder für `workroom`, falls Bedarf, Baustellen und freie Kapazität es erlauben. */
   spawn(spawn3, workroom) {
     var maxbuilder = bot.room[workroom].maxbuilder;
@@ -2060,7 +1883,7 @@ var Builder = class {
       sites = room.find(FIND_CONSTRUCTION_SITES).length;
     if (sites == 0 || Math.max(sites / 5, 1) <= count)
       return false;
-    return spawn(spawn3, BODIES.builder.build(spawn3.room.energyCapacityAvailable), role + "_" + Game.time, { role, workroom, home: spawn3.room.name });
+    return spawn(spawn3, this._getProfil(spawn3), role + "_" + Game.time, { role, workroom, home: spawn3.room.name });
   }
 };
 Builder = __decorateClass([
@@ -2105,6 +1928,9 @@ var Claimer = class {
       }
     }
   }
+  _getProfil() {
+    return [CLAIM, CLAIM, MOVE, MOVE];
+  }
   /** Spawnt einen Claimer für `workroom`, falls Bedarf besteht und keiner unterwegs ist. */
   spawn(spawn3, workroom) {
     if (!bot.room[workroom].sendClaimer)
@@ -2115,7 +1941,7 @@ var Claimer = class {
       return false;
     if (1 <= count)
       return false;
-    return spawn(spawn3, CLAIMER_BODY, role2 + "_" + Game.time, { role: role2, workroom, home: spawn3.room.name });
+    return spawn(spawn3, this._getProfil(), role2 + "_" + Game.time, { role: role2, workroom, home: spawn3.room.name });
   }
 };
 Claimer = __decorateClass([
@@ -2263,38 +2089,42 @@ var Debitor = class {
    *
    * @param {StructureSpawn} spawn
    */
-  bodyFor(spawn3, workroom, mineraltype, containerId) {
-    if (mineraltype != RESOURCE_ENERGY) {
-      return carryMove(2);
-    }
-    if (spawn3.room.name != workroom) {
-      var carry = Memory.rooms[workroom].needDebitorSize;
-      var distances = Memory.rooms[workroom].distances;
-      var c = 1;
-      if (!carry && distances) {
-        var length = Math.ceil(distances.length * 0.5);
-        var meridian = distances.sort(function(a, b) {
-          return a - b;
-        })[length];
-        carry = Math.ceil(2 * meridian / 5);
-        var max = BODIES.debitor.setsFor(spawn3.room.energyCapacityAvailable);
-        if (max >= carry) {
-          Memory.rooms[workroom].needDebitors = 1;
-        } else {
-          c = Memory.rooms[workroom].needDebitors = Math.ceil(carry / max);
-          carry = Math.ceil(carry / c);
+  getProfil(spawn3, workroom, mineraltype, containerId) {
+    if (mineraltype == RESOURCE_ENERGY) {
+      if (spawn3.room.name != workroom) {
+        var carry = Memory.rooms[workroom].needDebitorSize;
+        var distances = Memory.rooms[workroom].distances;
+        var c = 1;
+        if (!carry && distances) {
+          var length = Math.ceil(distances.length * 0.5);
+          var meridian = distances.sort(function(a, b) {
+            return a - b;
+          })[length];
+          carry = Math.ceil(2 * meridian / 5);
+          var max = Math.min(25, parseInt(spawn3.room.energyCapacityAvailable / 100));
+          if (max >= carry) {
+            Memory.rooms[workroom].needDebitors = 1;
+          } else {
+            c = Memory.rooms[workroom].needDebitors = Math.ceil(carry / max);
+            carry = Math.ceil(carry / c);
+          }
+          if (length > 30) {
+            Memory.rooms[workroom].needDebitorSize = carry;
+            delete Memory.rooms[workroom].distances;
+          }
         }
-        if (length > 30) {
-          Memory.rooms[workroom].needDebitorSize = carry;
-          delete Memory.rooms[workroom].distances;
-        }
+        return Array(carry).fill(CARRY).concat(Array(carry).fill(MOVE));
       }
-      return carryMove(carry);
+      if (containerId == "" || spawn3.room.name != workroom) {
+        var max = Math.min(Math.max(parseInt(spawn3.room.energyCapacityAvailable / 100), 1), 20);
+        return Array(max).fill(CARRY).concat(Array(max).fill(MOVE));
+      }
+      var max = Math.min(25, parseInt(spawn3.room.energyCapacityAvailable / 100));
+      return Array(max).fill(CARRY).concat(Array(max).fill(MOVE));
+    } else {
+      var mineral = 2;
+      return Array(mineral).fill(CARRY).concat(Array(mineral).fill(MOVE));
     }
-    if (containerId == "") {
-      return BODIES.debitorWithoutContainer.build(spawn3.room.energyCapacityAvailable);
-    }
-    return BODIES.debitor.build(spawn3.room.energyCapacityAvailable);
   }
   /** Spawnt einen Debitor für `workroom`, falls Bedarf besteht (inklusive Freelancer- und Notfallmodus). */
   spawn(spawn3, workroom) {
@@ -2358,7 +2188,7 @@ var Debitor = class {
       bot.logWorkroom(workroom, "3");
       containerId = "";
     }
-    var profil = this.bodyFor(spawn3, workroom, mineraltype, containerId);
+    var profil = this.getProfil(spawn3, workroom, mineraltype, containerId);
     bot.logWorkroom(workroom, "4");
     if (!spawn(spawn3, profil, role3 + "_" + Game.time, { role: role3, harvest: true, workroom, home: spawn3.room.name, mineral: mineraltype, container: containerId, notfall: false })) {
       if (_.filter(Game.creeps, (creep) => creep.memory.role == role3 && creep.memory.workroom == workroom).length == 0 && spawn3.room.name == workroom) {
@@ -2457,6 +2287,14 @@ var Defender = class {
       creep.suicide();
     }
   }
+  _getProfil(spawn3) {
+    const totalCost = BODYPART_COST[TOUGH] + 2 * BODYPART_COST[MOVE] + BODYPART_COST[ATTACK] + BODYPART_COST[RANGED_ATTACK];
+    var max = Math.min(5, parseInt(spawn3.room.energyAvailable / totalCost));
+    if (max == 0 || max == null) {
+      return [MOVE, MOVE, ATTACK, RANGED_ATTACK];
+    }
+    return Array(max).fill(TOUGH).concat(Array(max * 2).fill(MOVE).concat(Array(max).fill(ATTACK)).concat(Array(max).fill(RANGED_ATTACK)));
+  }
   /** Spawnt einen Defender für `workroom`, falls Verteidigungsbedarf besteht und das Limit nicht erreicht ist. */
   spawn(spawn3, workroom) {
     if (!Memory.rooms[workroom].needDefence && !Memory.rooms[workroom].invaderCore || !bot.room[workroom].sendDefender)
@@ -2464,7 +2302,7 @@ var Defender = class {
     var count = _.filter(Game.creeps, (creep) => creep.memory.role == role4 && creep.memory.workroom == workroom).length;
     if (Memory.rooms[workroom].needDefence && 2 <= count || Memory.rooms[workroom].invaderCore && 4 <= count)
       return false;
-    if (spawn(spawn3, BODIES.defender.build(spawn3.room.energyAvailable), role4 + "_" + Game.time, { role: role4, workroom, home: spawn3.room.name })) {
+    if (spawn(spawn3, this._getProfil(spawn3), role4 + "_" + Game.time, { role: role4, workroom, home: spawn3.room.name })) {
       Memory.cOfDefender += 1;
       return true;
     }
@@ -2491,14 +2329,17 @@ var ExtUpgrader = class {
     }
     upgradeController(creep);
   }
-  /**
-   * Ab RCL6 des Arbeitsraums reicht ein WORK je Satz. Ohne Sicht dort gilt das
-   * größere Profil — dann ist der Ausbaustand unbekannt.
-   */
-  bodyFor(spawn3, workroom) {
-    const rcl6 = Game.rooms[workroom] && Game.rooms[workroom].controller.level >= 6;
-    const profil = rcl6 ? BODIES.extupgraderRcl6 : BODIES.extupgrader;
-    return profil.build(spawn3.room.energyCapacityAvailable);
+  _getProfil(spawn3, workroom) {
+    var numberOfSets = 0;
+    var multi = Game.rooms[workroom] && Game.rooms[workroom].controller.level >= 6 ? 1 : 2;
+    const totalCost = multi * BODYPART_COST[WORK] + 2 * BODYPART_COST[CARRY] + BODYPART_COST[MOVE];
+    var maxEnergy = spawn3.room.energyCapacityAvailable;
+    numberOfSets = Math.min(9, Math.floor(maxEnergy / totalCost));
+    if (numberOfSets == 0) {
+      return [WORK, CARRY, MOVE, MOVE];
+    }
+    var carry = Math.min(numberOfSets * 2, 16);
+    return Array(numberOfSets * multi).fill(WORK).concat(Array(carry).fill(CARRY).concat(Array(numberOfSets).fill(MOVE)));
   }
   /** Spawnt einen Extupgrader für `workroom`, falls Bedarf besteht und noch nicht genug unterwegs sind. */
   spawn(spawn3, workroom) {
@@ -2513,7 +2354,7 @@ var ExtUpgrader = class {
     ).length;
     if (uppis <= count)
       return false;
-    var profil = this.bodyFor(spawn3, workroom);
+    var profil = this._getProfil(spawn3, workroom);
     return spawn(spawn3, profil, role5 + "_" + Game.time, { role: role5, workroom, home: spawn3.room.name, repairs: 0 });
   }
 };
@@ -2577,6 +2418,16 @@ var LinkKeeper = class {
     }
     return null;
   }
+  _getProfil(spawn3) {
+    const maxCarryParts = Math.ceil(LINK_CAPACITY / CARRY_CAPACITY);
+    const fullProfil = Array(maxCarryParts).fill(CARRY).concat([MOVE]);
+    const fullCost = maxCarryParts * BODYPART_COST[CARRY] + BODYPART_COST[MOVE];
+    if (spawn3.room.energyCapacityAvailable >= fullCost) {
+      return fullProfil;
+    }
+    const affordableCarryParts = Math.max(1, Math.floor((spawn3.room.energyCapacityAvailable - BODYPART_COST[MOVE]) / BODYPART_COST[CARRY]));
+    return Array(affordableCarryParts).fill(CARRY).concat([MOVE]);
+  }
   /** Spawnt den einzigen Linkkeeper für `workroom`, falls Links dort genutzt werden und noch keiner lebt. */
   spawn(spawn3, workroom) {
     if (!bot.room[workroom].sendLinkkeeper)
@@ -2589,7 +2440,7 @@ var LinkKeeper = class {
       return false;
     if (_.filter(Game.creeps, (creep) => creep.memory.role == role6 && creep.memory.workroom == workroom).length >= 1)
       return false;
-    return spawn(spawn3, BODIES.linkkeeper.build(spawn3.room.energyCapacityAvailable), role6 + "_" + Game.time, { role: role6, workroom, home: spawn3.room.name });
+    return spawn(spawn3, this._getProfil(spawn3), role6 + "_" + Game.time, { role: role6, workroom, home: spawn3.room.name });
   }
 };
 LinkKeeper = __decorateClass([
@@ -2843,6 +2694,15 @@ var Miner = class {
       }
     }
   }
+  _getProfil(spawn3, workroom) {
+    const totalCost = 3 * BODYPART_COST[WORK] + BODYPART_COST[CARRY] + 2 * BODYPART_COST[MOVE];
+    var maxEnergy = spawn3.room.energyCapacityAvailable;
+    var numberOfSets = Math.min(8, Math.floor(maxEnergy / totalCost));
+    if (numberOfSets == 0) {
+      return [WORK, WORK, CARRY, MOVE];
+    }
+    return Array(numberOfSets * 3).fill(WORK).concat(Array(numberOfSets).fill(CARRY).concat(Array(numberOfSets * 2).fill(MOVE)));
+  }
   /** Spawnt einen Miner für die nächste fällige Energie- oder Mineralquelle in `workroom`. */
   spawn(spawn3, workroom) {
     bot.logWorkroom(workroom, "Miner Spawn start");
@@ -2881,7 +2741,7 @@ var Miner = class {
       Memory.rooms[spawn3.room.name].aktivPrioSpawn = false;
       return false;
     }
-    if (!spawn(spawn3, BODIES.miner.build(spawn3.room.energyCapacityAvailable), role7 + "_" + Game.time, { role: role7, workroom, home: spawn3.room.name, source, mineEnergy, notfall: false })) {
+    if (!spawn(spawn3, this._getProfil(spawn3, workroom), role7 + "_" + Game.time, { role: role7, workroom, home: spawn3.room.name, source, mineEnergy, notfall: false })) {
       Memory.rooms[spawn3.room.name].aktivPrioSpawn = true;
       Memory.rooms[spawn3.room.name].aktivPrioSpawnCount = (Memory.rooms[spawn3.room.name].aktivPrioSpawnCount || 0) + 1;
       if (Memory.rooms[spawn3.room.name].aktivPrioSpawnCount > 25) {
@@ -2992,6 +2852,15 @@ var Repairer = class {
     }
     return false;
   }
+  _getProfil(spawn3) {
+    const totalCost = 3 * BODYPART_COST[WORK] + 2 * BODYPART_COST[CARRY] + 2 * BODYPART_COST[MOVE];
+    var maxEnergy = spawn3.room.energyCapacityAvailable;
+    const numberOfSets = Math.min(3, Math.floor(maxEnergy / totalCost));
+    if (numberOfSets == 0) {
+      return [WORK, CARRY, CARRY, MOVE, MOVE];
+    }
+    return Array(numberOfSets * 3).fill(WORK).concat(Array(numberOfSets * 2).fill(CARRY).concat(Array(numberOfSets * 2).fill(MOVE)));
+  }
   /** Spawnt einen Repairer für `workroom`, falls Bedarf besteht und noch nicht genug unterwegs sind. */
   spawn(spawn3, workroom) {
     var minRepairer = bot.room[workroom].repairer;
@@ -3014,7 +2883,7 @@ var Repairer = class {
     });
     if (structuresToRepair.length <= 1)
       return false;
-    return spawn(spawn3, BODIES.repairer.build(spawn3.room.energyCapacityAvailable), role8 + "_" + Game.time, { role: role8, workroom, home: spawn3.room.name, repairs: 0 });
+    return spawn(spawn3, this._getProfil(spawn3), role8 + "_" + Game.time, { role: role8, workroom, home: spawn3.room.name, repairs: 0 });
   }
 };
 Repairer = __decorateClass([
@@ -3069,6 +2938,10 @@ var Transfer = class {
    *
    * @param {StructureSpawn} spawn
    */
+  getProfil(spawn3) {
+    var max = Math.min(25, parseInt(spawn3.room.energyCapacityAvailable / 100));
+    return Array(max).fill(CARRY).concat(Array(max).fill(MOVE));
+  }
   /** Spawnt einen Transfer für `workroom`, falls Bedarf besteht und im Heimatraum genug Energie im Storage liegt. */
   spawn(spawn3, workroom) {
     if (!bot.room[workroom].transferEnergie || spawn3.room.name == workroom || !Memory.rooms[workroom].claimed)
@@ -3095,7 +2968,7 @@ var Transfer = class {
     var storage = Game.rooms[spawn3.room.name].storage;
     if (storage && storage.store[RESOURCE_ENERGY] < 1e4 || !storage)
       return false;
-    var profil = BODIES.transfer.build(spawn3.room.energyCapacityAvailable);
+    var profil = this.getProfil(spawn3);
     return spawn(spawn3, profil, role9 + "_" + Game.time, { role: role9, harvest: true, workroom, home: spawn3.room.name, mineral: mineraltype });
   }
 };
@@ -3140,13 +3013,16 @@ var Upgrader = class {
       creep.memory.sparmodus = creep.room.controller.level > 5;
     }
   }
-  /**
-   * Ab RCL8 nimmt der Controller nur noch 15 Energie je Tick an; dort gilt das
-   * sparsame Profil mit einem halben WORK je Satz.
-   */
-  bodyFor(spawn3, workroom) {
-    const profil = Game.rooms[workroom].controller.level > 7 ? BODIES.upgraderRcl8 : BODIES.upgrader;
-    return profil.build(spawn3.room.energyCapacityAvailable);
+  _getProfil(spawn3, workroom) {
+    var numberOfSets = 0;
+    var multi = Game.rooms[workroom].controller.level > 7 ? 0.5 : 2;
+    const totalCost = multi * BODYPART_COST[WORK] + 2 * BODYPART_COST[CARRY] + 2 * BODYPART_COST[MOVE];
+    var maxEnergy = spawn3.room.energyCapacityAvailable;
+    numberOfSets = Math.min(Game.rooms[workroom].controller.level > 7 ? 9 : 8, Math.floor(maxEnergy / totalCost));
+    if (numberOfSets == 0) {
+      return [WORK, CARRY, MOVE, MOVE];
+    }
+    return Array(Math.floor(numberOfSets * multi)).fill(WORK).concat(Array(numberOfSets * 2).fill(CARRY).concat(Array(numberOfSets * 2).fill(MOVE)));
   }
   /** Spawnt einen Upgrader für `workroom`, falls die konfigurierte Anzahl noch nicht erreicht ist. */
   spawn(spawn3, workroom) {
@@ -3163,7 +3039,7 @@ var Upgrader = class {
     ).length;
     if (uppis <= count)
       return false;
-    var profil = this.bodyFor(spawn3, workroom);
+    var profil = this._getProfil(spawn3, workroom);
     return spawn(spawn3, profil, role10 + "_" + Game.time, { role: role10, workroom, home: spawn3.room.name, repairs: 0, noLink: false });
   }
 };
@@ -3233,6 +3109,15 @@ var Wally = class {
       return false;
     }
   }
+  _getProfil(spawn3) {
+    const totalCost = BODYPART_COST[WORK] + 2 * BODYPART_COST[CARRY] + BODYPART_COST[MOVE];
+    var maxEnergy = spawn3.room.energyCapacityAvailable;
+    const numberOfSets = Math.min(9, Math.floor(maxEnergy / totalCost));
+    if (numberOfSets == 0) {
+      return [WORK, CARRY, CARRY, MOVE, MOVE];
+    }
+    return Array(numberOfSets).fill(WORK).concat(Array(2 * numberOfSets).fill(CARRY).concat(Array(numberOfSets).fill(MOVE)));
+  }
   /** Spawnt einen Wallrepairer für `workroom`, falls Bedarf, Rumpfbudget und Energiereserve passen. */
   spawn(spawn3, workroom) {
     if (spawn3.room.name != workroom && !Memory.rooms[workroom].claimed)
@@ -3251,7 +3136,7 @@ var Wally = class {
     var storage = Game.rooms[workroom].storage;
     if (storage && storage.store[RESOURCE_ENERGY] < 5e4 || !storage)
       return false;
-    var p = BODIES.wally.build(spawn3.room.energyCapacityAvailable);
+    var p = this._getProfil(spawn3);
     return spawn(spawn3, p, role11 + "_" + Game.time, { role: role11, workroom, home: spawn3.room.name });
   }
 };

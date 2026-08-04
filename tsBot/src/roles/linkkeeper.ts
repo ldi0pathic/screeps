@@ -11,6 +11,7 @@
 
 import { bot } from "../globals";
 import * as creepBase from "../creep/base";
+import { BODIES } from "../creep/bodies";
 import type { CreepRole } from "../roles";
 import { profile } from "../profiler/decorator";
 
@@ -115,30 +116,6 @@ export class LinkKeeper implements CreepRole {
         return null;
     }
 
-    private _getProfil(spawn: StructureSpawn): BodyPartConstant[] {
-        // Der Creep muss den kompletten Link in einem Zug aufnehmen können.
-        const maxCarryParts = Math.ceil(LINK_CAPACITY / CARRY_CAPACITY);
-
-        // Nur ein MOVE: der Creep steht nach der Anreise dauerhaft still,
-        // weitere MOVE-Teile würden nur den einmaligen Hinweg beschleunigen
-        // und kosten sonst nur Energie und Spawnzeit.
-        const fullProfil: BodyPartConstant[] = Array(maxCarryParts).fill(CARRY).concat([MOVE]);
-        const fullCost = maxCarryParts * BODYPART_COST[CARRY] + BODYPART_COST[MOVE];
-
-        // Links gibt es erst ab RCL5, dort stehen mindestens 1800 Energie
-        // Kapazität zur Verfügung – das Vollprofil passt also praktisch immer.
-        if (spawn.room.energyCapacityAvailable >= fullCost) {
-            return fullProfil;
-        }
-
-        // Rückfall: so viele CARRY wie hineinpassen, mindestens aber [CARRY, MOVE].
-        // Ein leeres Array lässt spawnCreep grundsätzlich fehlschlagen (siehe
-        // docs/aenderungen.md, dieser Fehler wurde in diesem Repo schon
-        // mehrfach behoben).
-        const affordableCarryParts = Math.max(1, Math.floor((spawn.room.energyCapacityAvailable - BODYPART_COST[MOVE]) / BODYPART_COST[CARRY]));
-        return Array(affordableCarryParts).fill(CARRY).concat([MOVE]);
-    }
-
     /** Spawnt den einzigen Linkkeeper für `workroom`, falls Links dort genutzt werden und noch keiner lebt. */
     spawn(spawn: StructureSpawn, workroom: string): boolean {
         if (!bot.room[workroom]!.sendLinkkeeper)
@@ -156,7 +133,7 @@ export class LinkKeeper implements CreepRole {
         if (_.filter(Game.creeps, (creep: Creep) => creep.memory.role == role && creep.memory.workroom == workroom).length >= 1)
             return false;
 
-        return creepBase.spawn(spawn, this._getProfil(spawn), role + '_' + Game.time, { role: role, workroom: workroom, home: spawn.room.name });
+        return creepBase.spawn(spawn, BODIES.linkkeeper.build(spawn.room.energyCapacityAvailable), role + '_' + Game.time, { role: role, workroom: workroom, home: spawn.room.name });
     }
 }
 

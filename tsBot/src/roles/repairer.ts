@@ -10,6 +10,7 @@
 
 import { bot } from "../globals";
 import * as creepBase from "../creep/base";
+import { BODIES } from "../creep/bodies";
 import type { CreepRole } from "../roles";
 import { profile } from "../profiler/decorator";
 
@@ -144,18 +145,6 @@ export class Repairer implements CreepRole {
         return false;
     }
 
-    private _getProfil(spawn: StructureSpawn): BodyPartConstant[]
-    {
-        const totalCost = 3 * BODYPART_COST[WORK] + 2 * BODYPART_COST[CARRY] + 2 * BODYPART_COST[MOVE];
-        var maxEnergy = spawn.room.energyCapacityAvailable;
-        const numberOfSets = Math.min(3,Math.floor(maxEnergy / totalCost));
-        if(numberOfSets == 0)
-        {
-            return [WORK,CARRY,CARRY,MOVE,MOVE];
-        }
-        return Array((numberOfSets*3)).fill(WORK).concat(Array((numberOfSets*2)).fill(CARRY).concat(Array((numberOfSets*2)).fill(MOVE)));
-    }
-
     /** Spawnt einen Repairer für `workroom`, falls Bedarf besteht und noch nicht genug unterwegs sind. */
     spawn(spawn: StructureSpawn, workroom: string): boolean
     {
@@ -189,7 +178,7 @@ export class Repairer implements CreepRole {
         if(structuresToRepair.length <= 1)
             return false;
 
-        return creepBase.spawn(spawn, this._getProfil(spawn), role + '_' + Game.time,{ role: role, workroom: workroom, home: spawn.room.name, repairs:0})
+        return creepBase.spawn(spawn, BODIES.repairer.build(spawn.room.energyCapacityAvailable), role + '_' + Game.time,{ role: role, workroom: workroom, home: spawn.room.name, repairs:0})
     }
 }
 

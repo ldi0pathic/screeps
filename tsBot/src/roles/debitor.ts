@@ -10,6 +10,8 @@
 
 import { bot } from "../globals";
 import * as creepBase from "../creep/base";
+import { BODIES } from "../creep/bodies";
+import { carryMove } from "../creep/body";
 import type { CreepRole } from "../roles";
 import { profile } from "../profiler/decorator";
 
@@ -194,47 +196,48 @@ export class Debitor implements CreepRole {
      *
      * @param {StructureSpawn} spawn
      */
-    private getProfil(spawn: StructureSpawn, workroom: string, mineraltype: string, containerId: string) {
-        if (mineraltype == RESOURCE_ENERGY) {
-            if (spawn.room.name != workroom) {
-                var carry = Memory.rooms[workroom]!.needDebitorSize;
-                var distances = Memory.rooms[workroom]!.distances;
-                var c = 1;
-                if (!carry && distances) {
-                    var length = Math.ceil(distances.length * 0.5)
-                    var meridian = distances.sort(function (a: any, b: any) {
-                        return a - b;
-                    })[length];
-                    carry = Math.ceil((2 * meridian) / 5)
-                    var max = Math.min(25, parseInt((spawn.room.energyCapacityAvailable / 100) as any));
+    private bodyFor(spawn: StructureSpawn, workroom: string, mineraltype: string, containerId: string) {
+        // Mineralien werden in kleinen Mengen geholt, dafür genügen zwei Paare.
+        if (mineraltype != RESOURCE_ENERGY) {
+            return carryMove(2);
+        }
 
-                    if (max >= carry) {
-                        Memory.rooms[workroom]!.needDebitors = 1;
-                    }
-                    else {
-                        c = Memory.rooms[workroom]!.needDebitors = Math.ceil(carry / max);
-                        carry = Math.ceil(carry / c);
-                    }
-                    if (length > 30) {
-                        Memory.rooms[workroom]!.needDebitorSize = carry;
-                        delete Memory.rooms[workroom]!.distances;
-                    }
+        // Fremder Raum: die Ladung folgt der Wegstrecke, nicht der Energie des
+        // Spawnraums. Reicht ein Creep für die Strecke nicht, werden mehrere
+        // kleinere geschickt (`needDebitors`).
+        if (spawn.room.name != workroom) {
+            var carry = Memory.rooms[workroom]!.needDebitorSize;
+            var distances = Memory.rooms[workroom]!.distances;
+            var c = 1;
+            if (!carry && distances) {
+                var length = Math.ceil(distances.length * 0.5)
+                var meridian = distances.sort(function (a: any, b: any) {
+                    return a - b;
+                })[length];
+                carry = Math.ceil((2 * meridian) / 5)
+                var max = BODIES.debitor.setsFor(spawn.room.energyCapacityAvailable);
+
+                if (max >= carry) {
+                    Memory.rooms[workroom]!.needDebitors = 1;
                 }
-                return Array(carry).fill(CARRY).concat(Array(carry).fill(MOVE));
+                else {
+                    c = Memory.rooms[workroom]!.needDebitors = Math.ceil(carry / max);
+                    carry = Math.ceil(carry / c);
+                }
+                if (length > 30) {
+                    Memory.rooms[workroom]!.needDebitorSize = carry;
+                    delete Memory.rooms[workroom]!.distances;
+                }
             }
-
-            if (containerId == '' || spawn.room.name != workroom) {
-                var max = Math.min(Math.max(parseInt((spawn.room.energyCapacityAvailable / 100) as any), 1), 20);
-                return Array(max).fill(CARRY).concat(Array(max).fill(MOVE));
-            }
-
-            var max = Math.min(25, parseInt((spawn.room.energyCapacityAvailable / 100) as any));
-            return Array(max).fill(CARRY).concat(Array(max).fill(MOVE));
+            return carryMove(carry as number);
         }
-        else {
-            var mineral = 2;
-            return Array(mineral).fill(CARRY).concat(Array(mineral).fill(MOVE));
+
+        // Heimatraum ohne zugeordneten Container: kleineres Profil, der Creep läuft mehr.
+        if (containerId == '') {
+            return BODIES.debitorWithoutContainer.build(spawn.room.energyCapacityAvailable);
         }
+
+        return BODIES.debitor.build(spawn.room.energyCapacityAvailable);
     }
 
     /** Spawnt einen Debitor für `workroom`, falls Bedarf besteht (inklusive Freelancer- und Notfallmodus). */
@@ -319,7 +322,7 @@ export class Debitor implements CreepRole {
             containerId = '';
         }
 
-        var profil = this.getProfil(spawn, workroom, mineraltype, containerId);
+        var profil = this.bodyFor(spawn, workroom, mineraltype, containerId);
         bot.logWorkroom(workroom, '4');
         //wenn im aktuellen raum kein Debitor ist
 

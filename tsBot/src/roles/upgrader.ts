@@ -9,6 +9,7 @@
 
 import { bot } from "../globals";
 import * as creepBase from "../creep/base";
+import { BODIES } from "../creep/bodies";
 import type { CreepRole } from "../roles";
 import { profile } from "../profiler/decorator";
 
@@ -76,20 +77,14 @@ export class Upgrader implements CreepRole {
         }
     }
 
-    private _getProfil(spawn: StructureSpawn, workroom: string): BodyPartConstant[]
-    {   var numberOfSets = 0;
-
-        var multi = Game.rooms[workroom]!.controller!.level > 7 ? 0.5 : 2;
-        const totalCost = multi * BODYPART_COST[WORK] + 2 * BODYPART_COST[CARRY] + 2* BODYPART_COST[MOVE];
-        var maxEnergy = spawn.room.energyCapacityAvailable;
-        numberOfSets = Math.min(Game.rooms[workroom]!.controller!.level > 7 ? 9:8 ,Math.floor(maxEnergy / totalCost));
-        if(numberOfSets == 0)
-        {
-            return [WORK,CARRY,MOVE,MOVE];
-        }
-
-        return Array(Math.floor(numberOfSets*multi)).fill(WORK).concat(Array(numberOfSets*2).fill(CARRY).concat(Array((numberOfSets*2)).fill(MOVE)));
-
+    /**
+     * Ab RCL8 nimmt der Controller nur noch 15 Energie je Tick an; dort gilt das
+     * sparsame Profil mit einem halben WORK je Satz.
+     */
+    private bodyFor(spawn: StructureSpawn, workroom: string): BodyPartConstant[]
+    {
+        const profil = Game.rooms[workroom]!.controller!.level > 7 ? BODIES.upgraderRcl8 : BODIES.upgrader;
+        return profil.build(spawn.room.energyCapacityAvailable);
     }
 
     /** Spawnt einen Upgrader für `workroom`, falls die konfigurierte Anzahl noch nicht erreicht ist. */
@@ -114,7 +109,7 @@ export class Upgrader implements CreepRole {
         if ( uppis <= count)
             return false;
 
-        var profil = this._getProfil(spawn, workroom);
+        var profil = this.bodyFor(spawn, workroom);
 
         return creepBase.spawn(spawn, profil, role + '_' + Game.time,{ role: role, workroom: workroom, home: spawn.room.name, repairs:0, noLink: false});
     }
