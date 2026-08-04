@@ -109,6 +109,36 @@ export function collectFrom(
 }
 
 /**
+ * Liefert `type` an `target` ab. Gegenstück zu `withdrawFrom`, mit einem
+ * bewussten Unterschied: hier wird **kein** `fromId` gesetzt. Das merkt sich die
+ * Quelle einer Ladung, und beim Abliefern gibt es keine.
+ *
+ * Ein fehlendes Ziel ist zulässig und heißt `false` — die Aufrufer geben das
+ * Ergebnis einer Suche direkt weiter.
+ */
+export function transferTo(
+  creep: Creep,
+  target: AnyStructure | null | undefined,
+  type: string,
+): boolean {
+  if (!target) {
+    return false;
+  }
+
+  switch (creep.transfer(target, type as ResourceConstant)) {
+    case ERR_NOT_IN_RANGE:
+      moveByMemory(creep, target.pos);
+      return true;
+
+    case OK:
+      return true;
+
+    default:
+      return false;
+  }
+}
+
+/**
  * Holt `type` aus `target`. Für Ziele, die nicht gesucht werden müssen, weil sie
  * feststehen: Storage, Controller-Link, der eigene Container, Notfallspeicher.
  *
