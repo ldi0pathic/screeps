@@ -18,6 +18,16 @@ Der Debitor ist der Haule­r. Containergebundene Debitoren bedienen die Quellenc
 
 Im normalen Betrieb sammelt er zunächst wertvolle Reste, Links und Container/Storage ein. Nichtenergie kann aus dem Storage in einen freien Terminal umgelagert werden; danach wird bevorzugt Terminal bzw. Storage beliefert. Energie wird nach Lage an Spawn/Extensions, Türme, Terminal, Storage und Labs geliefert. Im Invasions- und Notfallmodus priorisiert die Rolle Versorgung von Spawn und Türmen.
 
+### `linkkeeper`
+
+Der Linkkeeper steht dauerhaft auf dem einen Feld, das an den Spawn-Link (`spawnLink`) **und** an das Storage angrenzt, nimmt die Energie aus dem Link und gibt sie ins Storage. Die Rolle existiert, weil ein voller empfangender Link nichts mehr annehmen kann und dadurch den Durchsatz **aller** Quell-Links blockiert, die auf ihn senden — den Empfänger zu leeren ist Voraussetzung für den Durchsatz der ganzen Strecke, nicht Aufräumen.
+
+Der Standplatz wird einmal je Creep berechnet (Nachbarfeld des Links, das auch an das Storage angrenzt, kein Wall-Terrain, keine blockierende Struktur nach `OBSTACLE_OBJECT_TYPES`) und im Creep-Memory unter `post` gespeichert; Straße, Container und Rampart blockieren den Platz nicht. Auf dem Standplatz prüft die Rolle **jeden Tick** den Inhalt von Link und eigenem Inventar und steigt sofort aus, wenn beide leer sind. Eine Schlafdauer wäre hier geraten: der empfangende Link hat keinen eigenen Cooldown — der liegt beim sendenden Link —, es gibt an dieser Stelle also nichts, worauf man warten könnte. `transfer` ins Storage und `withdraw` aus dem Link werden im selben Tick angemeldet; ob Screeps beide auflöst, ist offiziell nicht dokumentiert (siehe `docs/knowledge/mechanics/creeps-actions.md`) — lösen beide aus, dauert ein Umlauf einen Tick, sonst zwei, beides ist korrekt.
+
+Körperprofil: die Zahl der `CARRY`-Teile ergibt sich aus `LINK_CAPACITY / CARRY_CAPACITY` (800/50 = 16 `CARRY`), damit ein Withdraw den vollen Link auf einmal aufnimmt, dazu genau ein `MOVE` — der Creep steht nach der Anreise dauerhaft still, weitere `MOVE`-Teile würden nur den einmaligen Hinweg beschleunigen. Kosten 850 Energie, 17 Körperteile, 51 Ticks Spawnzeit. Ein Rückfallprofil mit weniger `CARRY` greift, falls die Energiekapazität nicht reicht; praktisch nie nötig, weil Links erst ab RCL5 existieren und dort bereits deutlich mehr Kapazität zur Verfügung steht.
+
+Gespawnt wird die Rolle nur, wenn `sendLinkkeeper` und `useLinks` gesetzt sind, der Raum einen `spawnLink` konfiguriert hat, der Spawn im Spawnraum selbst steht und ein Storage existiert; es lebt höchstens ein Linkkeeper je Raum. In `roles/index.ts` steht die Rolle direkt hinter `debitor`, also weit vorn in der Spawn-Priorität — ein verstopfter Link kostet sonst den Durchsatz der ganzen Link-Strecke.
+
 ### `transfer`
 
 Transfer-Creeps transportieren Energie zwischen eigenen Räumen, wenn `transferEnergie` aktiviert und der Zielraum als `claimed` markiert ist. Der Heimat-Storage muss mindestens 10.000 Energie enthalten. Pro Spawn/Zielraum wird höchstens einer erhalten. Im Zielraum räumt die Rolle zunächst Ruinen, Drops und Tombstones; sonst nimmt sie Energie im Heimatraum auf und liefert im Zielraum an Türme, Terminal, Labs, Storage, Container oder Builder.

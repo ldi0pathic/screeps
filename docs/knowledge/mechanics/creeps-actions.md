@@ -56,20 +56,34 @@ Official:
 
 ## Simultaneous Actions
 
-Official:
+Background: game state is fixed during `main`; all effects apply only on tick transition — see [runtime-memory.md](../systems/runtime-memory.md) "Runtime Model" and https://docs.screeps.com/game-loop.html. A `withdraw` this tick does not change `creep.store` until next tick, so a role must never branch on its own cargo having "already arrived" within the same tick.
+
+Official (https://docs.screeps.com/simultaneous-actions.html):
 
 - Commands are scheduled during `main` and resolved later.
-- Some creep methods are mutually exclusive in action pipelines.
-- If multiple dependent methods are scheduled, priority decides; same method uses last call.
-- Methods from different pipelines can run in same tick.
-- `moveTo`, `rangedMassAttack`, `heal`, `transfer`, `drop`, `pickup`, `claimController` can be combined if resources and pipelines allow.
-- If energy is insufficient for all scheduled energy-using operations, conflict resolution applies.
+- Action methods are grouped into priority pipelines; the page states this only as a diagram (`action-priorities.png`), not as an enumerated list in text — do not treat any specific grouping of methods as officially enumerated.
+- "If you try to execute all the dependent methods within one tick, only the most right one will be executed" (i.e. within one pipeline, only the highest-priority scheduled action actually runs).
+- "The sequence of calling commands for different methods in the code is irrelevant, only the aforementioned priorities matter."
+- If the same method is called multiple times in a tick, the last call wins.
+- `transfer` cannot be executed more than once per tick to different targets — only one `transfer` call takes effect.
+- Methods from different (independent) pipelines can run in the same tick.
+
+Unverified (community, https://screeps.com/forum/topic/2483/simultaneous-actions-clarification, forum user "Estecka", who states themself they are not sure of the exact execution order):
+
+- Claim: actions that remove resources from a creep run before actions that fill it, within a tick.
+- Example given: a harvester can `transfer` its carried energy into a container and `harvest` again in the same tick (drain-then-fill order favors the harvester).
+- Counter-example given: an upgrader cannot `withdraw` energy and `upgradeController` with that same energy in the same tick (fill-then-use does not chain).
+
+Open question: whether `withdraw` and `transfer` (different resource, e.g. take from link, put into storage) can both execute in the same tick is **not answered** by the official page or by the forum thread above — the forum thread only discusses withdraw-then-use and harvest/transfer-then-harvest cases, not withdraw-then-transfer. Treat this as unresolved until confirmed by testing (see Implementation below).
 
 Implementation:
 
 - One movement command per creep per tick; last `move`/`moveTo` wins.
 - Avoid issuing `repair` on full structures: it can return `OK` and block other useful work in its pipeline.
 - Check target state before scheduling expensive/competing actions.
+- For a "withdraw from link, transfer to storage" style role: call both `withdraw` and `transfer` every tick regardless of whether the previous tick's action is confirmed yet. Do not gate `transfer` on having observed the withdrawn resource in `creep.store` first — per the Background note above, that would never fire in the same tick it happens.
+- Assume the slower case (one action executes per tick, so a full cycle costs 2 ticks) as the default until measured; do not assume both execute together to claim single-tick throughput.
+- To settle whether a tick can do both: log `creep.store` and the return codes of both calls across a few ticks on a live/local server and compare against actual resource deltas, rather than relying on assumption.
 
 ## Harvest
 

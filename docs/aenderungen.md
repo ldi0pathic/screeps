@@ -97,3 +97,81 @@ Konfiguration und Code, die nichts bewirken. Details und Analysegrundlage in
 ### Sprachkonvention
 
 Neue Bezeichner (Variablen, Funktionen, Typen) werden künftig englisch benannt; Kommentare, Logausgaben und Doku bleiben deutsch. Bestehende Memory- und Konfigurationsschlüssel sowie die Rollennamen bleiben deutsch, weil sie im laufenden Spiel im Creep- und Room-Memory stehen.
+
+## Runde 2026-08-03: Profiler und Kennzahlen (Plan 01)
+
+Fokus dieser Runde: messen können, bevor optimiert wird. Der Server hat 20 CPU
+pro Tick, und das ist die Obergrenze für die Zahl der Räume — nicht Energie und
+nicht GCL. Grundlage ist [Plan 01](plans/01-profiler.md).
+
+### Neu: CPU-Profiler (`src/profiler/`)
+
+| Was | Warum | Erwartete Wirkung |
+| --- | --- | --- |
+| Neues Modul `src/profiler/` mit drei Zuständen `off` / `light` / `full`, umschaltbar zur Laufzeit über die Spielkonsole (`prof.off()`, `prof.light()`, `prof.on()`). Zustand in `Memory.profiler.mode`, übersteht den Global-Reset. | Ohne Messung ist keine Verbesserung belegbar und es wird an der falschen Stelle optimiert. Ein Flag in `config.ts` hätte für jedes Umschalten ein Deployment gebraucht. | Im Standardzustand `off` **keine** Verhaltensänderung: es läuft kein einziges `Game.cpu.getUsed()`. Nachgeprüft am gebauten Bundle — alle sieben `getUsed()`-Stellen liegen hinter einem Zustandsvergleich. |
+| Drei Zustände statt eines Schalters. | Im Zustand `off` läuft kein `getUsed()` — damit lässt sich auch nicht messen, was das Messen kostet. Erst der Vergleich `light` gegen `full` liefert die Eigenkosten. | `light` (ein `getUsed()` je Tick) ist der Dauerzustand, `full` (zusätzlich Abschnitte und Rollen) nur für die Fehlersuche. |
+| Messpunkte in `main.ts` (Raumschleife, Creep-Schleife, `timer.controll()`) und `controller/timing.ts` (Türme, Terminal, Pixel, Spawn, Verteidigung, Statuslog, Tagessequenz). | Diese sieben Abschnitte sind die Kostenträger des Ticks. | Keine; die Aufrufe sind im Zustand `off` und `light` ein sofortiges `return`. |
+| Rollenmessung über einen Wrapper um die Rollentabelle statt über Aufrufe in den Rollen. | `roles/index.ts` und alle zehn Rollendateien bleiben dadurch unverändert, kein Profiler-Aufruf steht in Rollencode. | Eine zusätzliche Indirektion je `doJob`/`spawn`. Die Schlüsselreihenfolge der Tabelle — und damit die Spawn-Priorität in `controller/spawn.ts` — bleibt erhalten. Ausnahmen aus Rollen gehen unverändert durch, die Fehlerbehandlung in `main.ts` bleibt wirksam. |
+| Zähler im Heap, nicht in `Memory`. In `Memory.profiler` steht nur der Zustand plus höchstens acht Grundlinien aus `prof.baseline(name)`. | `Memory` wird jeden Tick serialisiert, die Kosten wachsen mit der Größe (`knowledge/systems/runtime-memory.md`). | `Memory.profiler` bleibt unter 1 KB, im Spiel prüfbar mit `JSON.stringify(Memory.profiler).length`. |
+| Fensterergebnis zusätzlich flach nach `Memory.stats` in der Grafana-Konvention der Community. | Ein externer Sammler (screeps-grafana) wird damit später ohne Codeänderung möglich; Graphen über Tausende Ticks sagen mehr als Konsolenzeilen. | Ein Objekt aus rund 20 Zahlen, nur bei eingeschaltetem Profiler. `prof.off()` löscht es. |
+
+Nicht übernommen wurde Fremdcode: `screepers/screeps-profiler` liegt schon als
+`prod/profiler.js` im Repo und ist als Monkey-Patching aller Prototypen bei
+20 CPU kein Dauerbetrieb (das bleibt Stufe 3 des Plans, zurückgestellt).
+`screepers/screeps-typescript-profiler` legt seine Zähler unbegrenzt in `Memory`
+ab, liest den Zustand bei jedem gewrappten Aufruf aus `Memory` und schaltet über
+eine Build-Konstante. Übernommen ist daraus nur die Wrapping-Mechanik in
+`profiler/decorator.ts`, mit ersetztem Zustand und ersetzter Speicherung.
+
+`experimentalDecorators` in `tsconfig.json` ist für das noch ungenutzte
+`@profile` gesetzt, das der anstehende Umbau der Rollen auf Klassen braucht.
+
+**Offen:** die Eigenkosten von `light` und `full` sind noch nicht gemessen. Sie
+gehören hierher, sobald je 500 Ticks in beiden Zuständen gelaufen sind — bis
+dahin ist die Aussage „kostet fast nichts" unbelegt.
+
+### Behoben: Builder ohne Rückfallprofil
+
+| Modul / Funktion | Was war falsch | Änderung | Wirkung |
+| --- | --- | --- | --- |
+| `roles/builder.ts` · `_getProfil` | Bei `energyCapacityAvailable` unter 550 wurde `numberOfSets` zu 0 und die Funktion lieferte ein leeres Body-Array; `spawnCreep` schlägt damit grundsätzlich fehl. Betroffen sind RCL1-Räume und Räume, die nach einem Angriff darunter fallen — also genau die Phase, die ein neu geclaimter Raum durchläuft. Derselbe Fehler wie beim Miner am 2026-08-01 (A4 oben). | Rückfall auf `[WORK,CARRY,CARRY,MOVE,MOVE]` für genau 300 Energie, wortgleich zu `repairer._getProfil` mit derselben Profilform. | Ab 550 Energie unverändert. Unter 550 entsteht jetzt ein kleiner Builder statt keiner. |
+
+### Rollen auf Klassen, `@profile` und eine neue Rolle
+
+| Was | Warum | Erwartete Wirkung |
+| --- | --- | --- |
+| Alle zehn Rollen sind Klassen mit `implements CreepRole`, `@profile` an der Klasse und ihrer Instanz als Default-Export. `roles/index.ts` importiert Defaults statt Namespaces. | An einem Modul-Namespace kann der Dekorator nicht greifen: esbuild erzeugt für `export function` **Getter**, und die Wrapping-Mechanik steigt bei Gettern aus (im Bundle als `__copyProps` mit `get: () => from[key]` sichtbar). Als Klassen wird jede Methode einzeln messbar. | Keine. Rein strukturell, alle Rümpfe wortgleich übernommen, nur eingerückt und interne Aufrufe auf `this.` umgestellt. Reihenfolge der Tabelle und damit die Spawn-Priorität im gebauten Bundle nachgeprüft. |
+| Klassenmethoden werden in einen **eigenen** Eimer `methods` verbucht, nicht in `roles`. | `wrapRoles` verbucht die Rolle als Ganzes, `@profile` jede Methode. In einer Rangliste stünde dieselbe CPU zweimal und die Anteile summierten über 100 %. | Der Detailbericht hat einen vierten Block „Methoden". Die Fensterzeile nennt weiter die drei teuersten **Rollen** — das Abnahmekriterium aus Plan 01 bleibt erfüllt. |
+| Toter `sayJob` aus allen zehn Rollen entfernt. | Griff auf `this.creep` zu, das an einem `Creep` nicht existiert; der Aufruf hätte geworfen. Niemand rief es auf. Dasselbe Muster wie beim schon entfernten `checkSavedAction`. | Keine. Reine Löschung, 20 Zeilen. |
+| **Neue Rolle `linkkeeper`.** Steht dauerhaft auf dem einen Feld, das an den Link in der Basis (`spawnLink`) und an das Storage angrenzt, und schiebt die Energie aus dem Link ins Storage. Profil aus Konstanten abgeleitet: `ceil(LINK_CAPACITY / CARRY_CAPACITY)` = 16 `CARRY` plus ein `MOVE`, 850 Energie, 51 Ticks Spawnzeit. | Ein voller empfangender Link nimmt nichts mehr an und blockiert damit den Durchsatz **aller** Quell-Links, die auf ihn senden. Den Empfänger zu leeren ist Voraussetzung für den Durchsatz der Strecke, nicht Aufräumen. Ein `MOVE`, weil der Creep nach der Anreise dauerhaft still steht. | Energie aus den Quellräumen landet im Storage statt im Link. In `roles/index.ts` direkt hinter `debitor`, also mit hoher Spawn-Priorität. Eingeschaltet über `sendLinkkeeper` in E58N6, E58N7, E59N3 und E59N9. |
+| `creepBase.harvestSpawnLink` samt aller drei Aufrufe entfernt (`builder` einmal, `debitor` zweimal). | Der `linkkeeper` übernimmt diese Aufgabe; die Energie steht danach im Storage. Kein toter Code. | Builder und Debitor holen die Energie über ihre bestehenden Rückfallpfade aus Storage, Container und Terminal. Im Builder war der Rückgabewert des Aufrufs ohnehin wirkungslos — dort stand direkt danach ein `return;` —, der Kontrollfluss ist also unverändert. `harvestControllerLink` für den **Controller**-Link bleibt bestehen. |
+
+**Kopplung, die man kennen muss:** `sendLinkkeeper` und die Entfernung von
+`harvestSpawnLink` gehören zusammen. Wer `sendLinkkeeper` in einem Raum mit
+`useLinks` ausschaltet, hat niemanden mehr, der den Base-Link leert — er läuft
+voll und blockiert die Quell-Links.
+
+**Offen, weil erst im Spiel zu beobachten:** ob Screeps `transfer` und
+`withdraw` im selben Tick beide auflöst. Ist offiziell nicht dokumentiert
+(Quellenlage in `docs/knowledge/mechanics/creeps-actions.md`). Der `linkkeeper`
+meldet beide Aktionen an und ist in beiden Fällen korrekt — der Umlauf dauert
+dann einen Tick statt zwei. Mit `prof.detail()` messbar.
+
+### Wissensbasis ergänzt
+
+- `knowledge/mechanics/structures-rcl.md`, Abschnitt „Links": der `cooldown`
+  gehört zum **sendenden** Link, der empfangende bekommt vom Empfangen keinen.
+  Genau diese Verwechslung stand kurz davor, in die neue Rolle zu wandern. Dazu
+  die Durchsatzformel und der `CARRY`-Bedarf zum Leeren in einem Zug.
+- `knowledge/mechanics/creeps-actions.md`, Abschnitt „Simultaneous Actions":
+  offizielle Regeln von unbelegter Community-Beobachtung getrennt, die Frage
+  `withdraw` + `transfer` ausdrücklich als offen markiert, und der Hinweis, dass
+  `creep.store` sich innerhalb eines Ticks nicht ändert. Eine irreführende
+  Aufzählung, die `transfer`/`drop`/`pickup` als frei kombinierbar darstellte,
+  ist korrigiert.
+
+### Behoben: Sonderregel in `TransportToHomeStorage`
+
+| Modul / Funktion | Was war falsch | Änderung | Wirkung |
+| --- | --- | --- | --- |
+| `creep/transport.ts` · `TransportToHomeStorage` | Zwei Fehler in einer Sonderregel. **Erstens** Raumverwechslung: die Bedingung prüfte `bot.room[workroom].spawnLink`, der Zugriff darunter las `bot.room[home].spawnLink`. Fallen die beiden auseinander und hat der Heimatraum keinen Link, ist `link` `null` und `link.store[RESOURCE_ENERGY]` wirft. Nicht erreichbar, weil alle Räume mit `workroom != home` `spawnLink: null` haben — aber ein latenter Absturz. **Zweitens** war der Zweck entfallen: die Regel erlaubte einem Creep, der aus dem Storage genommen hatte, das Abliefern in dasselbe Storage, damit Energie aus dem Spawn-Link dorthin gelangt. Dieser Weg lief über `fromId == link.id`, gesetzt vom inzwischen entfernten `harvestSpawnLink`. | Sonderregel entfernt. Es bleibt die Grundregel: nicht dorthin abliefern, wo die Ladung geholt wurde. Damit entfallen beide `bot.room`-Zugriffe und der latente Absturz. Zusätzlich das redundante `if (target)` und das dadurch unerreichbare `return false;` aufgelöst. | In den vier Link-Räumen liefert ein Creep, der aus dem Storage genommen hat, seine Ladung nicht mehr dorthin zurück — das war ein Leerlauf. Er fällt stattdessen auf das nächste Ziel seiner Kette. Den Link leert jetzt der `linkkeeper` direkt. |

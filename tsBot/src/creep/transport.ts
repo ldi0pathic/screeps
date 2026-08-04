@@ -206,23 +206,16 @@ export function TransportToHomeStorage(creep: Creep): boolean {
     if(!target)
         return false;
 
-    //ansonsten werden lnks nicht inden storage geleert :(
-    if(bot.room[creep.memory.workroom]!.spawnLink)
-    {
-        var link: any = Game.getObjectById(bot.room[creep.memory.home]!.spawnLink!);
+    // Nicht dorthin abliefern, wo die Ladung gerade geholt wurde - das wäre ein
+    // Leerlauf. Die frühere Ausnahme für `spawnLink` ist entfallen: sie sollte
+    // Energie aus dem Spawn-Link ins Storage lassen, diesen Weg gibt es seit
+    // dem Entfernen von `harvestSpawnLink` nicht mehr. Den Link leert jetzt die
+    // Rolle `linkkeeper` direkt.
+    if(creep.memory.fromId == target.id)
+        return false;
 
-        if(link.store[RESOURCE_ENERGY] < 100 && creep.memory.fromId == target.id)
-            return false;
+    for (var resourceType in creep.store) {
+        _Transfer(creep, target, resourceType);
     }
-    else if(creep.memory.fromId == target.id) return false;
-
-
-
-    if (target) {
-        for (var resourceType in creep.store) {
-            _Transfer(creep, target, resourceType);
-        }
-        return true;
-    }
-    return false;
+    return true;
 }

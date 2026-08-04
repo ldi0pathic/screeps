@@ -1,7 +1,8 @@
 // builder.ts - Updated to support server selection
 import * as esbuild from "esbuild";
 import { spawn } from "child_process";
-import { ESBUILD_OPTIONS, TSPROD_DIR, stampBuild } from "./build-common.ts";
+import { basename } from "path";
+import { ESBUILD_OPTIONS, TSPROD_DIR, stampBuild, backupMainJs } from "./build-common.ts";
 
 async function startWatch() {
   const serverName = process.argv[2] || "main"; // default to main server
@@ -12,6 +13,14 @@ async function startWatch() {
       {
         name: "rebuild-notifier",
         setup(build) {
+          build.onStart(() => {
+            // Sichern, bevor esbuild main.js überschreibt - onEnd liefe hier zu spät.
+            const backupPath = backupMainJs();
+            if (backupPath) {
+              console.log(`🗄 Vorherige main.js gesichert als ${basename(backupPath)}`);
+            }
+          });
+
           build.onEnd((result) => {
             if (result.errors.length > 0) {
               console.error("❌ Build failed", result.errors);

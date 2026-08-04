@@ -122,12 +122,23 @@ Official:
 - Same-room transfer only.
 - Cooldown is 1 tick per tile linear distance.
 - Energy loss is 3%.
+- `cooldown` is the number of ticks until the link can send again; it is set by `transferEnergy` and belongs to the **sending** link.
+- The **receiving** link gets no cooldown from receiving; its `cooldown` stays 0 unless it sends itself.
+- The 3% loss is deducted from the amount sent.
+
+Derived:
+
+- Max throughput of a link pair = 800 energy per `cooldown` ticks, i.e. `800 / distance` energy/tick. Example: distance 10 tiles -> cooldown 10 ticks -> max throughput = 800 / 10 = 80 energy/tick.
+- A creep that empties a full link in one `withdraw` needs `LINK_CAPACITY / CARRY_CAPACITY` = 800 / 50 = **16 `CARRY`** parts. See also [quick-reference/constants.md](../quick-reference/constants.md) for the raw constants.
+- Links exist from RCL5 on. The RCL table above shows at least 30 extensions available at RCL5, so room energy capacity there is far above the cost of a 16-`CARRY` creep (16 * 50 = 800 energy). A fallback body profile is in practice never needed — but still worth having, since an empty body array makes `spawnCreep` fail outright.
 
 Design:
 
 - Source link -> controller/storage link reduces hauler CPU/path load.
 - Link loss is fixed percentage; use for throughput or CPU savings, not perfect energy efficiency.
 - Cooldown scales with distance, so central receiver placement matters.
+- A wait-for-link loop belongs on the **receiving** link's content (`store`), not on its `cooldown` — that field is always 0 there. To wait out a cooldown, track the **sending** link instead.
+- A full receiving link blocks every sending link that targets it: they have nothing left to hand off to. Emptying the receiver is a throughput precondition for the whole link, not just cleanup.
 
 ## Spawns And Extensions
 

@@ -1,4 +1,4 @@
-// Build: 2026-08-03 22:43:58 +02:00
+// Build: 2026-08-03 22:35:45 +02:00
 "use strict";
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
@@ -940,12 +940,18 @@ function TransportToHomeStorage(creep) {
   var target = creep.room.storage;
   if (!target)
     return false;
-  if (creep.memory.fromId == target.id)
-    return false;
-  for (var resourceType in creep.store) {
-    _Transfer(creep, target, resourceType);
+  if (bot.room[creep.memory.workroom].spawnLink) {
+    var link = Game.getObjectById(bot.room[creep.memory.home].spawnLink);
+    if (link.store[RESOURCE_ENERGY] < 100 && creep.memory.fromId == target.id)
+      return false;
+  } else if (creep.memory.fromId == target.id) return false;
+  if (target) {
+    for (var resourceType in creep.store) {
+      _Transfer(creep, target, resourceType);
+    }
+    return true;
   }
-  return true;
+  return false;
 }
 
 // src/creep/base.ts

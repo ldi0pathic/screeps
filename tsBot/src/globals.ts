@@ -7,6 +7,10 @@
  * statt einer `declare global`-Deklaration.
  */
 
+// Reiner Typimport: `profiler/types.ts` importiert selbst nichts, deshalb
+// entsteht hier keine Importschleife, obwohl der Profiler `bot` benutzt.
+import type { ProfilerHandle } from "./profiler/types";
+
 /** Eine Raumdefinition aus `global.room`. */
 export interface RoomConfig {
   room: string;
@@ -21,6 +25,12 @@ export interface RoomConfig {
   sendBuilder?: boolean;
   sendDefender?: boolean;
   sendClaimer?: boolean;
+  /**
+   * Hält den Link in der Basis (`spawnLink`) leer und schiebt seine Energie
+   * ins Storage. Nötig, sobald `useLinks` gesetzt ist: ein voller Empfänger-Link
+   * blockiert alle Quell-Links, die auf ihn senden.
+   */
+  sendLinkkeeper?: boolean;
   /** Ab wie vielen Feinden Verteidigung ausgelöst wird (Standard 1). */
   minHostile?: number;
   saveRoads?: boolean;
@@ -80,6 +90,11 @@ export interface BotGlobal {
   transfer: Record<string, TransferConfig>;
   log(condition: boolean, message: unknown): void;
   logWorkroom(room: string, message: string): void;
+  /**
+   * Konsolenhandle des Profilers, gesetzt von `profiler/index.ts`. Weil `bot`
+   * dasselbe Objekt wie `global` ist, tippt man im Spiel `prof.report()`.
+   */
+  prof: ProfilerHandle;
 }
 
 export const bot = global as typeof global & BotGlobal;

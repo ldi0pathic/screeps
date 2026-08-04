@@ -42,7 +42,47 @@ Während ein Invader Core gemeldet ist, werden für diesen Arbeitsraum keine nor
 
 Für Räume mit `saveRoads` und RCL mindestens 7 erstellt `rebuildRoads()` fehlende, zuvor gespeicherte Straßen erneut als Baustellen. Pro Raum werden höchstens zehn gleichzeitige Baustellen zugelassen. Erfolgreiche automatische Baustellen werden in `Memory.rooms[name].autobuild` gezählt.
 
-## Optionaler Profiler
+## Profiler (`profiler/`)
+
+Der Server rechnet mit 20 CPU pro Tick — das ist die Obergrenze für die Zahl gleichzeitig verwalteter Räume, nicht Energie und nicht GCL. Ohne Messung lässt sich keine Verbesserung belegen, und es wird leicht an der falschen Stelle optimiert. Der Profiler liefert die Grundlinie für alle weiteren Ausbauschritte (`docs/plans/`). Er ist ein aktiver, in den TS-Bot eingebauter Nachfolger des unten beschriebenen, inaktiven `profiler.js` des alten JS-Bots.
+
+Drei Zustände, kein einfacher Schalter:
+
+| Zustand | Was läuft | `Game.cpu.getUsed()` je Tick |
+| --- | --- | --- |
+| `off` | nichts, Standard nach dem Deployment | 0 |
+| `light` | Gesamttick, Bucket, CPU pro Raum, CPU pro Creep | 1 |
+| `full` | zusätzlich alle Abschnitte und alle Rollen | ~15 + 1 je Creep |
+
+Drei statt zwei Zustände, weil sich die Eigenkosten der Messung sonst nicht ermitteln lassen: Im Zustand `off` läuft überhaupt kein `getUsed()`, damit lässt sich also nicht messen, was das Messen selbst kostet. Erst der Vergleich von `light` gegen `full` über je 500 Ticks liefert diese Eigenkosten. `light` ist der sinnvolle Dauerzustand.
+
+Bedienung über die Konsole, Handle auf `global` (wie `bot` in `globals.ts`), man tippt im Spiel also `prof.report()`:
+
+| Befehl | Wirkung |
+| --- | --- |
+| `prof.on()` | Zustand `full` |
+| `prof.light()` | Zustand `light` |
+| `prof.off()` | Zustand `off` |
+| `prof.status()` | Zustand und Restticks der Detailmessung |
+| `prof.report()` | Bericht über das laufende Fenster |
+| `prof.reset()` | Laufendes Fenster verwerfen und neu beginnen |
+| `prof.detail(ticks)` | Detailmessung für `ticks` Ticks, danach automatische Rückschaltung mit Abschlussbericht |
+| `prof.baseline(name)` | Laufendes Fenster als benannte Grundlinie festhalten |
+| `prof.baselines()` | Alle festgehaltenen Grundlinien nebeneinander |
+
+Der Zustand liegt in `Memory.profiler.mode` und übersteht einen Global-Reset — Umschalten braucht **kein** neues Deployment.
+
+Gemessen werden die Raum-/Memory-Schleife und die Creep-Schleife aus `main.ts` (siehe oben), `controll()` aus `controller/timing.ts` als Ganzes und darin einzeln Türme, Terminal, Pixel, Spawncontroller, Verteidigungsscan, Statuslog und die Tagessequenz — dieselbe Aufteilung wie in der Tabelle unter Zeitsteuerung. Dazu jede Rolle einzeln, gemessen über einen Wrapper um die Rollentabelle, damit `roles/index.ts` und die zehn Rollendateien unverändert bleiben.
+
+Die Auswertung läuft über ein gleitendes Fenster von 100 Ticks; danach gibt eine kompakte Konsolenzeile CPU pro Tick, CPU pro Raum, CPU pro Creep, Bucket-Mittel und die drei teuersten Rollen aus. Die Zähler des laufenden Fensters liegen im Heap, nicht in `Memory` — `Memory` wird jeden Tick serialisiert. In `Memory` steht ausschließlich der Zustand.
+
+`prof.detail(ticks)` misst zusätzlich jeden einzelnen Creep und schaltet sich nach der angegebenen Tickzahl selbst wieder ab, mit Abschlussbericht.
+
+Grenze, die man kennen muss: `Game.cpu.getUsed()` am Ende von `loop()` erfasst nicht die Serialisierung von `Memory`, die das Spiel danach vornimmt. Die gemessenen Zahlen sind also eine Untergrenze.
+
+Vorgehen bei einer Änderung: vorher eine Grundlinie über mindestens 1000 Ticks aufnehmen und mit `prof.baseline(name)` festhalten, dann die Änderung vornehmen, dann erneut mindestens 1000 Ticks messen. Kürzere Fenster schwanken zu stark, weil Spawnwellen, die Tagessequenz (alle 28.800 Ticks, siehe Zeitsteuerung) und Angriffe die Werte verzerren.
+
+## Optionaler Profiler (alter JS-Bot, inaktiv)
 
 `profiler.js` kann Game-/Screeps-Prototypfunktionen wrappen und CPU-Zeiten nach Funktion in `Memory.profiler` aggregieren. In `main.js` sind sowohl `profiler.enable()` als auch der `profiler.wrap(...)`-Block auskommentiert, daher ist er standardmäßig inaktiv. Nach Aktivierung stehen `Game.profiler.stream`, `email`, `profile`, `background`, `restart`, `reset` und `output` bereit.
 
