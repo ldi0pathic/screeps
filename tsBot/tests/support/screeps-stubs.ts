@@ -36,6 +36,21 @@ export const COLOR = {
  */
 export const SCREEPS_CONSTANTS: Record<string, unknown> = {
   OK: 0,
+  ERR_NOT_OWNER: -1,
+  ERR_NO_PATH: -2,
+  ERR_NAME_EXISTS: -3,
+  ERR_BUSY: -4,
+  ERR_NOT_FOUND: -5,
+  ERR_NOT_ENOUGH_RESOURCES: -6,
+  ERR_NOT_ENOUGH_ENERGY: -6,
+  ERR_INVALID_TARGET: -7,
+  ERR_FULL: -8,
+  ERR_NOT_IN_RANGE: -9,
+  ERR_INVALID_ARGS: -10,
+  ERR_TIRED: -11,
+  ERR_NO_BODYPART: -12,
+
+  FIND_FLAGS: 110,
 
   MOVE: "move",
   WORK: "work",
@@ -75,6 +90,17 @@ export interface DrawnText {
 
 /** Alle Texte, die seit dem letzten `resetWorld()` gezeichnet wurden. */
 export const drawnTexts: DrawnText[] = [];
+
+/** Ein von `RoomVisual.circle()` gezeichneter Kreis. */
+export interface DrawnCircle {
+  roomName: string;
+  x: number;
+  y: number;
+  style: Record<string, any>;
+}
+
+/** Alle Kreise, die seit dem letzten `resetWorld()` gezeichnet wurden. */
+export const drawnCircles: DrawnCircle[] = [];
 
 /** Ein `setColor`-Aufruf: Haupt- und Zweitfarbe. */
 export type SetColorCall = [number, number | undefined];
@@ -126,7 +152,8 @@ export function installGlobals(): void {
       return this;
     }
 
-    circle(): this {
+    circle(x: number, y: number, style: Record<string, any> = {}): this {
+      drawnCircles.push({ roomName: this.roomName, x, y, style });
       return this;
     }
   };
@@ -166,6 +193,7 @@ export function resetWorld(): void {
   for (const key of Object.keys(anyGlobal.Game.flags)) delete anyGlobal.Game.flags[key];
   for (const key of Object.keys(anyGlobal.room)) delete anyGlobal.room[key];
   anyGlobal.Game.time = 1000;
+  drawnCircles.length = 0;
   cpu.used = 0;
   cpu.bucket = 10000;
   cpu.limit = 20;
