@@ -47,6 +47,8 @@ Verbindlich für jede nicht triviale Aufgabe in diesem Repository:
 ```bash
 pnpm install                    # nach dem Klonen einmal; node_modules ist nicht versioniert
 pnpm build                      # build.ts: esbuild src/main.ts -> ../tsProd/main.js (cjs, target node10)
+pnpm test                       # test.ts: buendelt tests/*.test.ts mit esbuild, laeuft mit `node --test`
+pnpm smoke                      # build + smoke.ts: laedt tsProd/main.js in gestellter Welt, faehrt 17 Ticks
 pnpm upload [local|main|ptr]    # lädt jede .js aus ../tsProd zu einem Server aus .screeps.json
 pnpm push / push:local / push:ptr
 pnpm watch / watch:local / watch:ptr   # Rebuild + Auto-Upload bei Änderungen
@@ -54,7 +56,16 @@ pnpm exec tsc --noEmit          # Typecheck (tsconfig hat kein noEmit/outDir; im
 cd server && docker-compose up -d      # lokaler Privatserver (braucht server/.env)
 ```
 
-Es gibt keine Tests und keinen Linter. Verifikation = `pnpm exec tsc --noEmit` plus `pnpm build`, endgültig ein Lauf auf dem lokalen Docker-Server oder PTR (`push:local` / `push:ptr`). Der Typecheck ist fehlerfrei und deckt den gesamten `src/`-Baum ab; es gibt kein `@ts-nocheck` mehr.
+Einen Linter gibt es nicht. Verifikation = `pnpm exec tsc --noEmit` plus `pnpm test`, `pnpm build` und `pnpm smoke`, endgültig ein Lauf auf dem lokalen Docker-Server oder PTR (`push:local` / `push:ptr`). Der Typecheck ist fehlerfrei und deckt den gesamten `src/`-Baum ab; es gibt kein `@ts-nocheck` mehr.
+
+**Tests** liegen in `tsBot/tests/` und laufen ohne Spiel gegen gestellte Globals (`tests/support/screeps-stubs.ts` legt `Game`, `Memory`, `RoomVisual`, `global.room` und die Farbkonstanten an). Zwei Regeln, an denen sonst still etwas kaputtgeht:
+
+- `Game` und `Memory` werden **geleert, nie ersetzt** — Botmodule greifen den Verweis beim Laden ab (`profiler/state.ts`), ein neues Objekt käme dort nie an.
+- Das Modul unter Test wird **nach** dem Anlegen der Globals geladen (`await import(...)` im Test), nicht per statischem Import.
+
+`tests/` steht bewusst nicht in `tsconfig.json` (`include: ["src"]`) — wie `build.ts` und `upload.ts` gehören die Testdateien zum Werkzeug, nicht zum Bot. Ausgeführt werden sie gebündelt, jede Datei für sich, damit kein Modulzustand in den nächsten Test wandert.
+
+`pnpm smoke` ist der Gegenpol dazu: er lädt das **gebaute** `tsProd/main.js` in einem `vm`-Kontext mit gestellter, leerer Welt und fährt 17 Ticks über alle drei Profilerzustände plus Flaggenwechsel. Unbekannte Screeps-Konstanten liefert ein Proxy als `0` und meldet sie am Ende; tragfähig ist das nur, weil die gestellten Räume auf jedes `find()` eine leere Liste geben. Der Test schlägt fehl, sobald ein Tick wirft oder der Bot über `Game.notify` einen Fehler meldet.
 
 Da das Spiel per GitHub synct, gehört zu jeder Codeänderung ein `pnpm build`, damit `tsProd/main.js` zum Stand von `src/` passt. Der Upload per `pnpm push` ist der alternative Weg (Screeps-API) und für den lokalen Server bzw. PTR gedacht.
 

@@ -191,6 +191,21 @@ Bedienung, Farbtabelle und Regeln stehen in
 Memory-Schlüssel in
 [konfiguration-und-memory.md](konfiguration-und-memory.md#profiler-memory-memoryprofiler-memorystats).
 
+### Neu: Tests (`tsBot/tests/`, `pnpm test`, `pnpm smoke`)
+
+Bis hierher war die Verifikation Typecheck plus Build — beides sagt nichts über
+Verhalten. Ab jetzt:
+
+| Was | Warum | Umfang |
+| --- | --- | --- |
+| `pnpm test`: Unittests in `tsBot/tests/` mit `node:test`, gebündelt von esbuild. Keine neue Abhängigkeit. | Die Flankenauswertung des Flaggen-Schalters und die Kennzahlen des Fensters sind genau die Art Logik, die im Spiel erst Ticks später auffällt. | 15 Tests: Flaggen-Schalter (Flanke, Quittung, unbelegte Farbe, Legende samt Raumrand) und Messfenster (leeres Fenster ohne `NaN`, kein `getUsed()` im Zustand `off`, CPU je Raum und Creep, Anteile, Detailmessung, Fälligkeit nach 100 Ticks). |
+| `pnpm smoke`: baut und lädt danach das **gebaute** `tsProd/main.js` in einem `vm`-Kontext mit gestellter, leerer Welt; fährt 17 Ticks über alle drei Zustände und beide Flaggenwechsel. | Ein Unittest lädt einzelne Module. Ob das **Bundle** lädt, die Seiteneffekte von `config.ts` in der richtigen Reihenfolge laufen und ein ganzer Tick durchkommt, prüft nur der Lauf gegen das Artefakt. | Schlägt fehl, sobald ein Tick wirft oder der Bot über `Game.notify` einen Fehler meldet. Unbekannte Screeps-Konstanten liefert ein Proxy als `0` und meldet sie — tragfähig nur, weil die gestellten Räume auf jedes `find()` eine leere Liste geben. |
+
+Die Testbasis lebt außerhalb von `tsconfig.json` (`include: ["src"]`), wie
+`build.ts` und `upload.ts`: sie ist Werkzeug, nicht Bot. Details und die zwei
+Regeln, an denen sonst still etwas kaputtgeht (`Memory` leeren statt ersetzen,
+Modul erst nach den Globals laden), stehen in `CLAUDE.md`.
+
 **Nicht gebaut:** die klickbare Knopfzeile in der Konsole. Sie wäre bequemer,
 hängt aber an Client-Internas, lebt im Log (scrollt weg, müsste also regelmäßig
 neu ausgegeben werden und würde die Konsole zumüllen) und schickt rohes HTML an
