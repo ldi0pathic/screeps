@@ -8,6 +8,7 @@
  */
 
 import { bot } from "../globals";
+import { ContainerList } from "./containers";
 import * as creepBaseGoTo from "./goto";
 import { RememberedTarget, collectFrom, withdrawFrom } from "./target";
 import * as creepBaseTransport from "./transport";
@@ -126,53 +127,40 @@ export function harvestRoomStorage(creep: Creep, type: string): boolean {
 
 export function harvestRoomContainer(creep: Creep, type: string, mul?: number): boolean {
     if (!mul) mul = 0.5;
-    var container: any;
-    if (creep.memory.useContainer) {
-        container = Game.getObjectById(creep.memory.useContainer);
+
+    const remembered = new RememberedTarget(creep.memory, "useContainer");
+    const containers = new ContainerList(creep.room.name);
+    // Es soll sich lohnen: der Container muss einen guten Teil der Ladung füllen.
+    const minAmount = creep.store.getFreeCapacity() * mul;
+
+    let container: any = null;
+    if (remembered.isRemembered) {
+        container = remembered.resolve();
     }
-    else if(Memory.rooms[creep.room.name] && Memory.rooms[creep.room.name]!.container && Memory.rooms[creep.room.name]!.container.length > 0) {
-        var distance = Infinity;
-        var minCap = creep.store.getFreeCapacity() * mul;
-        for(var id of Memory.rooms[creep.room.name]!.container)
-        {
-            var c: any = Game.getObjectById(id);
-            if(!c){
-                delete Memory.rooms[creep.room.name]!.container;
-            }
-            if(c && c.store.getUsedCapacity(type) >  minCap)
-            {
-                var d = Math.sqrt(Math.pow(c.pos.x - creep.pos.x, 2) + Math.pow(c.pos.y - creep.pos.y, 2));
-                if(d < distance)
-                {
-                    //console.log('['+creep.room.name+'] d: '+d + ' << distance: '+distance + ' count >'+Memory.rooms[creep.room.name].container.length );
-                    distance = d;
-                    container = c;
-                    creep.memory.useContainer = c.id;
-                }
-            }
+    else if (containers.hasEntries) {
+        // Eine Id ohne Objekt verwirft hier die ganze Liste — sie wird dann neu
+        // erhoben. Die Ablieferseite in `transport.ts` tut das nicht.
+        container = containers.nearest(creep,
+            (candidate: any) => candidate.store.getUsedCapacity(type) > minAmount,
+            { forgetListOnStaleId: true });
+
+        if (container) {
+            remembered.remember(container);
         }
-    } else if(Memory.rooms[creep.room.name] && (!Memory.rooms[creep.room.name]!.container || (Memory.rooms[creep.room.name]!.container && Memory.rooms[creep.room.name]!.container.length == 0)))
-    {
-        var containers = creep.room.find(FIND_STRUCTURES,  {filter: (structure) =>
-        {
-            return  structure.structureType === STRUCTURE_CONTAINER
-        }});
-
-        Memory.rooms[creep.room.name]!.container = containers.map( c => {
-            return c.id
-        });
-
-        return (containers.length > 0);
+    }
+    else if (containers.isRoomKnown) {
+        // Erst die Liste erheben; geholt wird im nächsten Tick.
+        return containers.discover(creep.room);
     }
 
-    if (container && container.store.getUsedCapacity(type)  > creep.store.getFreeCapacity() * mul) {
+    if (container && container.store.getUsedCapacity(type) > minAmount) {
         if (withdrawFrom(creep, container, type)) {
             return true;
         }
     }
 
     // Nichts geholt: die Wahl war schlecht, im nächsten Tick neu suchen.
-    delete creep.memory.useContainer;
+    remembered.forget();
     return false;
 }
 

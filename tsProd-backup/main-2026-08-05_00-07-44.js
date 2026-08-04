@@ -1,4 +1,4 @@
-// Build: 2026-08-05 00:31:13 +02:00
+// Build: 2026-08-05 00:07:44 +02:00
 "use strict";
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
@@ -702,95 +702,6 @@ function rebuildRoads() {
   }
 }
 
-// src/creep/containers.ts
-var ContainerList = class {
-  constructor(roomName) {
-    this.roomName = roomName;
-  }
-  get roomMemory() {
-    return Memory.rooms[this.roomName];
-  }
-  /** Kennt der Bot den Raum überhaupt? Ohne Raum-Memory gibt es nichts zu tun. */
-  get isRoomKnown() {
-    return this.roomMemory !== void 0;
-  }
-  /**
-   * Liegt überhaupt eine Liste vor — auch eine leere?
-   *
-   * Der Unterschied zu `hasEntries` ist keine Spitzfindigkeit: die Ablieferseite
-   * behandelt eine **leere** Liste als „keine Container da" und erhebt sie nicht
-   * neu, die Beschaffungsseite erhebt sie neu. Beides war schon so und bleibt so.
-   */
-  get hasList() {
-    var _a;
-    return ((_a = this.roomMemory) == null ? void 0 : _a.container) !== void 0;
-  }
-  /** Liegt eine nicht leere Liste vor? */
-  get hasEntries() {
-    var _a;
-    const ids = (_a = this.roomMemory) == null ? void 0 : _a.container;
-    return ids !== void 0 && ids.length > 0;
-  }
-  /** Verwirft die Liste; sie wird dann neu erhoben. */
-  forget() {
-    const memory = this.roomMemory;
-    if (memory) {
-      delete memory.container;
-    }
-  }
-  /**
-   * Erhebt die Container des Raums und schreibt die Liste ins Memory.
-   * Liefert `true`, wenn es welche gibt — der Aufrufer beendet damit seinen Tick,
-   * denn geholt oder abgeliefert wurde in diesem Durchgang noch nichts.
-   */
-  discover(room) {
-    const memory = this.roomMemory;
-    if (!memory) {
-      return false;
-    }
-    const containers = room.find(FIND_STRUCTURES, {
-      filter: (structure) => structure.structureType === STRUCTURE_CONTAINER
-    });
-    memory.container = containers.map((container) => container.id);
-    return containers.length > 0;
-  }
-  /**
-   * Der nächstgelegene Container, der `accepts` erfüllt — oder `null`.
-   *
-   * Verglichen wird die **quadrierte** Entfernung: für die Reihenfolge ist das
-   * dasselbe wie die Wurzel, spart aber je Kandidat eine Wurzelberechnung.
-   */
-  nearest(creep, accepts, options = {}) {
-    var _a;
-    const ids = (_a = this.roomMemory) == null ? void 0 : _a.container;
-    if (!ids) {
-      return null;
-    }
-    let nearest = null;
-    let nearestDistance = Infinity;
-    for (const id of ids) {
-      const container = Game.getObjectById(id);
-      if (!container) {
-        if (options.forgetListOnStaleId) {
-          this.forget();
-        }
-        continue;
-      }
-      if (!accepts(container)) {
-        continue;
-      }
-      const dx = container.pos.x - creep.pos.x;
-      const dy = container.pos.y - creep.pos.y;
-      const distance = dx * dx + dy * dy;
-      if (distance < nearestDistance) {
-        nearestDistance = distance;
-        nearest = container;
-      }
-    }
-    return nearest;
-  }
-};
-
 // src/creep/path-memory.ts
 var STUCK_TICKS = 3;
 var PathMemory = class {
@@ -1005,20 +916,6 @@ function collectFrom(creep, target, remembered, state2) {
       return false;
   }
 }
-function transferTo(creep, target, type) {
-  if (!target) {
-    return false;
-  }
-  switch (creep.transfer(target, type)) {
-    case ERR_NOT_IN_RANGE:
-      moveByMemory(creep, target.pos);
-      return true;
-    case OK:
-      return true;
-    default:
-      return false;
-  }
-}
 function withdrawFrom(creep, target, type) {
   switch (creep.withdraw(target, type)) {
     case ERR_NOT_IN_RANGE:
@@ -1033,27 +930,47 @@ function withdrawFrom(creep, target, type) {
 }
 
 // src/creep/transport.ts
-function findDeliveryTarget(creep, types, accepts) {
-  return creep.pos.findClosestByPath(FIND_MY_STRUCTURES, {
-    filter: (structure) => types.includes(structure.structureType) && accepts(structure) && structure.id != creep.memory.fromId
-  });
+function _Transfer(creep, target, type) {
+  if (target) {
+    switch (creep.transfer(target, type)) {
+      case ERR_NOT_IN_RANGE:
+        moveByMemory(creep, target.pos);
+        return true;
+      case OK:
+        return true;
+      default:
+        return false;
+    }
+  }
+  return false;
 }
 function TransportToHomeContainer(creep, type, mul) {
+  var container;
   if (!mul) mul = 0.5;
-  const remembered = new RememberedTarget(creep.memory, "useContainer");
-  const containers = new ContainerList(creep.room.name);
-  const minFree = creep.store.getUsedCapacity() * mul;
-  const mineralContainerId = bot.room[creep.room.name].mineralContainerId;
-  let container = null;
-  if (remembered.isRemembered) {
-    container = remembered.resolve();
-  } else if (containers.hasList) {
-    container = containers.nearest(creep, (candidate) => candidate.store.getFreeCapacity(type) > minFree && candidate.id != mineralContainerId && candidate.id != creep.memory.fromId);
-    if (container) {
-      remembered.remember(container);
+  if (creep.memory.useContainer) {
+    container = Game.getObjectById(creep.memory.useContainer);
+  } else if (Memory.rooms[creep.room.name] && Memory.rooms[creep.room.name].container) {
+    var distance = Infinity;
+    var minCap = creep.store.getUsedCapacity() * mul;
+    for (var id of Memory.rooms[creep.room.name].container) {
+      var c = Game.getObjectById(id);
+      if (c && c.store.getFreeCapacity(type) > minCap && c.id != bot.room[creep.room.name].mineralContainerId && c.id != creep.memory.fromId) {
+        var d = Math.sqrt(Math.pow(creep.pos.x - c.pos.x, 2) + Math.pow(creep.pos.y - c.pos.y, 2));
+        if (d < distance) {
+          distance = d;
+          container = c;
+          creep.memory.useContainer = container.id;
+        }
+      }
     }
-  } else if (containers.isRoomKnown) {
-    return containers.discover(creep.room);
+  } else if (Memory.rooms[creep.room.name] && !Memory.rooms[creep.room.name].container) {
+    var containers = creep.room.find(FIND_STRUCTURES, { filter: (structure) => {
+      return structure.structureType === STRUCTURE_CONTAINER;
+    } });
+    Memory.rooms[creep.room.name].container = containers.map((c2) => {
+      return c2.id;
+    });
+    return containers.length > 0;
   }
   if (container && container.store.getFreeCapacity() > 0) {
     switch (creep.transfer(container, type)) {
@@ -1061,24 +978,23 @@ function TransportToHomeContainer(creep, type, mul) {
         moveByMemory(creep, container.pos);
         return true;
       case OK:
-        remembered.forget();
+        delete creep.memory.useContainer;
         return true;
       default:
         return false;
     }
   }
-  remembered.forget();
+  delete creep.memory.useContainer;
   return false;
 }
 function TransportToHomeTerminal(creep) {
   if (!creep.room.controller.my || creep.room.controller.level < 6)
     return false;
-  const roomMemory = Memory.rooms[creep.memory.workroom];
   var terminal;
-  if (roomMemory.terminalId) {
-    terminal = Game.getObjectById(roomMemory.terminalId);
+  if (Memory.rooms[creep.memory.workroom].terminalId) {
+    terminal = Game.getObjectById(Memory.rooms[creep.memory.workroom].terminalId);
     if (!terminal) {
-      delete roomMemory.terminalId;
+      delete Memory.rooms[creep.memory.workroom].terminalId;
       return false;
     }
   } else {
@@ -1091,36 +1007,46 @@ function TransportToHomeTerminal(creep) {
       }
     );
     if (target.length > 0) {
-      roomMemory.terminalId = target[0].id;
+      Memory.rooms[creep.memory.workroom].terminalId = target[0].id;
       terminal = target[0];
     }
   }
   if (terminal && terminal.store.getFreeCapacity() > 0) {
-    var delivered = false;
+    var t = false;
     for (var resourceType in creep.store) {
       if (resourceType == RESOURCE_ENERGY && terminal.store[RESOURCE_ENERGY] > 1e5)
         continue;
-      if (transferTo(creep, terminal, resourceType)) {
-        delivered = true;
+      if (_Transfer(creep, terminal, resourceType) && !t) {
+        t = true;
       }
     }
-    return delivered;
+    return t;
   }
   return false;
 }
 function TransportToHomeLab(creep, type) {
-  const target = findDeliveryTarget(creep, [STRUCTURE_LAB], (structure) => structure.store.getFreeCapacity([type]) > 0);
-  return transferTo(creep, target, type);
+  var target = creep.pos.findClosestByPath(
+    FIND_MY_STRUCTURES,
+    {
+      filter: (structure) => {
+        return structure.structureType === STRUCTURE_LAB && structure.store.getFreeCapacity([type]) > 0 && structure.id != creep.memory.fromId;
+      }
+    }
+  );
+  return _Transfer(creep, target, type);
 }
 function TransportEnergyToHomeSpawn(creep) {
   if (creep.memory.home != creep.room.name || creep.store[RESOURCE_ENERGY] == 0)
     return false;
-  const target = findDeliveryTarget(
-    creep,
-    [STRUCTURE_SPAWN, STRUCTURE_EXTENSION],
-    (structure) => structure.store.getFreeCapacity([RESOURCE_ENERGY]) > 0
+  var target = creep.pos.findClosestByPath(
+    FIND_MY_STRUCTURES,
+    {
+      filter: (structure) => {
+        return (structure.structureType === STRUCTURE_SPAWN || structure.structureType === STRUCTURE_EXTENSION) && structure.store.getFreeCapacity([RESOURCE_ENERGY]) > 0 && structure.id != creep.memory.fromId;
+      }
+    }
   );
-  return transferTo(creep, target, RESOURCE_ENERGY);
+  return _Transfer(creep, target, RESOURCE_ENERGY);
 }
 function TransportEnergyToHomeTower(creep) {
   if (creep.store[RESOURCE_ENERGY] == 0)
@@ -1133,11 +1059,11 @@ function TransportEnergyToHomeTower(creep) {
       }
     }
   );
-  if (towers.length === 0) {
-    return false;
+  if (towers.length > 0) {
+    towers.sort((a, b) => b.store.getFreeCapacity(RESOURCE_ENERGY) - a.store.getFreeCapacity(RESOURCE_ENERGY));
+    return _Transfer(creep, towers[0], RESOURCE_ENERGY);
   }
-  towers.sort((a, b) => b.store.getFreeCapacity(RESOURCE_ENERGY) - a.store.getFreeCapacity(RESOURCE_ENERGY));
-  return transferTo(creep, towers[0], RESOURCE_ENERGY);
+  return false;
 }
 function TransportToHomeStorage(creep) {
   var target = creep.room.storage;
@@ -1146,7 +1072,7 @@ function TransportToHomeStorage(creep) {
   if (creep.memory.fromId == target.id)
     return false;
   for (var resourceType in creep.store) {
-    transferTo(creep, target, resourceType);
+    _Transfer(creep, target, resourceType);
   }
   return true;
 }
@@ -1233,30 +1159,41 @@ function harvestRoomStorage(creep, type) {
 }
 function harvestRoomContainer(creep, type, mul) {
   if (!mul) mul = 0.5;
-  const remembered = new RememberedTarget(creep.memory, "useContainer");
-  const containers = new ContainerList(creep.room.name);
-  const minAmount = creep.store.getFreeCapacity() * mul;
-  let container = null;
-  if (remembered.isRemembered) {
-    container = remembered.resolve();
-  } else if (containers.hasEntries) {
-    container = containers.nearest(
-      creep,
-      (candidate) => candidate.store.getUsedCapacity(type) > minAmount,
-      { forgetListOnStaleId: true }
-    );
-    if (container) {
-      remembered.remember(container);
+  var container;
+  if (creep.memory.useContainer) {
+    container = Game.getObjectById(creep.memory.useContainer);
+  } else if (Memory.rooms[creep.room.name] && Memory.rooms[creep.room.name].container && Memory.rooms[creep.room.name].container.length > 0) {
+    var distance = Infinity;
+    var minCap = creep.store.getFreeCapacity() * mul;
+    for (var id of Memory.rooms[creep.room.name].container) {
+      var c = Game.getObjectById(id);
+      if (!c) {
+        delete Memory.rooms[creep.room.name].container;
+      }
+      if (c && c.store.getUsedCapacity(type) > minCap) {
+        var d = Math.sqrt(Math.pow(c.pos.x - creep.pos.x, 2) + Math.pow(c.pos.y - creep.pos.y, 2));
+        if (d < distance) {
+          distance = d;
+          container = c;
+          creep.memory.useContainer = c.id;
+        }
+      }
     }
-  } else if (containers.isRoomKnown) {
-    return containers.discover(creep.room);
+  } else if (Memory.rooms[creep.room.name] && (!Memory.rooms[creep.room.name].container || Memory.rooms[creep.room.name].container && Memory.rooms[creep.room.name].container.length == 0)) {
+    var containers = creep.room.find(FIND_STRUCTURES, { filter: (structure) => {
+      return structure.structureType === STRUCTURE_CONTAINER;
+    } });
+    Memory.rooms[creep.room.name].container = containers.map((c2) => {
+      return c2.id;
+    });
+    return containers.length > 0;
   }
-  if (container && container.store.getUsedCapacity(type) > minAmount) {
+  if (container && container.store.getUsedCapacity(type) > creep.store.getFreeCapacity() * mul) {
     if (withdrawFrom(creep, container, type)) {
       return true;
     }
   }
-  remembered.forget();
+  delete creep.memory.useContainer;
   return false;
 }
 function harvestControllerLink(creep, type) {

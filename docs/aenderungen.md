@@ -301,3 +301,40 @@ Ressourcenkonstante. Das funktioniert nur, weil der Wert bei der
 Schlüsselsuche zu `"energy"` wird; dokumentiert ist es nicht. `transport.ts` ist
 in dieser Runde bewusst unangetastet geblieben (Container-Auswahl und diese
 Aufrufe gehören zusammen betrachtet) und ist der Kandidat für die nächste Runde.
+
+## Runde 2026-08-05: Ablieferketten und Containerauswahl
+
+Fünfte Modernisierungsrunde, **ohne Verhaltensänderung**. Wieder test-zuerst: die
+acht Tests zu `transport.ts` liefen gegen die alte Fassung grün, bevor umgebaut
+wurde.
+
+| Was | Warum | Wirkung |
+| --- | --- | --- |
+| Neue Klasse `ContainerList` (`src/creep/containers.ts`) für `Memory.rooms[<raum>].container`: Liste kennen, bei Bedarf neu erheben, den nächstgelegenen passenden Container finden. **Was** passend heißt, gibt der Aufrufer als Prüfung mit — beim Holen zählt der Inhalt, beim Abliefern der freie Platz. | Beide Seiten suchten denselben Container aus derselben Liste, mit je eigener Entfernungsrechnung und gespiegelten Bedingungen: `base.ts` (holen) und `transport.ts` (abliefern). | Keine. Verglichen wird jetzt die **quadrierte** Entfernung — für die Reihenfolge dasselbe wie die Wurzel, spart aber je Kandidat eine Wurzelberechnung. |
+| `_Transfer` heißt `transferTo` und steht in `creep/target.ts` bei seinem Gegenstück `withdrawFrom`. | Beides ist dieselbe Frage („handeln oder hinlaufen?"), nur in zwei Richtungen. Der Unterschied steht jetzt dort dokumentiert: beim Abliefern wird **kein** `fromId` gesetzt, denn es gibt keine Quelle. | Keine. Vier Ablieferfunktionen benutzen es. |
+| Neuer Helfer `findDeliveryTarget` in `transport.ts` für die Suche „nächstes eigenes Bauwerk dieser Typen, das Platz hat und nicht die Quelle der Ladung ist". | Zweimal derselbe Filteraufbau. Terminal und Türme benutzen ihn bewusst **nicht**: der Terminal wird über eine gemerkte Id gefunden, die Türme nach Lücke sortiert, und beide kennen die `fromId`-Regel nicht. | Keine. |
+| **Toter Code entfernt:** `CheckIsFreelancer` wurde exportiert, aber von keiner Datei benutzt. | Kein toter Code — Git ist das Archiv. | Keine. |
+
+**Zwei Unterschiede zwischen Holen und Abliefern**, die vorher nur aus dem
+Kontrollfluss zu lesen waren und jetzt benannt sind:
+
+- Eine **leere** Containerliste bedeutet beim Abliefern „keine Container da"; die
+  Beschaffungsseite erhebt sie dann neu (`hasList` gegen `hasEntries`).
+- Eine Id ohne Objekt verwirft beim Holen die **ganze** Liste (sie wird neu
+  erhoben), beim Abliefern wird sie stillschweigend übersprungen
+  (`forgetListOnStaleId`).
+
+Beides bleibt, wie es war. Ob die Ablieferseite nicht auch selbstheilend sein
+sollte, ist eine Verhaltensfrage und gehört zu Plan 05.
+
+**Drei Abweichungen, die ich beim Gegenlesen der eigenen Änderung gefunden habe**
+— alle drei vor dem Commit zurückgedreht, und alle drei hätten die Tests sonst
+gefunden:
+
+1. `hasEntries` statt `hasList` beim Abliefern hätte aus einer leeren Liste eine
+   Neuerhebung gemacht.
+2. `transferTo` in der Containerablieferung hätte die gemerkte Wahl schon auf dem
+   **Hinweg** vergessen, nicht erst nach der Ablieferung. Dort steht deshalb
+   weiterhin ein eigener `switch`, mit Begründung im Code.
+3. Beim Terminal hatte ich die Kapazitätsprüfung negiert — dieselbe Falle wie in
+   der Runde davor. Sie ist wieder positiv formuliert.

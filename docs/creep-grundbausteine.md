@@ -26,6 +26,8 @@ Terminaltransport ist erst ab RCL 6 möglich und merkt sich die Terminal-ID unte
 
 ## Bewegung
 
+Die Containerliste eines Raums (`Memory.rooms[<raum>].container`) liegt hinter der Klasse `ContainerList` in `tsBot/src/creep/containers.ts` — beide Seiten benutzen sie, das Holen in `base.ts` und das Abliefern in `transport.ts`. Zwei Unterschiede zwischen ihnen sind alt und absichtlich erhalten: eine **leere** Liste bedeutet beim Abliefern „keine Container da", während die Beschaffungsseite sie neu erhebt; und eine Id ohne Objekt verwirft beim Holen die ganze Liste, beim Abliefern wird sie nur übersprungen.
+
 Die Beschaffungsketten (`harvestRoom*`, `harvestControllerLink`, `harvestMyContainer`, `harvestNotfall`) teilen sich zwei Bausteine aus `tsBot/src/creep/target.ts`:
 
 - **`RememberedTarget`** kapselt einen Memory-Schlüssel wie `useRoomDrop`, `useTombstone`, `useRuin`, `useContainer` oder `useRoomSource`. Regel, die dabei zählt: ist ein Ziel gemerkt, das es nicht mehr gibt, wird in diesem Tick **nicht** ersatzweise gesucht — der Creep vergisst es und versucht es im nächsten Tick neu. Das begrenzt die Zahl der Pfadsuchen je Tick.

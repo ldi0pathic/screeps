@@ -1,95 +1,97 @@
 /**
- * Ablieferziele der Transport-Creeps: Spawn/Extensions, Türme, Storage,
+ * Ablieferziele der Transport-Creeps: Spawn und Extensions, Türme, Storage,
  * Terminal, Labs und Container.
  *
- * Inhaltlich identisch zu `prod/creep.base.transport.js`. Die Filter-Callbacks
- * der `find`-Aufrufe bleiben vorerst untypisiert (`any`), weil sie
+ * Die Auswertung einer Ablieferung steckt in `transferTo` (`./target.ts`), die
+ * Containerliste in `ContainerList` (`./containers.ts`) — beides teilt sich diese
+ * Datei mit der Beschaffungsseite in `base.ts`.
+ *
+ * Die Filter-Callbacks der `find`-Aufrufe bleiben untypisiert (`any`), weil sie
  * strukturübergreifend auf `store` zugreifen.
+ *
+ * **Eigenart, die hier absichtlich unverändert bleibt:** mehrere Aufrufe
+ * übergeben `getFreeCapacity` ein Array (`[RESOURCE_ENERGY]`) statt der
+ * Ressourcenkonstante. Das wirkt nur, weil der Wert bei der Schlüsselsuche zu
+ * `"energy"` wird; dokumentiert ist es nicht. Es zu begradigen könnte ändern,
+ * welche Ziele gefunden werden, und gehört deshalb in eine Runde mit Messung —
+ * siehe `docs/aenderungen.md`.
  */
 
 import { bot } from "../globals";
-import * as creepBaseGoTo from "./goto";
+import { ContainerList } from "./containers";
+import { moveByMemory } from "./goto";
+import { RememberedTarget, transferTo } from "./target";
 
-export function _Transfer(
+/**
+ * Nächstes eigenes Bauwerk eines der Typen, das `accepts` erfüllt und **nicht**
+ * die Quelle der aktuellen Ladung ist.
+ *
+ * Terminal und Türme benutzen das bewusst nicht: der Terminal wird über eine
+ * gemerkte Id gefunden, die Türme werden nach Lücke sortiert, und beide kennen
+ * die `fromId`-Regel nicht.
+ */
+function findDeliveryTarget(
     creep: Creep,
-    target: AnyStructure | null | undefined,
-    type: string,
-): boolean {
-    if (target) {
-        switch (creep.transfer(target, type as ResourceConstant))
-        {
-            case ERR_NOT_IN_RANGE:
-                creepBaseGoTo.moveByMemory(creep, target.pos);
-                return true;
-
-            case OK:
-                return true;
-
-            default:
-                return false;
-        }
-    }
-    return false;
-}
-
-export function CheckIsFreelancer(creep: Creep): boolean {
-    return creep.memory.container == '';
+    types: string[],
+    accepts: (structure: any) => boolean,
+): AnyStructure | null {
+    return creep.pos.findClosestByPath(FIND_MY_STRUCTURES, {
+        filter: (structure: any) =>
+            types.includes(structure.structureType) &&
+            accepts(structure) &&
+            structure.id != creep.memory.fromId,
+    });
 }
 
 export function TransportToHomeContainer(creep: Creep, type: string, mul?: number): boolean {
-    var container: any;
-    if(!mul) mul = 0.5;
-    if (creep.memory.useContainer) {
-        container = Game.getObjectById(creep.memory.useContainer);
+    if (!mul) mul = 0.5;
+
+    const remembered = new RememberedTarget(creep.memory, "useContainer");
+    const containers = new ContainerList(creep.room.name);
+    // Es soll sich lohnen: der Container muss einen guten Teil der Ladung aufnehmen.
+    const minFree = creep.store.getUsedCapacity() * mul;
+    const mineralContainerId = bot.room[creep.room.name]!.mineralContainerId;
+
+    let container: any = null;
+    if (remembered.isRemembered) {
+        container = remembered.resolve();
     }
-    else if(Memory.rooms[creep.room.name] && Memory.rooms[creep.room.name]!.container) {
-        var distance = Infinity;
-        var minCap = creep.store.getUsedCapacity() * mul;
-        for(var id of Memory.rooms[creep.room.name]!.container)
-        {
-            var c: any = Game.getObjectById(id);
-            if(c && c.store.getFreeCapacity(type) >  minCap && c.id != bot.room[creep.room.name]!.mineralContainerId && c.id != creep.memory.fromId )
-            {
-                var d = Math.sqrt(Math.pow(creep.pos.x - c.pos.x, 2) + Math.pow(creep.pos.y - c.pos.y, 2));
-                if(d < distance)
-                {
-                    distance = d;
-                    container = c;
-                    creep.memory.useContainer = container.id;
-                }
-            }
+    else if (containers.hasList) {
+        // Auch eine leere Liste gilt hier als „keine Container da" — anders als
+        // auf der Beschaffungsseite, die dann neu erhebt.
+        container = containers.nearest(creep, (candidate: any) =>
+            candidate.store.getFreeCapacity(type) > minFree &&
+            candidate.id != mineralContainerId &&
+            candidate.id != creep.memory.fromId);
+
+        if (container) {
+            remembered.remember(container);
         }
     }
-    else if(Memory.rooms[creep.room.name] && !Memory.rooms[creep.room.name]!.container)
-    {
-        var containers = creep.room.find(FIND_STRUCTURES,  {filter: (structure) =>
-        {
-            return  structure.structureType === STRUCTURE_CONTAINER
-        }});
-
-        Memory.rooms[creep.room.name]!.container = containers.map( c => {
-            return c.id
-        });
-
-        return (containers.length > 0);
+    else if (containers.isRoomKnown) {
+        // Erst die Liste erheben; abgeliefert wird im nächsten Tick.
+        return containers.discover(creep.room);
     }
 
     if (container && container.store.getFreeCapacity() > 0) {
+        // Hier bewusst nicht `transferTo`: die gemerkte Wahl wird **nur** nach
+        // erfolgter Ablieferung vergessen, nicht schon auf dem Hinweg.
         switch (creep.transfer(container, type as ResourceConstant))
         {
             case ERR_NOT_IN_RANGE:
-                creepBaseGoTo.moveByMemory(creep, container.pos);
+                moveByMemory(creep, container.pos);
                 return true;
 
             case OK:
-                delete creep.memory.useContainer;
+                remembered.forget();
                 return true;
 
             default:
                 return false;
         }
     }
-    delete creep.memory.useContainer;
+
+    remembered.forget();
     return false;
 }
 
@@ -97,16 +99,18 @@ export function TransportToHomeTerminal(creep: Creep): boolean {
     if(!creep.room.controller!.my || creep.room.controller!.level < 6)
         return false;
 
+    const roomMemory = Memory.rooms[creep.memory.workroom]!;
     var terminal: any;
-    if(Memory.rooms[creep.memory.workroom]!.terminalId )
+
+    if(roomMemory.terminalId)
     {
-        terminal = Game.getObjectById(Memory.rooms[creep.memory.workroom]!.terminalId);
+        terminal = Game.getObjectById(roomMemory.terminalId);
         if(!terminal)
         {
-            delete Memory.rooms[creep.memory.workroom]!.terminalId;
+            // Gemerkte Id ohne Objekt: verwerfen und im nächsten Tick neu suchen.
+            delete roomMemory.terminalId;
             return false;
         }
-
     }
     else
     {
@@ -121,14 +125,16 @@ export function TransportToHomeTerminal(creep: Creep): boolean {
 
         if(target.length > 0)
         {
-            Memory.rooms[creep.memory.workroom]!.terminalId = target[0]!.id;
+            roomMemory.terminalId = target[0]!.id;
             terminal = target[0];
         }
     }
 
+    // Positive Bedingung: eine Negierung verhielte sich anders, sobald der Wert
+    // fehlt (siehe die Notiz zu Schwellenvergleichen in CLAUDE.md).
     if(terminal && terminal.store.getFreeCapacity() > 0)
     {
-        var t = false;
+        var delivered = false;
         for (var resourceType in creep.store)
         {
             //verhindern, das zuviel Energie eingelagert wird :/
@@ -136,28 +142,22 @@ export function TransportToHomeTerminal(creep: Creep): boolean {
                 terminal.store[RESOURCE_ENERGY] > 100000)
                 continue;
 
-            if(_Transfer(creep, terminal, resourceType) && !t)
+            if(transferTo(creep, terminal, resourceType))
             {
-                t = true;
+                delivered = true;
             }
         }
-        return t;
+        return delivered;
     }
+
     return false;
 }
 
 export function TransportToHomeLab(creep: Creep, type: string): boolean {
-    var target = creep.pos.findClosestByPath(FIND_MY_STRUCTURES,
-        {
-            filter: (structure: any) => {
-                return (
-                    structure.structureType === STRUCTURE_LAB
-                ) && structure.store.getFreeCapacity([type]) > 0
-                  && structure.id != creep.memory.fromId;
-            }
-        });
+    const target = findDeliveryTarget(creep, [STRUCTURE_LAB], (structure: any) =>
+        structure.store.getFreeCapacity([type]) > 0);
 
-    return _Transfer(creep, target, type);
+    return transferTo(creep, target, type);
 }
 
 export function TransportEnergyToHomeSpawn(creep: Creep): boolean {
@@ -165,18 +165,10 @@ export function TransportEnergyToHomeSpawn(creep: Creep): boolean {
        creep.store[RESOURCE_ENERGY] == 0)
         return false;
 
-    var target = creep.pos.findClosestByPath(FIND_MY_STRUCTURES,
-        {
-            filter: (structure: any) => {
-                return (
-                    structure.structureType === STRUCTURE_SPAWN ||
-                    structure.structureType === STRUCTURE_EXTENSION
-                ) && structure.store.getFreeCapacity([RESOURCE_ENERGY]) > 0
-                && structure.id != creep.memory.fromId;
-            }
-        });
+    const target = findDeliveryTarget(creep, [STRUCTURE_SPAWN, STRUCTURE_EXTENSION],
+        (structure: any) => structure.store.getFreeCapacity([RESOURCE_ENERGY]) > 0);
 
-    return _Transfer(creep, target, RESOURCE_ENERGY);
+    return transferTo(creep, target, RESOURCE_ENERGY);
 }
 
 export function TransportEnergyToHomeTower(creep: Creep): boolean {
@@ -192,12 +184,14 @@ export function TransportEnergyToHomeTower(creep: Creep): boolean {
             }
         });
 
-    if (towers.length > 0)
+    if (towers.length === 0)
     {
-        towers.sort((a: any, b: any) => b.store.getFreeCapacity(RESOURCE_ENERGY) - a.store.getFreeCapacity(RESOURCE_ENERGY));
-        return _Transfer(creep, towers[0], RESOURCE_ENERGY);
+        return false;
     }
-    return false;
+
+    // Der Turm mit der größten Lücke zuerst: er ist am ehesten schussunfähig.
+    towers.sort((a: any, b: any) => b.store.getFreeCapacity(RESOURCE_ENERGY) - a.store.getFreeCapacity(RESOURCE_ENERGY));
+    return transferTo(creep, towers[0]!, RESOURCE_ENERGY);
 }
 
 export function TransportToHomeStorage(creep: Creep): boolean {
@@ -215,7 +209,7 @@ export function TransportToHomeStorage(creep: Creep): boolean {
         return false;
 
     for (var resourceType in creep.store) {
-        _Transfer(creep, target, resourceType);
+        transferTo(creep, target, resourceType);
     }
     return true;
 }
