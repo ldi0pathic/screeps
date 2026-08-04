@@ -91,6 +91,23 @@ Das ist eine Abwägung, keine technische Frage: Pixel sind für dich echter
 Gegenwert (du tauschst sie gegen Skins), aber sie kosten die Reserve. Siehe
 offene Frage unten.
 
+## Befund 6: Pfadsuche auf nicht betretbare Ziele
+
+`moveByMemory` sucht mit `creep.pos.findPathTo(target)` **ohne** `range`. Für
+Container und Straßen ist das richtig, für Storage, Link, Terminal und Spawn
+nicht: diese Felder sind nicht betretbar. Die Wissensbasis
+(`knowledge/efficiency/cpu-pathfinding.md`) ist dazu eindeutig — *„If target is
+not walkable, set `range >= 1`; otherwise CPU is wasted searching for an
+impossible tile."* Der Weg kommt trotzdem heraus (das Spiel liefert den Pfad zum
+nächstgelegenen erreichbaren Feld), aber die Suche verbraucht mehr Ops als nötig.
+
+Betroffen sind die Aufrufe in `creep/base.ts` (Storage, Link) und
+`creep/transport.ts`. Der Umbau des Pfad-Caches (Runde 2026-08-04) hat die
+Stelle nur umsortiert und **nicht** geändert, weil ein `range` das Zielverhalten
+ändert: der Creep bleibt dann ein Feld früher stehen, und ob jede aufrufende
+Stelle damit noch in Reichweite ihres `transfer`/`withdraw` ist, muss einzeln
+geprüft werden. Gehört gemessen (Plan 01) und dann gezielt geändert.
+
 ## Vorgehen
 
 1. Doppelten `find` in `defence.ts` zusammenlegen. Kein Zustimmungsbedarf.

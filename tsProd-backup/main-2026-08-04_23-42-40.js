@@ -1,4 +1,4 @@
-// Build: 2026-08-04 23:50:46 +02:00
+// Build: 2026-08-04 23:42:40 +02:00
 "use strict";
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
@@ -702,105 +702,7 @@ function rebuildRoads() {
   }
 }
 
-// src/creep/path-memory.ts
-var STUCK_TICKS = 3;
-var PathMemory = class {
-  constructor(memory) {
-    __publicField(this, "memory");
-    this.memory = memory;
-  }
-  /** Der gespeicherte Weg, ohne Rücksicht auf sein Ziel. */
-  get path() {
-    return this.memory.path;
-  }
-  /** Ticks ohne Ortswechsel. */
-  get stuckTicks() {
-    var _a;
-    return (_a = this.memory.dontMove) != null ? _a : 0;
-  }
-  /**
-   * Steht der Creep lange genug still, dass ein Weg um andere Creeps herum
-   * gesucht werden sollte?
-   */
-  get isStuck() {
-    return this.stuckTicks > STUCK_TICKS;
-  }
-  /** Verwirft den gespeicherten Weg, **behält** die Stauerkennung. */
-  forgetPath() {
-    delete this.memory.path;
-    delete this.memory.pathTarget;
-  }
-  /** Verwirft Weg **und** Stauerkennung. */
-  clear() {
-    this.forgetPath();
-    delete this.memory.dontMove;
-    delete this.memory.lastPos;
-  }
-  /**
-   * Der gespeicherte Weg, falls er zu `target` gehört — sonst `undefined`.
-   *
-   * Zum Ziel gehört auch der Raumname: derselbe Punkt in einem anderen Raum ist
-   * ein anderes Ziel. Ein `pathTarget` ohne Raumnamen gilt als unbrauchbar.
-   */
-  pathTo(target) {
-    const stored = this.memory.pathTarget;
-    if (!this.memory.path || !stored || !stored.roomName) {
-      return void 0;
-    }
-    const sameTarget = stored.x === target.x && stored.y === target.y && stored.roomName === target.roomName;
-    return sameTarget ? this.memory.path : void 0;
-  }
-  /** Merkt den Weg, ohne ein Ziel zu hinterlegen. */
-  rememberPath(serializedPath) {
-    this.memory.path = serializedPath;
-  }
-  /** Merkt Weg und Ziel — der reguläre Fall. */
-  rememberPathTo(serializedPath, target) {
-    this.memory.path = serializedPath;
-    this.memory.pathTarget = { x: target.x, y: target.y, roomName: target.roomName };
-  }
-  /** Setzt den Stauzähler zurück, ohne die letzte Position zu vergessen. */
-  resetStuck() {
-    this.memory.dontMove = 0;
-  }
-  /**
-   * Führt die Stauerkennung einen Tick weiter: steht der Creep noch auf der
-   * gemerkten Position, steigt der Zähler; sonst wird die neue Position gemerkt
-   * und der Zähler beginnt neu.
-   */
-  trackPosition(pos) {
-    const last = this.memory.lastPos;
-    if (last && last.x === pos.x && last.y === pos.y) {
-      this.memory.dontMove = this.stuckTicks + 1;
-      return;
-    }
-    this.memory.lastPos = { x: pos.x, y: pos.y };
-    this.memory.dontMove = 0;
-  }
-};
-
 // src/creep/goto.ts
-function searchRoute(creep, target, ignoreCreeps) {
-  const steps = creep.pos.findPathTo(target, { ignoreCreeps });
-  return { serialized: Room.serializePath(steps), steps };
-}
-function drawRemainingPath(creep, route) {
-  var _a;
-  const steps = (_a = route.steps) != null ? _a : Room.deserializePath(route.serialized);
-  const currentPos = creep.pos;
-  const index = steps.findIndex((pos) => pos.x === currentPos.x && pos.y === currentPos.y);
-  if (index <= 0) {
-    return;
-  }
-  const visual = new RoomVisual(creep.room.name);
-  for (let i = index + 1; i < steps.length; i++) {
-    visual.circle(
-      steps[i].x,
-      steps[i].y,
-      { fill: "transparent", radius: 0.25, stroke: "red" }
-    );
-  }
-}
 function goToMyHome(creep) {
   if (creep.memory.home && creep.room.name !== creep.memory.home) {
     var room = new RoomPosition(25, 25, creep.memory.home);
@@ -813,6 +715,7 @@ function goToRoomFlag(creep) {
     const flags = creep.room.find(FIND_FLAGS);
     if (flags.length > 0 && !creep.pos.inRangeTo(flags[0].pos, 2)) {
       return moveByMemory(creep, flags[0].pos);
+      ;
     }
   }
   return false;
@@ -825,40 +728,73 @@ function goToWorkroom(creep) {
   return false;
 }
 function moveByMemory(creep, target) {
-  const cache = new PathMemory(creep.memory);
   if (creep.pos.isEqualTo(target)) {
-    cache.clear();
+    delete creep.memory.path;
+    delete creep.memory.pathTarget;
+    delete creep.memory.dontMove;
+    delete creep.memory.lastPos;
     return false;
   }
-  if (cache.isStuck) {
-    const route2 = searchRoute(creep, target, false);
-    cache.rememberPath(route2.serialized);
-    cache.resetStuck();
-    creep.moveByPath(route2.serialized);
+  var deserializePath;
+  var serializedPath;
+  if (creep.memory.dontMove > 3) {
+    deserializePath = creep.pos.findPathTo(target, { ignoreCreeps: false });
+    serializedPath = Room.serializePath(deserializePath);
+    creep.memory.path = serializedPath;
+    creep.memory.dontMove = 0;
+    creep.moveByPath(serializedPath);
     return true;
   }
-  const known = cache.pathTo(target);
-  let route;
-  if (known !== void 0) {
-    route = { serialized: known };
+  var t = creep.memory.pathTarget;
+  var p = creep.memory.path;
+  if (p && t && t.roomName && target.isEqualTo(new RoomPosition(t.x, t.y, t.roomName))) {
+    serializedPath = p;
   } else {
-    route = searchRoute(creep, target, true);
-    cache.rememberPathTo(route.serialized, target);
+    deserializePath = creep.pos.findPathTo(target, { ignoreCreeps: true });
+    serializedPath = Room.serializePath(deserializePath);
+    creep.memory.path = serializedPath;
+    creep.memory.pathTarget = {};
+    creep.memory.pathTarget.x = target.x;
+    creep.memory.pathTarget.y = target.y;
+    creep.memory.pathTarget.roomName = target.roomName;
   }
-  const state2 = creep.moveByPath(route.serialized);
+  var state2 = creep.moveByPath(serializedPath);
   if (bot.const.showPaths) {
-    drawRemainingPath(creep, route);
+    if (!deserializePath)
+      deserializePath = Room.deserializePath(serializedPath);
+    const currentPos = creep.pos;
+    const index = deserializePath.findIndex((pos) => pos.x === currentPos.x && pos.y === currentPos.y);
+    if (index > 0) {
+      const visual = new RoomVisual(creep.room.name);
+      for (let i = index + 1; i < deserializePath.length; i++) {
+        visual.circle(
+          deserializePath[i].x,
+          deserializePath[i].y,
+          { fill: "transparent", radius: 0.25, stroke: "red" }
+        );
+      }
+    }
   }
   switch (state2) {
     case OK:
     case ERR_TIRED: {
-      cache.trackPosition(creep.pos);
+      if (creep.memory.lastPos && creep.memory.lastPos.x == creep.pos.x && creep.memory.lastPos.y == creep.pos.y) {
+        creep.memory.dontMove = (creep.memory.dontMove || 0) + 1;
+      } else {
+        creep.memory.lastPos = {};
+        creep.memory.lastPos.x = creep.pos.x;
+        creep.memory.lastPos.y = creep.pos.y;
+        creep.memory.dontMove = 0;
+      }
       return true;
     }
     case ERR_INVALID_ARGS:
     case ERR_NO_BODYPART:
     case ERR_NOT_FOUND: {
-      cache.clear();
+      delete creep.memory.path;
+      delete creep.memory.pathTarget;
+      delete creep.memory.dontMove;
+      delete creep.memory.lastPos;
       return true;
     }
     default:
@@ -2667,7 +2603,10 @@ var Miner = class {
   _clearMemory(creep) {
     delete creep.memory.pos;
     delete creep.memory._move;
-    new PathMemory(creep.memory).clear();
+    delete creep.memory.path;
+    delete creep.memory.pathTarget;
+    delete creep.memory.lastPos;
+    delete creep.memory.dontMove;
   }
   /** Bewegt den Miner zur Quelle, baut/repariert dort Container bzw. Link und erntet. */
   doJob(creep) {
@@ -3804,27 +3743,29 @@ function daylie() {
 // src/prototypes/creep-checks.ts
 function installCreepChecks() {
   Creep.prototype.checkHarvest = function(action, action2) {
-    const pathCache = new PathMemory(this.memory);
     if (!this.memory.harvest && this.store.getUsedCapacity() === 0) {
       if (typeof action == "function")
         action.call(this);
       this.memory.harvest = true;
       this.memory.fromId = null;
       this.say("\u{1F6D2}");
-      pathCache.forgetPath();
+      delete this.memory.path;
+      delete this.memory.pathTarget;
     }
     if (this.memory.harvest && this.store.getFreeCapacity() === 0) {
       if (typeof action2 == "function")
         action2.call(this);
       this.memory.harvest = false;
       delete this.memory.useRoomSource;
-      pathCache.forgetPath();
+      delete this.memory.path;
+      delete this.memory.pathTarget;
       delete this.memory.useContainer;
     }
     if (this.memory.harvest && this.store.getUsedCapacity() > 0 && this.memory.mineral !== "energy") {
       this.memory.harvest = false;
       delete this.memory.useRoomSource;
-      pathCache.forgetPath();
+      delete this.memory.path;
+      delete this.memory.pathTarget;
       delete this.memory.useContainer;
     }
   };

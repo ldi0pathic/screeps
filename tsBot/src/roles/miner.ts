@@ -9,6 +9,7 @@
 import { bot } from "../globals";
 import * as creepBase from "../creep/base";
 import { BODIES } from "../creep/bodies";
+import { PathMemory } from "../creep/path-memory";
 import type { CreepRole } from "../roles";
 import { profile } from "../profiler/decorator";
 
@@ -20,10 +21,9 @@ export class Miner implements CreepRole {
     private _clearMemory(creep: Creep) {
         delete creep.memory.pos;
         delete creep.memory._move;
-        delete creep.memory.path;
-        delete creep.memory.pathTarget;
-        delete creep.memory.lastPos;
-        delete creep.memory.dontMove;
+        // Weg **und** Stauerkennung: der Miner wechselt hier seinen Standplatz,
+        // die alte Position sagt danach nichts mehr über einen Stau.
+        new PathMemory(creep.memory).clear();
     }
 
     /** Bewegt den Miner zur Quelle, baut/repariert dort Container bzw. Link und erntet. */

@@ -253,3 +253,23 @@ Tick erneut versucht. Der Test hält das fest; ob dort ein billigerer Rumpf
 sinnvoller ist, gehört zu Plan 03 (Verteidigung im Notfall) und nicht in einen
 Umbau ohne Verhaltensänderung.
 
+
+## Runde 2026-08-04: Pfad-Cache als Objekt
+
+Dritte Modernisierungsrunde, **ohne Verhaltensänderung**. Diesmal war die
+Reihenfolge streng test-zuerst: die dreizehn Tests zu `goto.ts` sind gegen die
+**alte** Fassung geschrieben und dort grün gelaufen, bevor eine Zeile umgebaut
+wurde.
+
+| Was | Warum | Wirkung |
+| --- | --- | --- |
+| Neue Klasse `PathMemory` (`src/creep/path-memory.ts`) für die vier zusammengehörigen Memory-Schlüssel `path`, `pathTarget`, `lastPos`, `dontMove`. | Die Schlüssel wurden an **zehn** Stellen in drei Dateien einzeln per `delete` angefasst — und zwar nach zwei *verschiedenen* Regeln, die nirgends benannt waren. | Keine. `forgetPath()` verwirft nur den Weg (Zustandswechsel in `checkHarvest`), `clear()` zusätzlich die Stauerkennung (am Ziel, bei ungültigem Pfad, beim Standplatzwechsel des Miners). Genau die bisherigen Regeln, jetzt mit Namen. |
+| `moveByMemory` in benannte Schritte zerlegt: Ankunft, Stau-Ausweichsuche, Cache oder Neusuche, Laufen, Auswertung des Rückgabecodes. Die Pfadvisualisierung ist eine eigene Funktion. | Eine Funktion mit fünf Aufgaben und den vier Memory-Schlüsseln mitten im Ablauf. Der Sonderfall „festgefahren" war nur an `dontMove > 3` zu erkennen. | Keine. Der CPU-Trick bleibt erhalten: nach einer Suche liegen die Schritte schon vor und werden für die Visualisierung nicht erneut deserialisiert. |
+| Zielvergleich ohne `new RoomPosition(...)`: es werden `x`, `y` und `roomName` direkt verglichen. | Der Vergleich legte je Creep und Tick ein Wegwerf-Objekt an, nur um `isEqualTo` aufrufen zu können. | Verhaltensgleich (`isEqualTo` vergleicht genau diese drei Felder), eine Allokation je Creep und Tick weniger. |
+| 19 neue Tests (43 gesamt), dazu Stubs für `RoomPosition`, `Room.serializePath` und einen Creep, der jeden `moveByPath`-Aufruf mitschreibt (`tests/support/movement-stubs.ts`). | Bewegung und Pfad-Caching sind der heißeste Pfad des Bots und waren völlig ungetestet. | Festgehalten sind jetzt auch die Feinheiten: derselbe Punkt in einem anderen Raum ist ein anderes Ziel, der Stauzähler springt erst beim zweiten gleichen Standort an, `ERR_TIRED` gilt als regulärer Schritt, und die drei Fehlercodes am Pfad verwerfen den Cache. |
+
+**Gefunden, nicht geändert:** `moveByMemory` sucht ohne `range` — für Storage,
+Link, Terminal und Spawn sind das nicht betretbare Ziele, und die Wissensbasis
+warnt genau davor. Der Weg kommt trotzdem heraus, kostet aber mehr Ops als nötig.
+Ein `range` ändert, wo der Creep stehen bleibt, und muss je Aufrufstelle geprüft
+werden: aufgenommen als Befund 6 in [Plan 05](plans/05-cpu-verteilung.md).
