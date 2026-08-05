@@ -18,6 +18,8 @@ import claimer from "./claimer";
 import debitor from "./debitor";
 import defender from "./defender";
 import extupgrader from "./extupgrader";
+import filler from "./filler";
+import hauler from "./hauler";
 import linkkeeper from "./linkkeeper";
 import miner from "./miner";
 import repairer from "./repairer";
@@ -32,10 +34,17 @@ export interface CreepRole {
 }
 
 export const jobs: Record<string, CreepRole> = {
+  // Ganz vorn mit Absicht: sind Spawn und Extensions leer, spawnt der Raum
+  // überhaupt nichts mehr — auch keinen Ersatzfiller. Wer den Spawn füttert,
+  // muss vor allen stehen, die daraus bezahlt werden.
+  filler,
   debitor,
   // Weit vorn mit Absicht: ein voller Empfänger-Link nimmt nichts mehr an und
   // blockiert damit den Durchsatz aller Quell-Links, die auf ihn senden.
   linkkeeper,
+  // Direkt hinter dem Linkkeeper: ohne Träger läuft der Quellcontainer über
+  // und der Miner fördert ins Leere. Beides sind Durchsatzsperren.
+  hauler,
   transfer,
   miner,
   claimer,

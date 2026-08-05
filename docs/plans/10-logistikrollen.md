@@ -1,8 +1,24 @@
 # Plan 10: Logistik nach Job schneiden statt nach Kaskade
 
-Status: **Runde 1 und 2 in Arbeit** (2026-08-06), Runde 3 spezifiziert, nicht
-gebaut. Anlass: der Debitor ist mit 38,7 % der teuerste Posten des Bots und
-kommt in Plan 09 nur als Nachtrag vor.
+Status: **alle drei Runden gebaut** (2026-08-06, siehe `docs/aenderungen.md`),
+Wirkung noch nicht gemessen. Offen bleibt der zweite Umstellungsschritt aus
+Runde 3: die toten Zweige aus `debitor.ts` schneiden, sobald kein Debitor mehr
+lebt, der sie braucht. Anlass des Plans: der Debitor war mit 38,7 % der
+teuerste Posten des Bots und kommt in Plan 09 nur als Nachtrag vor.
+
+Wie die offenen Punkte aus Runde 3 entschieden wurden:
+
+- **Fillerzahl:** einer je Raum, `debitorAsFreelancer` bleibt als Obergrenze.
+  Zwei Quellen liefern 20 Energie je Tick, ein Umlauf Storage→Extension→Storage
+  dauert rund zehn Ticks — nach `ceil(energie_pro_tick × umlauf / 50)` sind das
+  vier `CARRY`. Ein Filler deckt das um ein Vielfaches.
+- **Rumpfprofile:** unverändert die bestehenden (`debitorWithoutContainer` für
+  den Filler, `debitor` für den Hauler). Diese Runde teilt Rollen auf, sie
+  dimensioniert nicht um; eine neue Zahl würde die Messung verfälschen, die den
+  Nutzen belegen soll.
+- **Braucht der Filler eine Suche?** Vorerst ja, über das Zielgedächtnis aus
+  Runde 1. Ob `findClosestByRange` oder eine erhobene Extensionliste danach noch
+  etwas bringt, entscheidet die Messung — nicht vorher raten.
 
 ## Ausgangslage
 

@@ -1,4 +1,4 @@
-// Build: 2026-08-06 01:11:50 +02:00
+// Build: 2026-08-06 01:35:30 +02:00
 "use strict";
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
@@ -761,6 +761,9 @@ var LinkList = class {
     return result;
   }
 };
+function linksDeliver(roomName) {
+  return usesLinks(roomName) && new LinkList(roomName).spawnLink !== null;
+}
 
 // src/controller/link-planner.ts
 var blockingStructureTypes = OBSTACLE_OBJECT_TYPES;
@@ -2365,8 +2368,8 @@ var MeasurementWindow = class {
     window.tickLimit = Game.cpu.tickLimit;
   }
   /** Rollenzeit verbuchen. Genutzt vom Rollen-Wrapper in `decorator.ts`. */
-  recordRole(role12, cpu) {
-    record(this.window.roles, role12, cpu);
+  recordRole(role14, cpu) {
+    record(this.window.roles, role14, cpu);
   }
   /** Zeit einer Klassenmethode verbuchen. Genutzt vom `@profile`-Dekorator. */
   recordMethod(key, cpu) {
@@ -2472,9 +2475,9 @@ function profile(target, key, _descriptor) {
 }
 function wrapRoles(jobs2) {
   const wrapped = {};
-  for (const role12 in jobs2) {
-    const original = jobs2[role12];
-    wrapped[role12] = {
+  for (const role14 in jobs2) {
+    const original = jobs2[role14];
+    wrapped[role14] = {
       doJob(creep) {
         if (state.mode !== "full") {
           original.doJob(creep);
@@ -2483,7 +2486,7 @@ function wrapRoles(jobs2) {
         const start = Game.cpu.getUsed();
         original.doJob(creep);
         const cpu = Game.cpu.getUsed() - start;
-        measurement.recordRole(role12, cpu);
+        measurement.recordRole(role14, cpu);
         measurement.recordCreep(creep.name, cpu);
       },
       spawn(spawn3, workroom) {
@@ -2492,7 +2495,7 @@ function wrapRoles(jobs2) {
         }
         const start = Game.cpu.getUsed();
         const result = original.spawn(spawn3, workroom);
-        measurement.recordRole(`${role12}.spawn`, Game.cpu.getUsed() - start);
+        measurement.recordRole(`${role14}.spawn`, Game.cpu.getUsed() - start);
         return result;
       }
     };
@@ -2653,9 +2656,6 @@ var NEVER_SELL = {
   "XGH2O": true,
   "XGHO2": true
 };
-function linksDeliver(workroom) {
-  return usesLinks(workroom) && new LinkList(workroom).spawnLink !== null;
-}
 var Debitor = class {
   /** Holt Energie/Mineralien aus dem Arbeitsraum und transportiert sie in den Heimatraum. */
   doJob(creep) {
@@ -2815,6 +2815,8 @@ var Debitor = class {
   /** Spawnt einen Debitor für `workroom`, falls Bedarf besteht (inklusive Freelancer- und Notfallmodus). */
   spawn(spawn3, workroom) {
     if (bot.room[workroom].transferEnergie && spawn3.room.name != workroom || spawn3.room.name != workroom && !Memory.rooms[workroom].claimed)
+      return false;
+    if (spawn3.room.name == workroom && spawn3.room.storage)
       return false;
     if (bot.room[workroom].sendDebitor && bot.room[workroom].sendMiner && (!Memory.rooms[workroom].hasLinks || !linksDeliver(workroom))) {
       for (var id in bot.room[workroom].energySources) {
@@ -3038,8 +3040,122 @@ ExtUpgrader = __decorateClass([
 ], ExtUpgrader);
 var extupgrader_default = new ExtUpgrader();
 
+// src/roles/filler.ts
+var role6 = "filler";
+var Filler = class {
+  /** Holt Energie aus dem Storage (Rückfall: Quellcontainer) und verteilt sie an Spawn und Türme. */
+  doJob(creep) {
+    creep.checkHarvest();
+    if (creep.memory.harvest) {
+      if (harvestRoomStorage(creep, RESOURCE_ENERGY)) return;
+      if (harvestRoomContainer(creep, RESOURCE_ENERGY, 0.25)) return;
+      return;
+    }
+    if (TransportEnergyToHomeSpawn2(creep)) return;
+    if (TransportEnergyToHomeTower2(creep)) return;
+  }
+  /** Spawnt Filler für `workroom`, solange dort ein Storage steht und Logistik gewünscht ist. */
+  spawn(spawn3, workroom) {
+    var _a;
+    if (spawn3.room.name != workroom)
+      return false;
+    if (!bot.room[workroom].sendDebitor)
+      return false;
+    if (!spawn3.room.storage)
+      return false;
+    const wanted = Math.max(1, (_a = bot.room[workroom].debitorAsFreelancer) != null ? _a : 0);
+    const count = _.filter(
+      Game.creeps,
+      (creep) => creep.memory.role == role6 && creep.memory.workroom == workroom && (creep.ticksToLive > 100 || creep.spawning)
+    ).length;
+    if (count >= wanted)
+      return false;
+    const profil = BODIES.debitorWithoutContainer.build(spawn3.room.energyCapacityAvailable);
+    if (spawn(spawn3, profil, role6 + "_" + Game.time, { role: role6, harvest: true, workroom, home: spawn3.room.name, mineral: RESOURCE_ENERGY, container: "", notfall: false }))
+      return true;
+    if (_.filter(Game.creeps, (creep) => creep.memory.role == role6 && creep.memory.workroom == workroom).length == 0) {
+      console.log("[" + spawn3.room.name + "|" + workroom + "]Notfallspawn Filler");
+      const min = Math.min(Math.max(parseInt(spawn3.room.energyAvailable / 100), 1), 16);
+      const notfallProfil = Array(min).fill(CARRY).concat(Array(min).fill(MOVE));
+      return spawn(spawn3, notfallProfil, role6 + "_" + Game.time, { role: role6, harvest: true, workroom, home: spawn3.room.name, mineral: RESOURCE_ENERGY, container: "", notfall: false });
+    }
+    return false;
+  }
+};
+Filler = __decorateClass([
+  profile
+], Filler);
+var filler_default = new Filler();
+
+// src/roles/hauler.ts
+var role7 = "hauler";
+var Hauler = class {
+  /** Holt Energie aus dem Quellcontainer und bringt sie ins Storage des Heimatraums. */
+  doJob(creep) {
+    creep.checkHarvest();
+    if (creep.memory.harvest) {
+      if (harvestMyContainer(creep, RESOURCE_ENERGY)) return;
+      return;
+    }
+    if (checkWorkroomPrioSpawn(creep)) return;
+    if (TransportToHomeStorage2(creep)) return;
+  }
+  /** Spawnt einen Hauler für einen Quellcontainer des eigenen Raums, falls Bedarf besteht. */
+  spawn(spawn3, workroom) {
+    if (spawn3.room.name != workroom)
+      return false;
+    if (!bot.room[workroom].sendDebitor || !bot.room[workroom].sendMiner)
+      return false;
+    if (!spawn3.room.storage)
+      return false;
+    for (var id in bot.room[workroom].energySources) {
+      const source = Game.getObjectById(bot.room[workroom].energySources[id]);
+      if (!source)
+        continue;
+      if (this._spawn(spawn3, workroom, source))
+        return true;
+    }
+    return false;
+  }
+  _spawn(spawn3, workroom, source) {
+    const container = source.pos.findInRange(FIND_STRUCTURES, 1, {
+      filter: { structureType: STRUCTURE_CONTAINER }
+    });
+    if (container.length == 0)
+      return false;
+    const containerId = container[0].id;
+    const count = _.filter(
+      Game.creeps,
+      (creep) => creep.memory.role == role7 && creep.memory.workroom == workroom && creep.memory.container == containerId && (creep.ticksToLive > 100 || creep.spawning)
+    ).length;
+    if (1 <= count)
+      return false;
+    const link = container[0].pos.findInRange(FIND_STRUCTURES, 1, {
+      filter: { structureType: STRUCTURE_LINK }
+    });
+    if (link.length > 0) {
+      Memory.rooms[workroom].hasLinks = true;
+      if (linksDeliver(workroom))
+        return false;
+    }
+    return spawn(spawn3, BODIES.debitor.build(spawn3.room.energyCapacityAvailable), role7 + "_" + Game.time, {
+      role: role7,
+      harvest: true,
+      workroom,
+      home: spawn3.room.name,
+      mineral: RESOURCE_ENERGY,
+      container: containerId,
+      notfall: false
+    });
+  }
+};
+Hauler = __decorateClass([
+  profile
+], Hauler);
+var hauler_default = new Hauler();
+
 // src/roles/linkkeeper.ts
-var role6 = "linkkeeper";
+var role8 = "linkkeeper";
 var blockingStructureTypes2 = OBSTACLE_OBJECT_TYPES;
 var LinkKeeper = class {
   /** Bewegt den Creep auf seinen Standplatz zwischen Link und Storage und pendelt dort Energie um. */
@@ -3103,9 +3219,9 @@ var LinkKeeper = class {
       return false;
     if (!spawn3.room.storage)
       return false;
-    if (_.filter(Game.creeps, (creep) => creep.memory.role == role6 && creep.memory.workroom == workroom).length >= 1)
+    if (_.filter(Game.creeps, (creep) => creep.memory.role == role8 && creep.memory.workroom == workroom).length >= 1)
       return false;
-    return spawn(spawn3, BODIES.linkkeeper.build(spawn3.room.energyCapacityAvailable), role6 + "_" + Game.time, { role: role6, workroom, home: spawn3.room.name });
+    return spawn(spawn3, BODIES.linkkeeper.build(spawn3.room.energyCapacityAvailable), role8 + "_" + Game.time, { role: role8, workroom, home: spawn3.room.name });
   }
 };
 LinkKeeper = __decorateClass([
@@ -3114,7 +3230,7 @@ LinkKeeper = __decorateClass([
 var linkkeeper_default = new LinkKeeper();
 
 // src/roles/miner.ts
-var role7 = "miner";
+var role9 = "miner";
 var Miner = class {
   _clearMemory(creep) {
     delete creep.memory.pos;
@@ -3125,7 +3241,7 @@ var Miner = class {
   doJob(creep) {
     var _a;
     if (creep.memory.notfall) {
-      var replacement = _.find(Game.creeps, (c) => c.name != creep.name && c.memory.role == role7 && c.memory.workroom == creep.memory.workroom && c.memory.source == creep.memory.source && !c.memory.notfall && !c.spawning);
+      var replacement = _.find(Game.creeps, (c) => c.name != creep.name && c.memory.role == role9 && c.memory.workroom == creep.memory.workroom && c.memory.source == creep.memory.source && !c.memory.notfall && !c.spawning);
       if (replacement) {
         bot.logWorkroom(creep.memory.workroom, "Notfallminer " + creep.name + " durch " + replacement.name + " ersetzt, beende mich.");
         creep.suicide();
@@ -3388,20 +3504,20 @@ var Miner = class {
     }
     var count = _.filter(
       Game.creeps,
-      (creep) => creep.memory.role == role7 && creep.memory.workroom == workroom && creep.memory.source == source && !creep.memory.notfall && (creep.ticksToLive > time || creep.spawning)
+      (creep) => creep.memory.role == role9 && creep.memory.workroom == workroom && creep.memory.source == source && !creep.memory.notfall && (creep.ticksToLive > time || creep.spawning)
     ).length;
     if (1 <= count) {
       Memory.rooms[spawn3.room.name].aktivPrioSpawn = false;
       return false;
     }
-    if (!spawn(spawn3, BODIES.miner.build(spawn3.room.energyCapacityAvailable), role7 + "_" + Game.time, { role: role7, workroom, home: spawn3.room.name, source, mineEnergy, notfall: false })) {
+    if (!spawn(spawn3, BODIES.miner.build(spawn3.room.energyCapacityAvailable), role9 + "_" + Game.time, { role: role9, workroom, home: spawn3.room.name, source, mineEnergy, notfall: false })) {
       Memory.rooms[spawn3.room.name].aktivPrioSpawn = true;
       Memory.rooms[spawn3.room.name].aktivPrioSpawnCount = (Memory.rooms[spawn3.room.name].aktivPrioSpawnCount || 0) + 1;
       if (Memory.rooms[spawn3.room.name].aktivPrioSpawnCount > 25) {
-        if (_.filter(Game.creeps, (creep) => creep.memory.role == role7 && creep.memory.workroom == workroom && creep.memory.source == source).length > 0)
+        if (_.filter(Game.creeps, (creep) => creep.memory.role == role9 && creep.memory.workroom == workroom && creep.memory.source == source).length > 0)
           return false;
         console.log("[" + spawn3.room.name + "|" + workroom + "] Spawn NotfallMiner!!!");
-        spawn(spawn3, [WORK, CARRY, MOVE], role7 + "_" + Game.time, { role: role7, workroom, home: spawn3.room.name, source, mineEnergy, notfall: true });
+        spawn(spawn3, [WORK, CARRY, MOVE], role9 + "_" + Game.time, { role: role9, workroom, home: spawn3.room.name, source, mineEnergy, notfall: true });
         Memory.rooms[spawn3.room.name].aktivPrioSpawnCount = 0;
         return true;
       }
@@ -3417,7 +3533,7 @@ Miner = __decorateClass([
 var miner_default = new Miner();
 
 // src/roles/repairer.ts
-var role8 = "repairer";
+var role10 = "repairer";
 var Repairer = class {
   /** Repariert priorisierte und beschädigte Strukturen im Arbeitsraum, sonst wird der Controller aufgewertet. */
   doJob(creep) {
@@ -3512,7 +3628,7 @@ var Repairer = class {
       return false;
     if (spawn3.room.name != workroom && !Memory.rooms[workroom].claimed)
       return false;
-    var count = _.filter(Game.creeps, (creep) => creep.memory.role == role8 && creep.memory.workroom == workroom).length;
+    var count = _.filter(Game.creeps, (creep) => creep.memory.role == role10 && creep.memory.workroom == workroom).length;
     if (count == void 0)
       count = 0;
     if (minRepairer <= count)
@@ -3527,7 +3643,7 @@ var Repairer = class {
     });
     if (structuresToRepair.length <= 1)
       return false;
-    return spawn(spawn3, BODIES.repairer.build(spawn3.room.energyCapacityAvailable), role8 + "_" + Game.time, { role: role8, workroom, home: spawn3.room.name, repairs: 0 });
+    return spawn(spawn3, BODIES.repairer.build(spawn3.room.energyCapacityAvailable), role10 + "_" + Game.time, { role: role10, workroom, home: spawn3.room.name, repairs: 0 });
   }
 };
 Repairer = __decorateClass([
@@ -3536,7 +3652,7 @@ Repairer = __decorateClass([
 var repairer_default = new Repairer();
 
 // src/roles/transfer.ts
-var role9 = "transfer";
+var role11 = "transfer";
 var Transfer = class {
   /** Sammelt Energie/Mineralien aus dem Arbeitsraum und bringt sie zum Heimatraum bzw. an bedürftige Builder. */
   doJob(creep) {
@@ -3600,7 +3716,7 @@ var Transfer = class {
   _spawn(spawn3, workroom, mineraltype) {
     var count = _.filter(
       Game.creeps,
-      (creep) => creep.memory.role == role9 && creep.memory.workroom == workroom && creep.memory.home == spawn3.room.name && //hier wichtig, da mehere spawns infrage kommem
+      (creep) => creep.memory.role == role11 && creep.memory.workroom == workroom && creep.memory.home == spawn3.room.name && //hier wichtig, da mehere spawns infrage kommem
       (creep.ticksToLive > 100 || creep.spawning)
     ).length;
     if (1 <= count)
@@ -3609,7 +3725,7 @@ var Transfer = class {
     if (storage && storage.store[RESOURCE_ENERGY] < 1e4 || !storage)
       return false;
     var profil = BODIES.transfer.build(spawn3.room.energyCapacityAvailable);
-    return spawn(spawn3, profil, role9 + "_" + Game.time, { role: role9, harvest: true, workroom, home: spawn3.room.name, mineral: mineraltype });
+    return spawn(spawn3, profil, role11 + "_" + Game.time, { role: role11, harvest: true, workroom, home: spawn3.room.name, mineral: mineraltype });
   }
 };
 Transfer = __decorateClass([
@@ -3618,7 +3734,7 @@ Transfer = __decorateClass([
 var transfer_default = new Transfer();
 
 // src/roles/upgrader.ts
-var role10 = "upgrader";
+var role12 = "upgrader";
 var Upgrader = class {
   /** Beschafft Energie und upgradet den Controller des Arbeitsraums, inklusive Sparmodus bei hohem Level. */
   doJob(creep) {
@@ -3672,12 +3788,12 @@ var Upgrader = class {
       return false;
     var count = _.filter(
       Game.creeps,
-      (creep) => creep.memory.role == role10 && creep.memory.workroom == workroom && (creep.ticksToLive > 160 || creep.spawning)
+      (creep) => creep.memory.role == role12 && creep.memory.workroom == workroom && (creep.ticksToLive > 160 || creep.spawning)
     ).length;
     if (uppis <= count)
       return false;
     var profil = this.bodyFor(spawn3, workroom);
-    return spawn(spawn3, profil, role10 + "_" + Game.time, { role: role10, workroom, home: spawn3.room.name, repairs: 0, noLink: false });
+    return spawn(spawn3, profil, role12 + "_" + Game.time, { role: role12, workroom, home: spawn3.room.name, repairs: 0, noLink: false });
   }
 };
 Upgrader = __decorateClass([
@@ -3686,7 +3802,7 @@ Upgrader = __decorateClass([
 var upgrader_default = new Upgrader();
 
 // src/roles/wally.ts
-var role11 = "wally";
+var role13 = "wally";
 var Wally = class {
   /** Erntet, weicht bei Invasion aus, repariert Walls/Ramparts oder upgradet sonst den Controller. */
   doJob(creep) {
@@ -3750,7 +3866,7 @@ var Wally = class {
   spawn(spawn3, workroom) {
     if (spawn3.room.name != workroom && !Memory.rooms[workroom].claimed)
       return false;
-    var count = _.filter(Game.creeps, (creep) => creep.memory.role == role11 && creep.memory.workroom == workroom).length;
+    var count = _.filter(Game.creeps, (creep) => creep.memory.role == role13 && creep.memory.workroom == workroom).length;
     if (bot.room[workroom].maxwallRepairer <= count)
       return false;
     var room = Game.rooms[workroom];
@@ -3765,7 +3881,7 @@ var Wally = class {
     if (storage && storage.store[RESOURCE_ENERGY] < 5e4 || !storage)
       return false;
     var p = BODIES.wally.build(spawn3.room.energyCapacityAvailable);
-    return spawn(spawn3, p, role11 + "_" + Game.time, { role: role11, workroom, home: spawn3.room.name });
+    return spawn(spawn3, p, role13 + "_" + Game.time, { role: role13, workroom, home: spawn3.room.name });
   }
 };
 Wally = __decorateClass([
@@ -3775,10 +3891,17 @@ var wally_default = new Wally();
 
 // src/roles/index.ts
 var jobs = {
+  // Ganz vorn mit Absicht: sind Spawn und Extensions leer, spawnt der Raum
+  // überhaupt nichts mehr — auch keinen Ersatzfiller. Wer den Spawn füttert,
+  // muss vor allen stehen, die daraus bezahlt werden.
+  filler: filler_default,
   debitor: debitor_default,
   // Weit vorn mit Absicht: ein voller Empfänger-Link nimmt nichts mehr an und
   // blockiert damit den Durchsatz aller Quell-Links, die auf ihn senden.
   linkkeeper: linkkeeper_default,
+  // Direkt hinter dem Linkkeeper: ohne Träger läuft der Quellcontainer über
+  // und der Miner fördert ins Leere. Beides sind Durchsatzsperren.
+  hauler: hauler_default,
   transfer: transfer_default,
   miner: miner_default,
   claimer: claimer_default,
@@ -4303,8 +4426,8 @@ function writeStats(metrics) {
   for (const section of metrics.sections) {
     set(stats, `profiler.section.${section.name}.cpuPerTick`, section.cpuPerTick);
   }
-  for (const role12 of metrics.roles) {
-    set(stats, `profiler.role.${role12.name}.cpuPerTick`, role12.cpuPerTick);
+  for (const role14 of metrics.roles) {
+    set(stats, `profiler.role.${role14.name}.cpuPerTick`, role14.cpuPerTick);
   }
   statsMemory.stats = stats;
 }

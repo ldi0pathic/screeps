@@ -58,7 +58,8 @@ Räume besitzen, fünf davon gerade ausbauen".
 | 06 | [Sparmodus und Rotationsbetrieb](06-raum-sparmodus.md) | Besitz von Betrieb entkoppeln: zehn Räume besitzen, sechs betreiben. | ja | offen |
 | 07 | [Expansion](07-expansion.md) | Aufklärung, Raumbewertung, Remote-Rentabilität, automatisches Claimen. | ja | offen |
 | 08 | [Ausblick: Phasen, Layout, Labore](08-ausblick.md) | Was danach kommt und was wir selbst bauen müssen. | ja | offen |
-| 09 | [Linknetz und Übernahmen](09-linknetz-und-uebernahmen.md) | Links zentral senden statt zufällig aus dem Miner; dazu die Auswertung, was aus dem Vergleichsbot taugt und was nicht. | ja | offen |
+| 09 | [Linknetz und Übernahmen](09-linknetz-und-uebernahmen.md) | Links zentral senden statt zufällig aus dem Miner; dazu die Auswertung, was aus dem Vergleichsbot taugt und was nicht. | ja | Teil A gebaut |
+| 10 | [Logistikrollen](10-logistikrollen.md) | Den teuersten Posten des Bots zerlegen: Zielgedächtnis beim Abliefern, Miner ohne Endlossuche, `filler` und `hauler` als eigene Rollen. | ja | gebaut, Wirkung ungemessen |
 
 Begründung der Reihenfolge: 01 liefert die Messgrundlage. 02 bis 04 sind kleine,
 lokal begrenzte Schritte mit direkter Wirkung auf Wachstum — sie zahlen sich aus,

@@ -9,7 +9,7 @@
  */
 
 import { bot } from "../globals";
-import { LinkList, usesLinks } from "../controller/link-list";
+import { linksDeliver } from "../controller/link-list";
 import * as creepBase from "../creep/base";
 import { BODIES } from "../creep/bodies";
 import { carryMove } from "../creep/body";
@@ -32,18 +32,6 @@ const NEVER_SELL = {
     "XGH2O": true,
     "XGHO2": true
 };
-
-/**
- * Liefert das Linknetz des Raums die Energie tatsächlich ab?
- *
- * Nur dann darf ein Quellcontainer mit Link ohne Debitor bleiben. Der RCL
- * allein genügt nicht: zwischen „Raum darf Links bauen" und „am Storage steht
- * ein Empfänger, der sie annimmt" liegen mehrere Tage Bauzeit, und in dieser
- * Lücke bliebe die Energie im Quell-Link liegen.
- */
-function linksDeliver(workroom: string): boolean {
-    return usesLinks(workroom) && new LinkList(workroom).spawnLink !== null;
-}
 
 /** Siehe Dateikopf. `@profile` misst jede Methode dieser Klasse. */
 @profile
@@ -256,6 +244,17 @@ export class Debitor implements CreepRole {
     /** Spawnt einen Debitor für `workroom`, falls Bedarf besteht (inklusive Freelancer- und Notfallmodus). */
     spawn(spawn: StructureSpawn, workroom: string): boolean {
         if (bot.room[workroom]!.transferEnergie && spawn.room.name != workroom || spawn.room.name != workroom && !Memory.rooms[workroom]!.claimed)
+            return false;
+
+        // Heimatraum mit Storage: dort übernehmen `filler` (Storage → Spawn,
+        // Extensions, Türme) und `hauler` (Quellcontainer → Storage). Der
+        // Debitor bleibt der Remote-Hauler und der Allrounder für Räume **ohne**
+        // Storage — die drei Bedingungen schließen sich damit gegenseitig aus,
+        // es kann keinen Raum geben, der von beiden oder von keinem bedient wird.
+        //
+        // Bewusst am Bauwerk festgemacht und nicht am RCL: ein Raum kann RCL 4
+        // erreicht haben, ohne das Storage gebaut zu haben.
+        if (spawn.room.name == workroom && spawn.room.storage)
             return false;
 
         // Ein Quellcontainer mit Link braucht keinen Debitor — aber nur, wenn das

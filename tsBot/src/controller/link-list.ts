@@ -239,3 +239,18 @@ export class LinkList {
     return result;
   }
 }
+
+/**
+ * Liefert das Linknetz des Raums die Energie tatsächlich ab?
+ *
+ * Nur dann darf ein Quellcontainer ohne Träger bleiben. Der RCL allein genügt
+ * nicht: zwischen „Raum darf Links bauen" und „am Storage steht ein Empfänger,
+ * der sie annimmt" liegen mehrere Tage Bauzeit, und in dieser Lücke bliebe die
+ * Energie im Quell-Link liegen.
+ *
+ * Stand vorher als private Funktion in `roles/debitor.ts`; seit es mit `hauler`
+ * einen zweiten Aufrufer gibt, gehört sie zur Linkliste.
+ */
+export function linksDeliver(roomName: string): boolean {
+  return usesLinks(roomName) && new LinkList(roomName).spawnLink !== null;
+}

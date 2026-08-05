@@ -500,3 +500,40 @@ eingetragen, zusammen mit `ERR_RCL_NOT_ENOUGH` und `FIND_MINERALS`.
 
 **Wirkung noch nicht gemessen.** Zum Zeitpunkt der Änderung gab es keinen
 Spielzugriff. Nachzutragen nach dem nächsten Deploy.
+
+## Runde 2026-08-06: Logistik nach Job geschnitten — `filler` und `hauler` (Plan 10, Runde 3)
+
+`Debitor.doJob` bediente vier Jobs in einer `if`-Kaskade: Heimatversorgung,
+Remote-Transport, Freelancer, Notfall. Jeder Creep wertete in jedem Tick auch
+die Bedingungen der drei Jobs mit aus, die er nicht hat — Tombstones, Drops,
+Ruinen, Mineralienverkauf aus dem Storage, Terminal, Labs. Ein Creep, dessen
+einziger Job „Extension füllen" ist, zahlte für alles davon mit. Bei 38,7 %
+Anteil war das der teuerste Posten des Bots.
+
+| Was | Warum | Wirkung |
+| --- | --- | --- |
+| Neue Rolle **`filler`**: Storage → Spawn, Extensions, Türme, nur im eigenen Raum. Kein `goToWorkroom`, keine Distanzmessung, kein Tombstone-/Drop-/Ruinen-Scan, kein Mineralienverkauf, kein Terminal, kein Lab. | Der Job, der im ausgebauten Raum übrig bleibt, ist kurz und immer derselbe. Er verdient eine Rolle, die nur ihn kann. | Ersetzt den Freelancer-Debitor. Rumpf unverändert `BODIES.debitorWithoutContainer`. |
+| Neue Rolle **`hauler`**: Quellcontainer → Storage, nur im eigenen Raum, einer je Container. | Übernimmt den containergebundenen Debitor für `home == workroom`. Entfällt je Quelle, sobald deren Link wirklich abliefert (`linksDeliver`). | Rumpf unverändert `BODIES.debitor`. |
+| `Debitor.spawn` steigt für den Heimatraum **mit Storage** aus. | Damit schließen sich die drei Zuständigkeiten gegenseitig aus: kein Raum wird von beiden bedient und keiner von keinem. Am **Bauwerk** festgemacht, nicht am RCL — ein Raum kann RCL 4 erreicht haben, ohne das Storage gebaut zu haben. | `Debitor.doJob` bleibt **unverändert**: Rollennamen stehen im Creep-Memory, die lebenden Debitoren müssen ihre bis zu 1500 Ticks zu Ende arbeiten. Die toten Zweige fallen in einem späteren Commit weg. |
+| `linksDeliver` von `roles/debitor.ts` nach `controller/link-list.ts` verschoben. | Seit es mit `hauler` einen zweiten Aufrufer gibt, gehört die Frage „liefert das Linknetz wirklich ab?" zur Linkliste. | Keine Verhaltensänderung. |
+| **Spawn-Priorität geändert:** `filler` steht in `roles/index.ts` ganz vorn, `hauler` direkt hinter dem `linkkeeper`. | Sind Spawn und Extensions leer, spawnt der Raum überhaupt nichts mehr — auch keinen Ersatzfiller. Wer den Spawn füttert, muss vor allen stehen, die daraus bezahlt werden. Der Hauler ist wie der Linkkeeper eine Durchsatzsperre: ohne ihn läuft der Quellcontainer über und der Miner fördert ins Leere. | Verhaltensänderung an der Spawnreihenfolge. |
+
+**Keine neue Config-Option und keine neue Zahl.** Die Absicht „dieser Raum soll
+Logistik haben" steht schon in `sendDebitor`; die Rumpfprofile sind die, mit
+denen Freelancer und Containerdebitor heute schon fahren. Diese Runde teilt
+Rollen auf, sie dimensioniert nicht um — eine neue Zahl würde die Messung
+verfälschen, die den Nutzen belegen soll. Ein Filler je Raum genügt nach
+Durchsatz (20 Energie je Tick, rund zehn Ticks Umlauf → vier `CARRY` nach
+`docs/knowledge/efficiency/energy-economy.md`); `debitorAsFreelancer` bleibt als
+Obergrenze erhalten, damit Räume mit mehr Freelancern nichts verlieren.
+
+**Eine Falle, die beim Gegenlesen auffiel:** der Notfallfiller trägt `notfall:
+false`, nicht `true`. Das Flag steuert im Debitor einen eigenen Zweig in
+`doJob`, den der Filler gar nicht hat — es hätte hier nur eine Nebenwirkung:
+`controller/spawn.ts` überspringt für einen Spawn, unter dessen Heimatcreeps ein
+`notfall` steht, das Spawnen **aller anderen** Arbeitsräume. Ein Notfallfiller
+hätte die Remote-Räume also bis zu 1500 Ticks blockiert. Dieselbe Falle hat der
+Notfallminer schon einmal gestellt.
+
+**Wirkung noch nicht gemessen.** Zum Zeitpunkt der Änderung gab es keinen
+Spielzugriff. Nachzutragen nach dem nächsten Deploy.
