@@ -8,6 +8,7 @@
 
 import { bot } from "../globals";
 import * as creepBase from "../creep/base";
+import { BODIES } from "../creep/bodies";
 import type { CreepRole } from "../roles";
 import { profile } from "../profiler/decorator";
 
@@ -79,12 +80,6 @@ export class Transfer implements CreepRole {
      *
      * @param {StructureSpawn} spawn
      */
-    private getProfil(spawn: StructureSpawn)
-    {
-        var max = Math.min(25,parseInt((spawn.room.energyCapacityAvailable / 100) as any));
-        return Array(max).fill(CARRY).concat(Array(max).fill(MOVE));
-    }
-
     /** Spawnt einen Transfer für `workroom`, falls Bedarf besteht und im Heimatraum genug Energie im Storage liegt. */
     spawn(spawn: StructureSpawn, workroom: string)
     {
@@ -121,7 +116,7 @@ export class Transfer implements CreepRole {
         if(storage && storage.store[RESOURCE_ENERGY] < 10000 || !storage)
             return false;
 
-        var profil = this.getProfil(spawn);
+        var profil = BODIES.transfer.build(spawn.room.energyCapacityAvailable);
 
        return creepBase.spawn(spawn,profil, role + '_' + Game.time, { role: role, harvest: true, workroom: workroom, home: spawn.room.name, mineral: mineraltype });
     }

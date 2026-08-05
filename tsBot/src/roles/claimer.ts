@@ -8,6 +8,7 @@
 
 import { bot } from "../globals";
 import * as creepBase from "../creep/base";
+import { CLAIMER_BODY } from "../creep/bodies";
 import type { CreepRole } from "../roles";
 import { profile } from "../profiler/decorator";
 
@@ -66,11 +67,6 @@ export class Claimer implements CreepRole {
         }
     }
 
-    private _getProfil(): BodyPartConstant[]
-    {
-       return  [CLAIM, CLAIM, MOVE,MOVE];
-    }
-
     /** Spawnt einen Claimer für `workroom`, falls Bedarf besteht und keiner unterwegs ist. */
     spawn(spawn: StructureSpawn, workroom: string): boolean
     {
@@ -88,7 +84,7 @@ export class Claimer implements CreepRole {
         if ( 1 <= count)
             return false;
 
-        return creepBase.spawn(spawn, this._getProfil(), role + '_' + Game.time, { role: role, workroom: workroom, home: spawn.room.name});
+        return creepBase.spawn(spawn, CLAIMER_BODY, role + '_' + Game.time, { role: role, workroom: workroom, home: spawn.room.name});
     }
 }
 

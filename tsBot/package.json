@@ -4,6 +4,8 @@
   "type": "module",
   "scripts": {
     "build": "node --loader ts-node/esm build.ts",
+    "test": "node --loader ts-node/esm test.ts",
+    "smoke": "pnpm run build && node --loader ts-node/esm smoke.ts",
     "upload": "node --loader ts-node/esm upload.ts",
     "push": "pnpm run build && pnpm run upload",
     "push:local": "pnpm run build && pnpm run upload local",

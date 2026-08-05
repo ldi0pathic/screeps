@@ -2,6 +2,8 @@
 
 Alle Rollen exportieren `doJob(creep)` und meist `spawn(spawn, workroom)`. Die Spawnmethoden prüfen vorhandene Creeps, Raumflags und Energie, bevor sie `creep.base.spawn()` verwenden.
 
+**Rumpfprofile stehen nicht mehr in den Rollen**, sondern zusammen in `tsBot/src/creep/bodies.ts`; die Arithmetik (Sätze bilden, Rückfall, Obergrenzen) steckt in der Klasse `BodyProfile` in `tsBot/src/creep/body.ts`. Die Rolle entscheidet nur noch, **welches** Profil gilt — beim Upgrader hängt das am RCL, beim Debitor daran, ob Arbeits- und Heimatraum derselbe sind. Die unten je Rolle genannten Zahlen sind unverändert; wer sie vergleichen will, liest jetzt eine Datei statt elf.
+
 ## Rohstoff- und Transportrollen
 
 ### `miner`

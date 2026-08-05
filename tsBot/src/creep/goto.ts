@@ -1,10 +1,56 @@
 /**
- * Ortswechsel und Pfad-Caching der Creeps.
+ * Ortswechsel der Creeps auf gespeicherten Pfaden.
  *
- * Inhaltlich identisch zu `prod/creep.base.goto.js`.
+ * Der Cache selbst steckt in `PathMemory` (`./path-memory.ts`); hier steht, wann
+ * gesucht, wann der gespeicherte Weg genommen und wann er verworfen wird.
+ *
+ * Kostenhintergrund: `docs/knowledge/efficiency/cpu-pathfinding.md`. Eine
+ * Pfadsuche ist das Teuerste, was ein Creep je Tick tun kann — deshalb wird der
+ * Weg gespeichert und nur bei Zielwechsel, Stau oder einem Fehler am Pfad neu
+ * gesucht.
  */
 
 import { bot } from "../globals";
+import { PathMemory } from "./path-memory";
+
+/**
+ * Ein Weg, wie er gebraucht wird: serialisiert zum Laufen und Speichern,
+ * die Schritte nur, wenn sie ohnehin schon vorliegen.
+ *
+ * Der Unterschied ist CPU: nach einer Suche sind die Schritte da, ein
+ * gespeicherter Weg müsste erst deserialisiert werden. Für das Laufen braucht es
+ * sie nicht, nur für die Pfadvisualisierung.
+ */
+interface Route {
+  serialized: string;
+  steps?: PathStep[];
+}
+
+/** Sucht einen Weg und serialisiert ihn. */
+function searchRoute(creep: Creep, target: RoomPosition, ignoreCreeps: boolean): Route {
+  const steps = creep.pos.findPathTo(target, { ignoreCreeps: ignoreCreeps });
+  return { serialized: Room.serializePath(steps), steps: steps };
+}
+
+/**
+ * Zeichnet die noch offenen Schritte des Wegs, wenn `global.const.showPaths`
+ * gesetzt ist. Nur Diagnose.
+ */
+function drawRemainingPath(creep: Creep, route: Route): void {
+    const steps = route.steps ?? Room.deserializePath(route.serialized);
+    const currentPos = creep.pos;
+
+    const index = steps.findIndex(pos => pos.x === currentPos.x && pos.y === currentPos.y);
+    if (index <= 0) {
+        return;
+    }
+
+    const visual = new RoomVisual(creep.room.name);
+    for (let i = index + 1; i < steps.length; i++) {
+        visual.circle(steps[i]!.x, steps[i]!.y,
+            { fill: 'transparent', radius: 0.25, stroke: 'red' });
+    }
+}
 
 export function goToMyHome(creep: Creep): boolean {
     if (creep.memory.home && creep.room.name !== creep.memory.home)
@@ -21,7 +67,7 @@ export function goToRoomFlag(creep: Creep): boolean {
         const flags = creep.room.find(FIND_FLAGS);
         if (flags.length > 0 && !creep.pos.inRangeTo(flags[0]!.pos, 2))
         {
-            return moveByMemory(creep, flags[0]!.pos);;
+            return moveByMemory(creep, flags[0]!.pos);
         }
     }
     return false;
@@ -36,66 +82,52 @@ export function goToWorkroom(creep: Creep): boolean {
     return false;
 }
 
+/**
+ * Bewegt `creep` Richtung `target`, möglichst auf dem gespeicherten Weg.
+ *
+ * Rückgabewert: `true` bedeutet „für diesen Tick ist der Creep versorgt" — die
+ * Rollen brechen daraufhin ihre Arbeit ab. `false` heißt, es gab keinen
+ * Ortswechsel, der Creep kann etwas anderes tun.
+ */
 export function moveByMemory(creep: Creep, target: RoomPosition): boolean {
+    const cache = new PathMemory(creep.memory);
+
     if(creep.pos.isEqualTo(target))
     {
-        delete creep.memory.path;
-        delete creep.memory.pathTarget;
-        delete creep.memory.dontMove;
-        delete creep.memory.lastPos;
+        cache.clear();
         return false;
     }
 
-    var deserializePath: PathStep[] | undefined;
-    var serializedPath: string;
-    if( creep.memory.dontMove > 3 )
+    // Festgefahren: einmal mit Rücksicht auf andere Creeps neu suchen. Bewusst
+    // ohne neues `pathTarget` — der nächste Tick prüft den Cache wieder gegen
+    // das alte Ziel.
+    if(cache.isStuck)
     {
-        deserializePath = creep.pos.findPathTo(target, { ignoreCreeps: false });
-        serializedPath = Room.serializePath(deserializePath);
-        creep.memory.path = serializedPath;
+        const route = searchRoute(creep, target, false);
+        cache.rememberPath(route.serialized);
+        cache.resetStuck();
 
-        creep.memory.dontMove = 0;
-
-        creep.moveByPath(serializedPath);
+        creep.moveByPath(route.serialized);
         return true;
     }
 
-    var t = creep.memory.pathTarget;
-    var p = creep.memory.path;
-
-    if(p && t && t.roomName && target.isEqualTo(new RoomPosition(t.x, t.y, t.roomName)) )
+    const known = cache.pathTo(target);
+    let route: Route;
+    if(known !== undefined)
     {
-        serializedPath = p;
+        route = { serialized: known };
     }
     else
     {
-        deserializePath = creep.pos.findPathTo(target, { ignoreCreeps: true });
-        serializedPath = Room.serializePath(deserializePath);
-        creep.memory.path = serializedPath;
-
-        creep.memory.pathTarget = {};
-        creep.memory.pathTarget.x = target.x;
-        creep.memory.pathTarget.y = target.y;
-        creep.memory.pathTarget.roomName = target.roomName;
+        route = searchRoute(creep, target, true);
+        cache.rememberPathTo(route.serialized, target);
     }
-    var state = creep.moveByPath(serializedPath);
+
+    const state = creep.moveByPath(route.serialized);
 
     if (bot.const.showPaths)
     {
-        if(!deserializePath)
-            deserializePath = Room.deserializePath(serializedPath);
-
-        const currentPos = creep.pos;
-
-        const index = deserializePath.findIndex(pos => pos.x === currentPos.x && pos.y === currentPos.y);
-
-        if(index > 0)
-        {   const visual = new RoomVisual(creep.room.name);
-            for (let i = index+1; i < deserializePath.length; i++) {
-                visual.circle(deserializePath[i]!.x, deserializePath[i]!.y,
-                    { fill: 'transparent', radius: 0.25, stroke: 'red' });
-            }
-        }
+        drawRemainingPath(creep, route);
     }
 
     switch(state)
@@ -103,18 +135,7 @@ export function moveByMemory(creep: Creep, target: RoomPosition): boolean {
         case OK:
         case ERR_TIRED:
         {
-            if(creep.memory.lastPos && creep.memory.lastPos.x == creep.pos.x && creep.memory.lastPos.y == creep.pos.y )
-            {
-                creep.memory.dontMove = (creep.memory.dontMove || 0) + 1;
-            }
-            else
-            {
-                creep.memory.lastPos = {};
-                creep.memory.lastPos.x = creep.pos.x;
-                creep.memory.lastPos.y = creep.pos.y;
-                creep.memory.dontMove = 0;
-            }
-
+            cache.trackPosition(creep.pos);
             return true;
         }
 
@@ -122,10 +143,8 @@ export function moveByMemory(creep: Creep, target: RoomPosition): boolean {
         case ERR_NO_BODYPART:
         case ERR_NOT_FOUND:
         {
-            delete creep.memory.path;
-            delete creep.memory.pathTarget;
-            delete creep.memory.dontMove;
-            delete creep.memory.lastPos;
+            // Der gespeicherte Weg ist unbrauchbar geworden.
+            cache.clear();
             return true; //damit er sein script für diesen Tick beendet
         }
 

@@ -7,8 +7,15 @@
  * entfernt sie, der erzeugte Code ist derselbe wie in prod/.
  */
 
+import { PathMemory } from "../creep/path-memory";
+
 export function installCreepChecks(): void {
     Creep.prototype.checkHarvest = function (action, action2) {
+        // Bei jedem Zustandswechsel wird der gespeicherte Weg verworfen — das
+        // Ziel ändert sich mit dem Zustand. Die Stauerkennung bleibt bewusst
+        // stehen: der Creep steht ja weiter dort, wo er steht.
+        const pathCache = new PathMemory(this.memory);
+
         if (!this.memory.harvest && this.store.getUsedCapacity() === 0) {
             if (typeof (action) == "function")
                 action.call(this);
@@ -16,8 +23,7 @@ export function installCreepChecks(): void {
             this.memory.harvest = true;
             this.memory.fromId = null;
             this.say('🛒');
-            delete this.memory.path;
-            delete this.memory.pathTarget;
+            pathCache.forgetPath();
         }
         if (this.memory.harvest && this.store.getFreeCapacity() === 0) {
             if (typeof (action2) == "function")
@@ -25,16 +31,14 @@ export function installCreepChecks(): void {
 
             this.memory.harvest = false;
             delete this.memory.useRoomSource;
-            delete this.memory.path;
-            delete this.memory.pathTarget;
+            pathCache.forgetPath();
             delete this.memory.useContainer;
         }
 
         if (this.memory.harvest && this.store.getUsedCapacity() > 0 && this.memory.mineral !== "energy") {
             this.memory.harvest = false;
             delete this.memory.useRoomSource;
-            delete this.memory.path;
-            delete this.memory.pathTarget;
+            pathCache.forgetPath();
             delete this.memory.useContainer;
         }
     };

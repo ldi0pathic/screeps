@@ -1,7 +1,16 @@
 # Plan 03: Durchsatz und Körperprofile
 
-Status: **Vorschlag.** Verhaltensänderung: **ja**, außer beim reinen
-Zusammenziehen der Formeln.
+Status: **teilweise umgesetzt.** Der gefundene Builder-Fehler ist behoben (Runde
+2026-08-03), und die Formeln sind zusammengezogen: `src/creep/body.ts` (Klasse
+`BodyProfile`) plus `src/creep/bodies.ts` (die dreizehn Profile), abgesichert
+durch Tests, die die alten Formeln als Referenz mitführen — Branch
+`modernisierung-koerperprofile`, ohne Verhaltensänderung.
+
+**Offen bleibt der eigentliche Inhalt dieses Plans:** Creepzahlen und Rumpfgrößen
+aus dem Durchsatz herzuleiten statt aus festen Zahlen in `config.ts`. Die
+zentralen Profile sind dafür die Voraussetzung, nicht die Lösung.
+
+Verhaltensänderung: **ja**, für den offenen Teil.
 
 ## Problem
 

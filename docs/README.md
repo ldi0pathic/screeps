@@ -60,6 +60,7 @@ Datei, die das Spiel über GitHub synct.
 - [Creep-Grundbausteine und Rollenvermittlung](creep-grundbausteine.md)
 - [Rollen](rollen.md)
 - [Controller und Automatik](controller-und-automatik.md)
+- [Profiler: Befehle für die Spielkonsole](profiler-befehle.md)
 - Weitere Seiten werden beim Analysieren der Rollen, Controller und Prototypen ergänzt.
 
 ## Begriffe

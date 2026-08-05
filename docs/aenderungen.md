@@ -175,3 +175,166 @@ dann einen Tick statt zwei. Mit `prof.detail()` messbar.
 | Modul / Funktion | Was war falsch | Änderung | Wirkung |
 | --- | --- | --- | --- |
 | `creep/transport.ts` · `TransportToHomeStorage` | Zwei Fehler in einer Sonderregel. **Erstens** Raumverwechslung: die Bedingung prüfte `bot.room[workroom].spawnLink`, der Zugriff darunter las `bot.room[home].spawnLink`. Fallen die beiden auseinander und hat der Heimatraum keinen Link, ist `link` `null` und `link.store[RESOURCE_ENERGY]` wirft. Nicht erreichbar, weil alle Räume mit `workroom != home` `spawnLink: null` haben — aber ein latenter Absturz. **Zweitens** war der Zweck entfallen: die Regel erlaubte einem Creep, der aus dem Storage genommen hatte, das Abliefern in dasselbe Storage, damit Energie aus dem Spawn-Link dorthin gelangt. Dieser Weg lief über `fromId == link.id`, gesetzt vom inzwischen entfernten `harvestSpawnLink`. | Sonderregel entfernt. Es bleibt die Grundregel: nicht dorthin abliefern, wo die Ladung geholt wurde. Damit entfallen beide `bot.room`-Zugriffe und der latente Absturz. Zusätzlich das redundante `if (target)` und das dadurch unerreichbare `return false;` aufgelöst. | In den vier Link-Räumen liefert ein Creep, der aus dem Storage genommen hat, seine Ladung nicht mehr dorthin zurück — das war ein Leerlauf. Er fällt stattdessen auf das nächste Ziel seiner Kette. Den Link leert jetzt der `linkkeeper` direkt. |
+
+## Runde 2026-08-04: Schalter für den Profiler auf der Karte
+
+| Was | Warum | Erwartete Wirkung |
+| --- | --- | --- |
+| Neues Modul `src/profiler/flag.ts`: eine Flagge namens `prof` schaltet den Profiler über ihre **Hauptfarbe** (grau = `off`, weiß = `light`, grün = `full`, rot startet `prof.detail(50)`). Verdrahtet ausschließlich in `profiler/index.ts::tick()`, `main.ts` bleibt unverändert. | Screeps hat keine API für eigene Bedienelemente: `RoomVisual` zeichnet nur und ist nicht klickbar, die verbreiteten „Konsolenknöpfe" (`javascript:`-Links, die den Angular-Injector des Clients anzapfen) hängen an undokumentierten Client-Internas und brechen mit jedem Umbau still. Eine Flagge ist dokumentierte Spiel-API, spielerprivat und übersteht den Global-Reset. | Ohne gesetzte Flagge nur ein Objektzugriff auf `Game.flags` je Tick. Der Flaggen-Namensraum gilt je Spieler — eine gleichnamige Flagge eines anderen Spielers kann nichts auslösen. |
+| Gehandelt wird nur bei einer **Farbänderung** (Flanke); die letzte verarbeitete Farbe steht in `Memory.profiler.flagColor`. | Eine stehende Flagge würde sonst jeden Konsolenbefehl im nächsten Tick überstimmen. Die Farbe liegt in `Memory` und nicht im Heap, damit das auch nach einem Global-Reset gilt. | Ein zusätzlicher Zahlenschlüssel in `Memory.profiler`; die 1-KB-Grenze bleibt weit unterschritten. |
+| Die Flagge wird bei jedem Zustandswechsel **mitgefärbt**, auch bei einem über die Konsole. Rot bedeutet „Detailmessung läuft" und fällt nach deren Selbstabschaltung auf die Farbe des Rückkehrzustands. | Zwei Anzeigen, die auseinanderlaufen können, sind schlimmer als keine: die Flagge darf nicht behaupten, der Profiler sei aus, während er messt. | Ein Intent (0,2 CPU) je Umschaltung, und nur wenn eine Flagge steht. |
+| Legende als Room Visual neben der Flagge: alle vier Farben mit ihrer Wirkung, aktive Zeile mit `▶`, dazu Zustand, Fensterfüllstand, CPU pro Tick und Restticks der Detailmessung. Gezeichnet wird nur, solange die Flagge steht. | Ein Farbcode, den man im Kopf haben muss, wird nicht benutzt. Die Flagge ist damit zugleich der Schalter der Anzeige. | Sechs `text`-Aufrufe je Tick, gezeichnet in `prof.tick()` und damit **innerhalb** der Messung — die Kosten stehen in `CPU/Tick` und sind nicht versteckt. Room Visuals sieht nur der Besitzer. |
+| **Verhaltensänderung:** `prof.off()`, `prof.light()` und `prof.on()` brechen eine laufende Detailmessung jetzt ab (`state.cancelDetail()`), mit Hinweis in der Konsole. | Vorher blieb `detailUntil` stehen: die Selbstabschaltung holte Ticks später den vorherigen Zustand zurück und machte damit ein ausdrückliches `prof.off()` wieder zunichte. | Wer während einer Detailmessung umschaltet, bekommt keinen Abschlussbericht; das Fenster zeigt weiterhin `prof.report()`. Ohne laufende Detailmessung unverändert. |
+
+Bedienung, Farbtabelle und Regeln stehen in
+[profiler-befehle.md](profiler-befehle.md#flaggen-schalter-statt-tippen), der
+Memory-Schlüssel in
+[konfiguration-und-memory.md](konfiguration-und-memory.md#profiler-memory-memoryprofiler-memorystats).
+
+### Neu: Tests (`tsBot/tests/`, `pnpm test`, `pnpm smoke`)
+
+Bis hierher war die Verifikation Typecheck plus Build — beides sagt nichts über
+Verhalten. Ab jetzt:
+
+| Was | Warum | Umfang |
+| --- | --- | --- |
+| `pnpm test`: Unittests in `tsBot/tests/` mit `node:test`, gebündelt von esbuild. Keine neue Abhängigkeit. | Die Flankenauswertung des Flaggen-Schalters und die Kennzahlen des Fensters sind genau die Art Logik, die im Spiel erst Ticks später auffällt. | 15 Tests: Flaggen-Schalter (Flanke, Quittung, unbelegte Farbe, Legende samt Raumrand) und Messfenster (leeres Fenster ohne `NaN`, kein `getUsed()` im Zustand `off`, CPU je Raum und Creep, Anteile, Detailmessung, Fälligkeit nach 100 Ticks). |
+| `pnpm smoke`: baut und lädt danach das **gebaute** `tsProd/main.js` in einem `vm`-Kontext mit gestellter, leerer Welt; fährt 17 Ticks über alle drei Zustände und beide Flaggenwechsel. | Ein Unittest lädt einzelne Module. Ob das **Bundle** lädt, die Seiteneffekte von `config.ts` in der richtigen Reihenfolge laufen und ein ganzer Tick durchkommt, prüft nur der Lauf gegen das Artefakt. | Schlägt fehl, sobald ein Tick wirft oder der Bot über `Game.notify` einen Fehler meldet. Unbekannte Screeps-Konstanten liefert ein Proxy als `0` und meldet sie — tragfähig nur, weil die gestellten Räume auf jedes `find()` eine leere Liste geben. |
+
+Die Testbasis lebt außerhalb von `tsconfig.json` (`include: ["src"]`), wie
+`build.ts` und `upload.ts`: sie ist Werkzeug, nicht Bot. Details und die zwei
+Regeln, an denen sonst still etwas kaputtgeht (`Memory` leeren statt ersetzen,
+Modul erst nach den Globals laden), stehen in `CLAUDE.md`.
+
+### Umbau: Profiler auf Klassen
+
+Struktureller Umbau **ohne Verhaltensänderung**, direkt nach den Tests, weil
+erst sie ihn belegbar machen: dieselben 15 Tests mit unveränderten Zusicherungen
+laufen vor und nach dem Umbau, dazu Typecheck, Build und Smoketest.
+
+| Was | Warum | Wirkung |
+| --- | --- | --- |
+| `profiler/state.ts` → Klasse `ProfilerState`, `window.ts` → `MeasurementWindow`, `flag.ts` → `FlagSwitch`, `index.ts` → `Profiler` (erfüllt `ProfilerHandle`). Modulzustand (`currentMode`, `windowState`, `openSections`, `lastMode`) wurde zu Feldern. | Der Zustand lag in Modulvariablen: ein Test musste ihn zwischen zwei Fällen zurücksetzen, und wer das vergaß, bekam Werte aus dem Vorgänger. Jetzt baut jeder Test seine eigenen Objekte. | Keine. Zusicherungen der Tests unverändert; im Bundle nachgeprüft, dass alle sechs `Game.cpu.getUsed()`-Stellen weiter hinter einem Zustandsvergleich liegen. |
+| Abhängigkeiten werden übergeben statt importiert: `MeasurementWindow` und `FlagSwitch` bekommen den `ProfilerState`, `Profiler` alle drei. | Vorher griffen die Module über Modulfunktionen aufeinander zu — nicht ersetzbar und im Test nur global umschaltbar. | Aus `state.getMode()` wird `this.state.mode`, ein Feldzugriff statt eines Funktionsaufrufs. |
+| Neue Datei `profiler/runtime.ts` als Zusammenbau (Composition Root) mit den drei Instanzen des laufenden Bots. | Der Dekorator `@profile` steht an den Rollenklassen und kann keine Argumente bekommen; er muss sich das Fenster selbst holen. Aus `index.ts` wäre das eine Importschleife (`index` → `decorator` → `index`). | Eine Datei mehr, dafür eine einzige Stelle, an der die Objekte entstehen. |
+| `ProfilerState` liest `Memory` erst beim Zugriff statt den Verweis beim Laden festzuhalten. | Ein beim Laden festgehaltenes `Memory` bindet das Modul an das Objekt, das zufällig gerade dort stand. | Robuster gegenüber Ladereihenfolge: das Modul lädt auch, wenn `Memory` noch nicht steht. |
+| `metrics()` nimmt kein Argument mehr (es war immer der eigene Rohzustand), `snapshot` und `isDue` sind Getter. | Drei Aufrufstellen lauteten `metrics(snapshot())` — eine Möglichkeit, versehentlich ein fremdes Fenster auszuwerten, ohne Nutzen. | Nur Schreibweise. |
+
+Nicht umgebaut wurden `report.ts` und `stats.ts`: reine Funktionen ohne
+Zustand, eine Klasse gewänne dort nichts.
+
+**Nicht gebaut:** die klickbare Knopfzeile in der Konsole. Sie wäre bequemer,
+hängt aber an Client-Internas, lebt im Log (scrollt weg, müsste also regelmäßig
+neu ausgegeben werden und würde die Konsole zumüllen) und schickt rohes HTML an
+jeden, der die Logs über die API abholt.
+
+## Runde 2026-08-04: Körperprofile zusammengezogen
+
+Zweite Modernisierungsrunde, **ohne Verhaltensänderung** im erreichbaren Bereich.
+Umsetzt den strukturellen Teil von [Plan 03](plans/03-durchsatz-und-bodies.md);
+die Durchsatzlogik dieses Plans bleibt offen.
+
+| Was | Warum | Wirkung |
+| --- | --- | --- |
+| Neue Klasse `BodyProfile` (`src/creep/body.ts`): Bausatz aus Teilen mit Anzahl je Satz, Höchstzahl Sätze, Pflicht-Rückfall. Rechnet `min(maxSets, floor(Energie / Satzkosten))` und hängt die Teile in der Reihenfolge des Bausatzes an. | Acht der elf Rollen rechneten dieselben vier Zeilen selbst, jede mit eigenen Zahlen im Funktionsrumpf und eigenem Umgang mit dem Grenzfall. Zwei lieferten dort früher ein **leeres** Body-Array (A4, Builder-Fix). | Keine. Die Klasse liest weder `Game` noch `Memory`, sie bekommt die Energie übergeben — und ist deshalb ohne gestellte Welt prüfbar. |
+| Neue Datei `src/creep/bodies.ts`: die dreizehn Profile aller Rollen nebeneinander. Die Rollen behalten nur die **Auswahl** (Upgrader nach RCL, Extupgrader nach Sicht und RCL, Debitor nach Heimatraum und Container). | Wer wissen wollte, wie groß ein Miner bei 2300 Energie wird, musste `roles/miner.ts` lesen; wer Zahlen vergleichen wollte, elf Dateien. Plan 03 braucht genau diese eine Stelle, um Rumpfgrößen später aus dem Durchsatz herzuleiten. | Keine. Elf lokale Profilfunktionen entfallen, `_getProfil` heißt jetzt `bodyFor` (englische Bezeichner). |
+| Beleg: `tests/creep-bodies.test.ts` führt die **alten** Formeln als Referenz mit und vergleicht jedes Profil über 300 bis 12 900 Energie in Schritten von 50. | Ein Umbau an den Rümpfen ist nur dann harmlos, wenn dieselben Rümpfe herauskommen — und das ist mechanisch prüfbar, nicht Ansichtssache. | 9 neue Tests (24 gesamt). Dazu Zusicherungen, die vorher niemand prüfte: kein leerer Rumpf, höchstens 50 Teile, Kosten nie über der Energie. |
+| `pnpm smoke` stellt jetzt Spawns und prüft jeden angeforderten Rumpf. | Der Smoketest fuhr Ticks, ohne je einen Rumpf zu rechnen — der geänderte Pfad war darin nicht enthalten. Außerdem fälschte er die Körperteil-Konstanten mit `0`; die Werte stehen jetzt für Unittests und Smoketest an einer Stelle (`tests/support/screeps-stubs.ts`). | 120 Rumpfanforderungen je Lauf (Upgrader und Claimer; die übrigen Rollen brechen in der leeren Welt vorher ab). |
+
+**Eine bewusste Abweichung**, unerreichbar im Spiel: Transfer und Debitor liefern
+unter 100 Energie Kapazität jetzt `[CARRY, MOVE]` statt eines leeren Rumpfs. Ein
+Raum mit Spawn hat immer mindestens 300 — der Fall kann nicht eintreten, aber ein
+Pflicht-Rückfall verhindert die Fehlerklasse dauerhaft.
+
+**Gefunden, nicht geändert:** das Rückfallprofil des Defenders kostet 330 Energie
+(`[MOVE, MOVE, ATTACK, RANGED_ATTACK]`), er rechnet aber mit `energyAvailable`.
+Unter 330 vorrätiger Energie schlägt sein Spawn also fehl und wird im nächsten
+Tick erneut versucht. Der Test hält das fest; ob dort ein billigerer Rumpf
+sinnvoller ist, gehört zu Plan 03 (Verteidigung im Notfall) und nicht in einen
+Umbau ohne Verhaltensänderung.
+
+
+## Runde 2026-08-04: Pfad-Cache als Objekt
+
+Dritte Modernisierungsrunde, **ohne Verhaltensänderung**. Diesmal war die
+Reihenfolge streng test-zuerst: die dreizehn Tests zu `goto.ts` sind gegen die
+**alte** Fassung geschrieben und dort grün gelaufen, bevor eine Zeile umgebaut
+wurde.
+
+| Was | Warum | Wirkung |
+| --- | --- | --- |
+| Neue Klasse `PathMemory` (`src/creep/path-memory.ts`) für die vier zusammengehörigen Memory-Schlüssel `path`, `pathTarget`, `lastPos`, `dontMove`. | Die Schlüssel wurden an **zehn** Stellen in drei Dateien einzeln per `delete` angefasst — und zwar nach zwei *verschiedenen* Regeln, die nirgends benannt waren. | Keine. `forgetPath()` verwirft nur den Weg (Zustandswechsel in `checkHarvest`), `clear()` zusätzlich die Stauerkennung (am Ziel, bei ungültigem Pfad, beim Standplatzwechsel des Miners). Genau die bisherigen Regeln, jetzt mit Namen. |
+| `moveByMemory` in benannte Schritte zerlegt: Ankunft, Stau-Ausweichsuche, Cache oder Neusuche, Laufen, Auswertung des Rückgabecodes. Die Pfadvisualisierung ist eine eigene Funktion. | Eine Funktion mit fünf Aufgaben und den vier Memory-Schlüsseln mitten im Ablauf. Der Sonderfall „festgefahren" war nur an `dontMove > 3` zu erkennen. | Keine. Der CPU-Trick bleibt erhalten: nach einer Suche liegen die Schritte schon vor und werden für die Visualisierung nicht erneut deserialisiert. |
+| Zielvergleich ohne `new RoomPosition(...)`: es werden `x`, `y` und `roomName` direkt verglichen. | Der Vergleich legte je Creep und Tick ein Wegwerf-Objekt an, nur um `isEqualTo` aufrufen zu können. | Verhaltensgleich (`isEqualTo` vergleicht genau diese drei Felder), eine Allokation je Creep und Tick weniger. |
+| 19 neue Tests (43 gesamt), dazu Stubs für `RoomPosition`, `Room.serializePath` und einen Creep, der jeden `moveByPath`-Aufruf mitschreibt (`tests/support/movement-stubs.ts`). | Bewegung und Pfad-Caching sind der heißeste Pfad des Bots und waren völlig ungetestet. | Festgehalten sind jetzt auch die Feinheiten: derselbe Punkt in einem anderen Raum ist ein anderes Ziel, der Stauzähler springt erst beim zweiten gleichen Standort an, `ERR_TIRED` gilt als regulärer Schritt, und die drei Fehlercodes am Pfad verwerfen den Cache. |
+
+**Gefunden, nicht geändert:** `moveByMemory` sucht ohne `range` — für Storage,
+Link, Terminal und Spawn sind das nicht betretbare Ziele, und die Wissensbasis
+warnt genau davor. Der Weg kommt trotzdem heraus, kostet aber mehr Ops als nötig.
+Ein `range` ändert, wo der Creep stehen bleibt, und muss je Aufrufstelle geprüft
+werden: aufgenommen als Befund 6 in [Plan 05](plans/05-cpu-verteilung.md).
+
+## Runde 2026-08-05: Beschaffungsketten zusammengezogen
+
+Vierte Modernisierungsrunde, **ohne Verhaltensänderung**. Wieder test-zuerst: die
+fünfzehn Tests zu den Beschaffungsketten sind gegen die **alte** Fassung
+geschrieben und liefen dort grün, bevor umgebaut wurde.
+
+| Was | Warum | Wirkung |
+| --- | --- | --- |
+| Neue Datei `src/creep/target.ts` mit `RememberedTarget` (kapselt die `useX`-Memory-Schlüssel) sowie `collectFrom` und `withdrawFrom` (werten aus, was eine Aktion am Ziel gemeldet hat). | Derselbe `switch` stand **zwölfmal** fast gleich in `base.ts` und `transport.ts`: `ERR_NOT_IN_RANGE` → hinlaufen, `OK` → `fromId` setzen, sonst aufgeben. Dazu fünfmal „gemerktes Ziel aus dem Memory holen, sonst suchen". | Keine. Neun Funktionen in `base.ts` sind auf die Bausteine umgestellt; aus je 20 bis 30 Zeilen werden fünf bis acht. Die Rückgabecodes werden weiterhin genau gleich behandelt. |
+| `ERR_INVALID_TARGET` steht nicht mehr einzeln vor dem `default` — es fällt in denselben Zweig. | Es tat vorher schon genau dasselbe wie `default`; die eigene `case`-Zeile suggerierte eine Sonderbehandlung, die es nicht gab. | Keine. |
+| `RememberedTarget.isRemembered` macht eine bisher unbenannte Regel sichtbar: ist ein Ziel gemerkt, das es nicht mehr gibt, wird in diesem Tick **nicht** ersatzweise gesucht. | Beim Zusammenziehen wäre daraus fast ein `??` geworden — also eine Ersatzsuche, und damit mehr Pfadsuchen je Tick als vorher. Ein Test hält die Regel jetzt fest. | Keine, aber der teuerste Fehler, den dieser Umbau hätte machen können. |
+| Der Store-Stub der Tests legt seine Methoden **nicht aufzählbar** an. | Der Bot läuft mehrfach mit `for (var resourceType in store)` über einen Store. Im Spiel liefert das nur Ressourcen; im Stub wäre `getUsedCapacity` als „Ressource" mitgelaufen und hätte ein falsches Verhalten bestätigt. | Betrifft nur die Tests — aber ohne diese Korrektur wären sie an der entscheidenden Stelle nichts wert. |
+| Der Smoketest fälscht **keine** Konstante mehr: `FIND_*`, `STRUCTURE_*` und `OBSTACLE_OBJECT_TYPES` stehen jetzt zusammen mit den Körperteilen in `tests/support/screeps-stubs.ts` und werden von Unittests und Smoketest gemeinsam benutzt. | `OBSTACLE_OBJECT_TYPES` wird in `roles/linkkeeper.ts` beim Laden des Moduls gelesen. Als `0` gefälscht hätte der erste `includes()`-Aufruf geworfen — in der leeren Smoke-Welt fiel das nur nicht auf. | Die Warnliste des Smoketests ist leer. |
+
+**Ein Fehler, den ich selbst eingebaut und beim Prüfen gefunden habe**, hier als
+Warnung: beim Umstellen von `harvestRoomStorage` hatte ich
+`if (storage && storage.store[type] > min)` zu `if (!storage || store[type] <= min) return false` negiert.
+Fehlt die Ressource im Storage, ist der Wert `undefined` — und dann sind **beide**
+Vergleiche falsch, die Bedingung kippt also. Solche Schwellenvergleiche bleiben
+positiv formuliert; ein Test deckt den Fall jetzt ab.
+
+**Gefunden, nicht geändert:** `creep/transport.ts` ruft mehrfach
+`store.getFreeCapacity([RESOURCE_ENERGY])` — mit einem **Array** statt der
+Ressourcenkonstante. Das funktioniert nur, weil der Wert bei der
+Schlüsselsuche zu `"energy"` wird; dokumentiert ist es nicht. `transport.ts` ist
+in dieser Runde bewusst unangetastet geblieben (Container-Auswahl und diese
+Aufrufe gehören zusammen betrachtet) und ist der Kandidat für die nächste Runde.
+
+## Runde 2026-08-05: Ablieferketten und Containerauswahl
+
+Fünfte Modernisierungsrunde, **ohne Verhaltensänderung**. Wieder test-zuerst: die
+acht Tests zu `transport.ts` liefen gegen die alte Fassung grün, bevor umgebaut
+wurde.
+
+| Was | Warum | Wirkung |
+| --- | --- | --- |
+| Neue Klasse `ContainerList` (`src/creep/containers.ts`) für `Memory.rooms[<raum>].container`: Liste kennen, bei Bedarf neu erheben, den nächstgelegenen passenden Container finden. **Was** passend heißt, gibt der Aufrufer als Prüfung mit — beim Holen zählt der Inhalt, beim Abliefern der freie Platz. | Beide Seiten suchten denselben Container aus derselben Liste, mit je eigener Entfernungsrechnung und gespiegelten Bedingungen: `base.ts` (holen) und `transport.ts` (abliefern). | Keine. Verglichen wird jetzt die **quadrierte** Entfernung — für die Reihenfolge dasselbe wie die Wurzel, spart aber je Kandidat eine Wurzelberechnung. |
+| `_Transfer` heißt `transferTo` und steht in `creep/target.ts` bei seinem Gegenstück `withdrawFrom`. | Beides ist dieselbe Frage („handeln oder hinlaufen?"), nur in zwei Richtungen. Der Unterschied steht jetzt dort dokumentiert: beim Abliefern wird **kein** `fromId` gesetzt, denn es gibt keine Quelle. | Keine. Vier Ablieferfunktionen benutzen es. |
+| Neuer Helfer `findDeliveryTarget` in `transport.ts` für die Suche „nächstes eigenes Bauwerk dieser Typen, das Platz hat und nicht die Quelle der Ladung ist". | Zweimal derselbe Filteraufbau. Terminal und Türme benutzen ihn bewusst **nicht**: der Terminal wird über eine gemerkte Id gefunden, die Türme nach Lücke sortiert, und beide kennen die `fromId`-Regel nicht. | Keine. |
+| **Toter Code entfernt:** `CheckIsFreelancer` wurde exportiert, aber von keiner Datei benutzt. | Kein toter Code — Git ist das Archiv. | Keine. |
+
+**Zwei Unterschiede zwischen Holen und Abliefern**, die vorher nur aus dem
+Kontrollfluss zu lesen waren und jetzt benannt sind:
+
+- Eine **leere** Containerliste bedeutet beim Abliefern „keine Container da"; die
+  Beschaffungsseite erhebt sie dann neu (`hasList` gegen `hasEntries`).
+- Eine Id ohne Objekt verwirft beim Holen die **ganze** Liste (sie wird neu
+  erhoben), beim Abliefern wird sie stillschweigend übersprungen
+  (`forgetListOnStaleId`).
+
+Beides bleibt, wie es war. Ob die Ablieferseite nicht auch selbstheilend sein
+sollte, ist eine Verhaltensfrage und gehört zu Plan 05.
+
+**Drei Abweichungen, die ich beim Gegenlesen der eigenen Änderung gefunden habe**
+— alle drei vor dem Commit zurückgedreht, und alle drei hätten die Tests sonst
+gefunden:
+
+1. `hasEntries` statt `hasList` beim Abliefern hätte aus einer leeren Liste eine
+   Neuerhebung gemacht.
+2. `transferTo` in der Containerablieferung hätte die gemerkte Wahl schon auf dem
+   **Hinweg** vergessen, nicht erst nach der Ablieferung. Dort steht deshalb
+   weiterhin ein eigener `switch`, mit Begründung im Code.
+3. Beim Terminal hatte ich die Kapazitätsprüfung negiert — dieselbe Falle wie in
+   der Runde davor. Sie ist wieder positiv formuliert.
