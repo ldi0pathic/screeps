@@ -431,3 +431,27 @@ in `light`, hätte die Tabelle jede Zeile der Grundlinie als „weggefallen"
 ausgewiesen — obwohl nichts weg ist, sondern nur niemand misst. Unterschieden
 wird jetzt am Zustand (`metrics.mode === "full"`), nicht an leeren Listen: eine
 leere Liste **in `full`** heißt sehr wohl „ist weg" und soll auch so dastehen.
+
+## Runde 2026-08-06: Zielgedächtnis beim Abliefern (Plan 10, Runde 1)
+
+Anlass ist die Messung in `docs/profiler/detail_01.txt`: `Debitor.doJob` ist mit
+38,5 % der teuerste Posten des Bots, und die Ursache ist die Zielwahl, nicht die
+Bewegung. `findDeliveryTarget` suchte in **jedem** Tick per
+`findClosestByPath(FIND_MY_STRUCTURES)` das nächste Ablieferziel — auch in den
+Ticks, die der Creep dorthin unterwegs war, und im ausgebauten Raum über 50+
+Extensions plus Türme, Labs und Links. Die Beschaffungsseite hatte dieses
+Problem seit der Runde vom 2026-08-05 nicht mehr; die Ablieferseite schon.
+
+| Was | Warum | Wirkung |
+| --- | --- | --- |
+| `findDeliveryTarget` (`creep/transport.ts`) bekommt einen `RememberedTarget`. Memory-Schlüssel `useSupply` für Spawn und Extensions, `useLab` für Labore. | Die Suche gehört einmal je Ablieferung gemacht, nicht einmal je Tick des Hinwegs. Getrennte Schlüssel, weil ein Creep in derselben Kaskade beides probiert. | Statt einer Pfadsuche je Tick nur noch eine je Ziel. Betrifft jede Rolle, die abliefert: Debitor, Transfer, Builder. |
+| Neu: `deliverTo` (`creep/target.ts`) als Gegenstück zu `collectFrom`. Setzt **kein** `fromId`, vergisst das Ziel bei `OK` und bei jedem Fehlercode, behält es nur bei `ERR_NOT_IN_RANGE`. | Nach einer Ablieferung ist die Extension voll oder der Creep leer — die Wahl ist verbraucht. `fromId` merkt sich die Quelle einer Ladung, und beim Abliefern gibt es keine. | Kein Verhaltensunterschied gegenüber `transferTo`, das für Terminal, Türme und Storage unverändert bleibt. |
+| Ein gemerktes Ziel, das die Ladung nicht mehr annimmt, löst **im selben Tick** eine Ersatzsuche aus. | Bewusste Abweichung von der Beschaffungsseite, wo ein verschwundenes Ziel keine Ersatzsuche auslöst. Gäbe `findDeliveryTarget` hier `null` zurück, liefe die Kaskade der Rolle weiter und der Creep kippte seine Ladung ins Storage, statt die nächste Extension zu füllen. | Korrektheit, nicht Sparsamkeit. Ist als Test festgehalten. |
+
+`findClosestByPath` bleibt bewusst stehen. Ein Wechsel auf `findClosestByRange`
+wäre eine zweite Verhaltensänderung im selben Schritt; ob er nach dem
+Zielgedächtnis überhaupt noch etwas bringt, entscheidet die Messung.
+
+**Wirkung noch nicht gemessen.** Zum Zeitpunkt der Änderung gab es keinen
+Spielzugriff. Nachzutragen nach dem nächsten Deploy über `prof.baseline(...)`
+und `prof.compare(...)`.

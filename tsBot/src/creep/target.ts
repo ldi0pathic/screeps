@@ -17,6 +17,10 @@
  * `fromId` ist dabei nicht Buchhaltung, sondern Steuerung: es merkt sich die
  * Quelle der Ladung, damit der Creep sie nicht gleich wieder dorthin abliefert
  * (siehe `creep/transport.ts`).
+ *
+ * `deliverTo` ergänzt das Gegenstück für ein **gemerktes** Ablieferziel: gesucht
+ * wird dort weiterhin in `findDeliveryTarget` (`./transport.ts`), hier wird nur
+ * ausgewertet und bei Erfolg vergessen.
  */
 
 import { moveByMemory } from "./goto";
@@ -134,6 +138,44 @@ export function transferTo(
       return true;
 
     default:
+      return false;
+  }
+}
+
+/**
+ * Liefert `type` an ein **gemerktes** Ziel ab.
+ *
+ * Zwei bewusste Unterschiede zu `collectFrom`: es wird kein `fromId` gesetzt
+ * (das merkt sich die Quelle einer Ladung, beim Abliefern gibt es keine), und
+ * ein erfolgreicher Transfer **vergisst** das Ziel — danach ist die Extension
+ * voll oder der Creep leer, in beiden Fällen ist die Wahl verbraucht.
+ *
+ * Gemerkt wird die Wahl in `findDeliveryTarget` (`./transport.ts`), sobald dort
+ * gesucht wurde. Hier wird deshalb nur noch vergessen: bei `ERR_NOT_IN_RANGE`
+ * läuft der Creep weiter zu demselben Ziel, sonst ist es verbraucht.
+ */
+export function deliverTo(
+  creep: Creep,
+  target: AnyStructure | null | undefined,
+  remembered: RememberedTarget,
+  type: string,
+): boolean {
+  if (!target) {
+    remembered.forget();
+    return false;
+  }
+
+  switch (creep.transfer(target, type as ResourceConstant)) {
+    case ERR_NOT_IN_RANGE:
+      moveByMemory(creep, target.pos);
+      return true;
+
+    case OK:
+      remembered.forget();
+      return true;
+
+    default:
+      remembered.forget();
       return false;
   }
 }
