@@ -1,4 +1,4 @@
-// Build: 2026-08-06 00:21:03 +02:00
+// Build: 2026-08-06 01:11:50 +02:00
 "use strict";
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
@@ -1403,6 +1403,23 @@ function transferTo(creep, target, type) {
       return false;
   }
 }
+function deliverTo(creep, target, remembered, type) {
+  if (!target) {
+    remembered.forget();
+    return false;
+  }
+  switch (creep.transfer(target, type)) {
+    case ERR_NOT_IN_RANGE:
+      moveByMemory(creep, target.pos);
+      return true;
+    case OK:
+      remembered.forget();
+      return true;
+    default:
+      remembered.forget();
+      return false;
+  }
+}
 function withdrawFrom(creep, target, type) {
   switch (creep.withdraw(target, type)) {
     case ERR_NOT_IN_RANGE:
@@ -1417,10 +1434,21 @@ function withdrawFrom(creep, target, type) {
 }
 
 // src/creep/transport.ts
-function findDeliveryTarget(creep, types, accepts) {
-  return creep.pos.findClosestByPath(FIND_MY_STRUCTURES, {
+function findDeliveryTarget(creep, remembered, types, accepts) {
+  if (remembered.isRemembered) {
+    const known = remembered.resolve();
+    if (known && accepts(known) && known.id != creep.memory.fromId) {
+      return known;
+    }
+    remembered.forget();
+  }
+  const found = creep.pos.findClosestByPath(FIND_MY_STRUCTURES, {
     filter: (structure) => types.includes(structure.structureType) && accepts(structure) && structure.id != creep.memory.fromId
   });
+  if (found) {
+    remembered.remember(found);
+  }
+  return found;
 }
 function TransportToHomeContainer(creep, type, mul) {
   if (!mul) mul = 0.5;
@@ -1493,18 +1521,21 @@ function TransportToHomeTerminal(creep) {
   return false;
 }
 function TransportToHomeLab(creep, type) {
-  const target = findDeliveryTarget(creep, [STRUCTURE_LAB], (structure) => structure.store.getFreeCapacity([type]) > 0);
-  return transferTo(creep, target, type);
+  const remembered = new RememberedTarget(creep.memory, "useLab");
+  const target = findDeliveryTarget(creep, remembered, [STRUCTURE_LAB], (structure) => structure.store.getFreeCapacity([type]) > 0);
+  return deliverTo(creep, target, remembered, type);
 }
 function TransportEnergyToHomeSpawn(creep) {
   if (creep.memory.home != creep.room.name || creep.store[RESOURCE_ENERGY] == 0)
     return false;
+  const remembered = new RememberedTarget(creep.memory, "useSupply");
   const target = findDeliveryTarget(
     creep,
+    remembered,
     [STRUCTURE_SPAWN, STRUCTURE_EXTENSION],
     (structure) => structure.store.getFreeCapacity([RESOURCE_ENERGY]) > 0
   );
-  return transferTo(creep, target, RESOURCE_ENERGY);
+  return deliverTo(creep, target, remembered, RESOURCE_ENERGY);
 }
 function TransportEnergyToHomeTower(creep) {
   if (creep.store[RESOURCE_ENERGY] == 0)
@@ -3092,6 +3123,7 @@ var Miner = class {
   }
   /** Bewegt den Miner zur Quelle, baut/repariert dort Container bzw. Link und erntet. */
   doJob(creep) {
+    var _a;
     if (creep.memory.notfall) {
       var replacement = _.find(Game.creeps, (c) => c.name != creep.name && c.memory.role == role7 && c.memory.workroom == creep.memory.workroom && c.memory.source == creep.memory.source && !c.memory.notfall && !c.spawning);
       if (replacement) {
@@ -3140,14 +3172,13 @@ var Miner = class {
                 return;
               }
               if (state2 === ERR_FULL) {
-                finalLocation = adjacentSpots.find(
-                  (p) => p.lookFor(LOOK_TERRAIN)[0] !== "wall"
-                );
-                creep.memory.pos = finalLocation;
-                return;
+                break;
               }
               creep.say(state2);
             }
+            creep.memory.pos = adjacentSpots.find(
+              (p) => p.lookFor(LOOK_TERRAIN)[0] !== "wall"
+            );
             return;
           }
         }
@@ -3155,7 +3186,7 @@ var Miner = class {
         finalLocation = creep.memory.pos;
       }
       if (creep.pos.x == creep.memory.pos.x && creep.pos.y == creep.memory.pos.y) {
-        var source = creep.pos.findClosestByPath(creep.memory.mineEnergy ? FIND_SOURCES : FIND_MINERALS);
+        var source = (_a = Game.getObjectById(creep.memory.source)) != null ? _a : creep.pos.findClosestByRange(creep.memory.mineEnergy ? FIND_SOURCES : FIND_MINERALS);
         var state2 = creep.harvest(source);
         if (state2 === ERR_NOT_IN_RANGE) {
           creep.say("\u2049");
@@ -3207,6 +3238,9 @@ var Miner = class {
                   return;
                 }
               }
+              creep.memory.onPosition = true;
+              this._clearMemory(creep);
+              return;
             } else {
               creep.memory.onPosition = true;
               this._clearMemory(creep);
@@ -3219,6 +3253,16 @@ var Miner = class {
     } else {
       let source2 = Game.getObjectById(creep.memory.source);
       var container = Game.getObjectById(creep.memory.container);
+      if (creep.memory.container && !container) {
+        container = creep.pos.lookFor(LOOK_STRUCTURES).find((s) => s.structureType === STRUCTURE_CONTAINER);
+        if (container) {
+          creep.memory.container = container.id;
+        } else {
+          delete creep.memory.container;
+          creep.memory.onPosition = false;
+          return;
+        }
+      }
       if (creep.memory.mineEnergy) {
         if (container) {
           if (container.progressTotal == void 0 && container.store.getUsedCapacity() == 0 && source2.energy <= 1 || container.progressTotal != void 0 && source2.energy <= 1) {

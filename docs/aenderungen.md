@@ -455,3 +455,48 @@ Zielgedächtnis überhaupt noch etwas bringt, entscheidet die Messung.
 **Wirkung noch nicht gemessen.** Zum Zeitpunkt der Änderung gab es keinen
 Spielzugriff. Nachzutragen nach dem nächsten Deploy über `prof.baseline(...)`
 und `prof.compare(...)`.
+
+## Runde 2026-08-06: Der Miner steht und fördert (Plan 10, Runde 2)
+
+Anlass ist dieselbe Messung: fünfzehn Miner, elf davon kosten 0,01–0,06 CPU je
+Tick, **vier** kosten 0,14 bis 0,39. Ein Miner steht auf seinem Container und
+erntet — diese Spreizung durfte es nicht geben. Ursache waren zwei Sackgassen
+im Standortzweig, aus denen `doJob` zurückkehrte, ohne einen Zustand erreicht
+zu haben. Der Creep wiederholte dann in **jedem** weiteren Tick seines Lebens
+Quellensuche, `findInRange` und bis zu acht Bauanfragen.
+
+| Was | Warum | Wirkung |
+| --- | --- | --- |
+| Nimmt ab RCL 6 kein Nachbarfeld eine **Link**baustelle an, wird jetzt trotzdem `onPosition` gesetzt. | Vorher fiel der Zweig durch, ohne einen Zustand zu setzen. Kein Ausgang des Standortzweigs verlässt `doJob` mehr, ohne dass `onPosition` steht oder eine Baustelle angelegt wurde. | Die vier teuren Miner fallen auf das Niveau der übrigen elf. |
+| Nimmt kein Nachbarfeld eine **Container**baustelle an, wird `memory.pos` auf das erste Feld ohne Wandterrain gesetzt — bisher tat das nur der `ERR_FULL`-Fall. | Dieselbe Sackgasse eine Ebene früher und schlimmer: ohne `pos` stand der Miner nirgends und förderte nie. | Der Miner arbeitet auch dann, wenn gerade kein Container gebaut werden kann. |
+| Eine `memory.container`-Id, die nicht mehr trägt, wird nachgezogen: erst per `lookFor` auf dem **eigenen** Feld, sonst `onPosition = false` und Standplatz neu bestimmen. | Der Miner merkt sich die **Baustelle** als `container` — das fertige Bauwerk bekommt eine **neue** Id. Nach Fertigstellung zeigte die Id für den Rest des Creeplebens ins Leere, und der Container wurde nie wieder repariert. Container verfallen mit 5.000 Trefferpunkten je 100 Ticks. | Behobener Fehler mit Wirkung auf die Fördermenge, nicht nur auf CPU. |
+| Die Quelle wird aus `creep.memory.source` gelesen statt per `findClosestByPath` neu bestimmt; Rückfall ist `findClosestByRange`. | Der Miner steht in diesem Moment direkt neben seiner Quelle, und deren Id steht seit dem Spawn im Memory. Eine Pfadsuche, um etwas zu bestimmen, das man schon weiß. | Eine Pfadsuche weniger je Standortbewertung. |
+
+**Merkregel, die dabei entstanden ist und im Code steht:** eine gesetzte
+`memory.container`-Id heißt „hier gehört ein Container hin", **keine** Id heißt
+„hier wurde nachgesehen, es gibt keinen". Nur im ersten Fall wird nachgezogen —
+sonst wäre die Endlosschleife durch die Hintertür zurück.
+
+**Ein periodischer Wiederholungsversuch wurde erwogen und verworfen.** Der erste
+Entwurf ließ einen Miner ohne Link seinen Standplatz alle 100 Ticks neu
+bewerten. Das ist unnötig: der Miner wird nicht erneuert (`renewCreep` kommt im
+Bot nicht vor), und `Miner._spawn` zählt einen vorhandenen Miner nur, solange
+`ticksToLive > 300` (im Heimatraum 150) — der Nachfolger startet rund 200 Ticks
+vor dem Ende ohne `onPosition` im Memory und durchläuft die Standortsuche
+komplett neu. Der Versuch wiederholt sich damit einmal je Creepleben zum Preis
+von null, während das Intervall zusätzlich einen Ausschlag erzeugt hätte: bei
+`Game.time % 100` schlagen alle linklosen Miner im selben Tick zu.
+
+Dieselbe Begründung trägt eine bewusst offen gelassene Lücke: baut jemand
+**später** einen Container neben eine Quelle, deren Miner keinen hat, merkt der
+laufende Miner das nicht. Ihn danach suchen zu lassen hieße, in jedem Tick eine
+Umgebungssuche zu machen — genau die Kosten, die diese Runde entfernt. Sein
+Nachfolger übernimmt den Container korrekt.
+
+Nebenbei aufgefallen: `LOOK_TERRAIN` fehlte in `tests/support/screeps-stubs.ts`.
+Dieselbe Tabelle stellt auch die Welt für `pnpm smoke`, dort fiel die Konstante
+also in den Proxy für Unbekanntes und war `0`. Jetzt mit dem echten Wert
+eingetragen, zusammen mit `ERR_RCL_NOT_ENOUGH` und `FIND_MINERALS`.
+
+**Wirkung noch nicht gemessen.** Zum Zeitpunkt der Änderung gab es keinen
+Spielzugriff. Nachzutragen nach dem nächsten Deploy.

@@ -49,6 +49,7 @@ export const SCREEPS_CONSTANTS: Record<string, unknown> = {
   ERR_INVALID_ARGS: -10,
   ERR_TIRED: -11,
   ERR_NO_BODYPART: -12,
+  ERR_RCL_NOT_ENOUGH: -14,
 
   // Suchtypen. Die Werte sind die der API; für die Stubs zählt allein, dass sie
   // eindeutig sind — `find` antwortet hier aus einer Tabelle.
@@ -62,6 +63,7 @@ export const SCREEPS_CONSTANTS: Record<string, unknown> = {
   FIND_FLAGS: 110,
   FIND_CONSTRUCTION_SITES: 111,
   FIND_MY_SPAWNS: 112,
+  FIND_MINERALS: 116,
   FIND_NUKES: 117,
   FIND_TOMBSTONES: 118,
   FIND_RUINS: 123,
@@ -137,6 +139,7 @@ export const SCREEPS_CONSTANTS: Record<string, unknown> = {
 
   LOOK_STRUCTURES: "structure",
   LOOK_CONSTRUCTION_SITES: "constructionSite",
+  LOOK_TERRAIN: "terrain",
 
   /**
    * Wie viele Bauwerke je RCL erlaubt sind — hier nur die Zeile, die der
