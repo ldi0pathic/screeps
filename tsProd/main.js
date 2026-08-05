@@ -1,4 +1,4 @@
-// Build: 2026-08-06 01:35:30 +02:00
+// Build: 2026-08-06 01:49:58 +02:00
 "use strict";
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
@@ -1893,17 +1893,28 @@ var BODIES = {
     fallback: [WORK, CARRY, MOVE, MOVE]
   }),
   /**
-   * Upgrader ab RCL8: ein halbes WORK je Satz. Der Controller nimmt dort nur
-   * noch 15 Energie je Tick an, mehr WORK wäre bezahlte Untätigkeit.
+   * Upgrader ab RCL8: **genau** die erlaubte Rate ausschöpfen.
+   *
+   * Der Controller nimmt dort 15 Energie je Tick an, und `UPGRADE_CONTROLLER_POWER`
+   * ist 1 je WORK — also fünf Sätze zu drei WORK. Mehr wäre bezahlte Untätigkeit,
+   * weniger verschenkt GCL, und GCL ist die Erlaubnis für den nächsten Raum.
+   *
+   * Wenige CARRY, weil der Controller-Link in Reichweite 1 steht: 250
+   * Tragfähigkeit reichen für rund siebzehn Ticks Arbeit. Wenige MOVE, weil der
+   * Creep nach der Anreise steht — das Vorgängerprofil trug 18 CARRY und 18 MOVE
+   * für eine Aufgabe, die 15 Energie je Tick verbraucht.
+   *
+   * Kosten 2000 Energie bei 25 Teilen; die Energiekapazität eines RCL8-Raums
+   * liegt bei 12 900, der Rückfall greift dort also nie.
    */
   upgraderRcl8: new BodyProfile({
     sets: [
-      { part: WORK, perSet: 0.5 },
-      { part: CARRY, perSet: 2 },
-      { part: MOVE, perSet: 2 }
+      { part: WORK, perSet: 3 },
+      { part: CARRY, perSet: 1 },
+      { part: MOVE, perSet: 1 }
     ],
-    maxSets: 9,
-    fallback: [WORK, CARRY, MOVE, MOVE]
+    maxSets: 5,
+    fallback: [WORK, CARRY, MOVE]
   }),
   /** Extupgrader in einem Raum ohne Sicht oder unter RCL6. */
   extupgrader: new BodyProfile({
@@ -3735,10 +3746,12 @@ var transfer_default = new Transfer();
 
 // src/roles/upgrader.ts
 var role12 = "upgrader";
+var RCL8_WORK_RESERVE = 1e5;
+var DOWNGRADE_ALARM = 1e5;
 var Upgrader = class {
   /** Beschafft Energie und upgradet den Controller des Arbeitsraums, inklusive Sparmodus bei hohem Level. */
   doJob(creep) {
-    if (creep.memory.sparmodus && Game.time % creep.room.controller.level != 0) return;
+    if (!this._mayWork(creep)) return;
     creep.checkHarvest();
     if (creep.memory.harvest) {
       if (!creep.memory.noLink && new LinkList(creep.memory.workroom).controllerLink && (creep.room.controller.my && creep.room.controller.level >= 5)) {
@@ -3770,8 +3783,35 @@ var Upgrader = class {
     }
   }
   /**
+   * Darf der Upgrader in diesem Tick überhaupt arbeiten?
+   *
+   * Zwei verschiedene Drosseln, und der Unterschied ist der Punkt von Plan 04:
+   *
+   * - **Bis RCL7** die alte Tickdrossel (`sparmodus`, gesetzt ab Stufe 6): der
+   *   Creep arbeitet in einem von `level` Ticks. Grob, aber dort ist RCL-Fortschritt
+   *   das Ziel und Energie knapp.
+   * - **Ab RCL8** der Vorrat statt der Tickzahl. Der Controller nimmt dort nur
+   *   noch 15 Energie je Tick an, und der Raum hat typischerweise Überschuss.
+   *   Die Tickdrossel achtelte hier die Leistung unabhängig davon, ob Energie
+   *   da ist — zusammen mit dem alten Rumpf kam der Raum auf 0,5 von 15
+   *   erlaubten Energie je Tick, also 3 %. GCL wächst ausschließlich aus
+   *   Controller-Upgrades und ist die Erlaubnis für den nächsten Raum.
+   */
+  _mayWork(creep) {
+    const controller = creep.room.controller;
+    if (!controller)
+      return true;
+    if (!controller.my || controller.level < 8) {
+      return !creep.memory.sparmodus || Game.time % controller.level == 0;
+    }
+    if (controller.ticksToDowngrade < DOWNGRADE_ALARM)
+      return true;
+    const storage = creep.room.storage;
+    return Boolean(storage && storage.store[RESOURCE_ENERGY] > RCL8_WORK_RESERVE);
+  }
+  /**
    * Ab RCL8 nimmt der Controller nur noch 15 Energie je Tick an; dort gilt das
-   * sparsame Profil mit einem halben WORK je Satz.
+   * Profil, das genau diese Rate ausschöpft (15 WORK).
    */
   bodyFor(spawn3, workroom) {
     const profil = Game.rooms[workroom].controller.level > 7 ? BODIES.upgraderRcl8 : BODIES.upgrader;

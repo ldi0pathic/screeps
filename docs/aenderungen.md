@@ -537,3 +537,45 @@ Notfallminer schon einmal gestellt.
 
 **Wirkung noch nicht gemessen.** Zum Zeitpunkt der Änderung gab es keinen
 Spielzugriff. Nachzutragen nach dem nächsten Deploy.
+
+## Runde 2026-08-06: RCL8-Upgrader schöpft die erlaubte Rate aus (Plan 04)
+
+GCL wächst **ausschließlich** aus Controller-Upgrades und ist die Erlaubnis,
+einen weiteren Raum zu claimen. Bei RCL8 nimmt der Controller 15 Energie je Tick
+an — der Bot schöpfte davon rund **3 %** aus. Zwei Ursachen, beide behoben:
+
+| Was | Warum | Wirkung |
+| --- | --- | --- |
+| `BODIES.upgraderRcl8`: 4 WORK / 18 CARRY / 18 MOVE → **15 / 5 / 5**. | `UPGRADE_CONTROLLER_POWER` ist 1 Energie je WORK und Tick, die Grenze bei RCL8 liegt bei 15 — fünf Sätze zu drei WORK schöpfen sie genau aus. 18 CARRY waren 900 Tragfähigkeit für einen Creep, der am Controller-Link steht und 15 Energie je Tick verbraucht; wenige MOVE genügen, weil er danach steht. | Kosten 2000 Energie bei 25 Teilen. Die Energiekapazität eines RCL8-Raums liegt bei 12 900, der Rückfall greift dort nie. |
+| Die Tickdrossel (`sparmodus`, `Game.time % level`) gilt ab RCL8 **nicht** mehr. Stattdessen entscheidet der Vorrat: gearbeitet wird bei mehr als 100 000 Energie im Storage — oder wenn `ticksToDowngrade` unter 100 000 fällt. | Die Tickdrossel achtelte die Leistung unabhängig davon, **ob** Energie da ist. Bei RCL8 ist RCL-Fortschritt kein Ziel mehr und der Raum hat typischerweise Überschuss; die richtige Frage ist der Vorrat, nicht der Tick. | Bei Überschuss 15 statt 0,5 Energie je Tick in den Controller — rund der dreißigfache GCL-Fortschritt je RCL8-Raum, und der Storage wird dabei abgebaut. |
+
+**Die Arbeitsschwelle liegt bewusst unter der Spawnschwelle.** `spawn()` verlangt
+weiterhin 250 000 Energie im Storage, bevor bei RCL8 überhaupt ein Upgrader
+entsteht; gearbeitet wird bis 100 000 herunter. Mit derselben Zahl auf beiden
+Seiten verstummte der Upgrader genau in dem Moment, in dem er anfängt, den
+Überschuss abzubauen.
+
+**Der Downgrade-Timer schlägt den Vorrat.** Dieselbe Grenze prüfen jetzt
+`spawn()` und die Arbeitsdrossel — sonst bestellte der eine einen Upgrader, den
+der andere verstummen ließe, und der Raum verlöre eine Stufe.
+
+**Nicht in dieser Runde:** die Tickdrossel bei RCL6 und RCL7. Dort greift sie mit
+Faktor 1/6 bzw. 1/7 und kostet echten RCL-Fortschritt, nicht nur GCL — das ist
+ein eigener Schritt mit eigener Messung (Plan 04, Punkt 3).
+
+`tests/creep-bodies.test.ts` führt die alten Formeln als Referenz mit und hat die
+Rumpfänderung sofort gemeldet — genau dafür ist der Test da. `upgraderRcl8` steht
+dort jetzt in einer benannten Liste `deliberatelyChanged` statt die Prüfung
+aufzuweichen: ein **neu** hinzugefügtes Profil ohne Referenz fällt weiterhin auf.
+
+**Wirkung noch nicht gemessen.** Kennzahl nach dem nächsten Deploy ist der
+Controller-Fortschritt je 1000 Ticks, dazu die Storage-Energie als Gegenprobe,
+dass der Upgrader den Raum nicht leerzieht.
+
+**Beim Testen der Drossel gefunden und mitbehoben:** stand `memory.sparmodus`
+und hatte der Raum **keinen** Controller — ein Upgrader auf dem Weg durch einen
+Korridorraum —, rechnete die alte Zeile `Game.time % creep.room.controller!.level`
+auf `undefined` und warf einen `TypeError`. `main.ts` wirft Rollenfehler weiter,
+das hätte also den **kompletten Tick** abgebrochen: alle Rollen nach dem
+Upgrader und den Timing-Controller mit Türmen und Spawn. `_mayWork` steigt jetzt
+vor der Drossel aus, wenn kein Controller da ist.

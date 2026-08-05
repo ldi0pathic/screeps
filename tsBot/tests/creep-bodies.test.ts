@@ -112,14 +112,21 @@ test("die Rümpfe der Rollen bei voller Kapazität", async () => {
   const wally = BODIES.wally.build(rcl8);
   assert.deepEqual([count(wally, WORK), count(wally, CARRY), count(wally, MOVE)], [9, 18, 9]);
 
-  // Upgrader bis RCL7 gegen Upgrader ab RCL8: dort ein halbes WORK je Satz.
+  // Upgrader bis RCL7 gegen Upgrader ab RCL8.
   const upgrader = BODIES.upgrader.build(rcl8);
   assert.deepEqual([count(upgrader, WORK), count(upgrader, CARRY), count(upgrader, MOVE)], [16, 16, 16]);
+
+  // Ab RCL8 nimmt der Controller 15 Energie je Tick an, und
+  // UPGRADE_CONTROLLER_POWER ist 1 je WORK — der Rumpf schöpft die erlaubte
+  // Rate also genau aus. Vorher standen hier [4, 18, 18]: vier WORK für eine
+  // 15er-Grenze und 900 Tragfähigkeit für einen Creep, der am Controller-Link
+  // steht. Siehe Plan 04.
   const upgraderRcl8 = BODIES.upgraderRcl8.build(rcl8);
   assert.deepEqual(
     [count(upgraderRcl8, WORK), count(upgraderRcl8, CARRY), count(upgraderRcl8, MOVE)],
-    [4, 18, 18],
+    [15, 5, 5],
   );
+  assert.ok(upgraderRcl8.length <= MAX_CREEP_SIZE, "25 Teile, die Obergrenze ist 50");
 
   // Extupgrader: CARRY bei 16 abgeschnitten.
   const extupgrader = BODIES.extupgrader.build(rcl8);
@@ -271,12 +278,11 @@ test("die Rümpfe sind dieselben wie vor dem Zusammenziehen", async () => {
       body: energy =>
         legacySetBody(energy, 400, 8, [WORK, CARRY, MOVE, MOVE], [[WORK, 2], [CARRY, 2], [MOVE, 2]]),
     },
-    {
-      name: "upgraderRcl8",
-      from: 300,
-      body: energy =>
-        legacySetBody(energy, 250, 9, [WORK, CARRY, MOVE, MOVE], [[WORK, 0.5], [CARRY, 2], [MOVE, 2]]),
-    },
+    // `upgraderRcl8` steht hier bewusst **nicht** mehr: sein Rumpf ist mit Plan 04
+    // absichtlich vom alten Bot abgewichen (4 WORK → 15, 18 CARRY → 5, 18 MOVE →
+    // 5). Die alte Formel als Referenz mitzuführen hieße, die Änderung jedes Mal
+    // als Fehler zu melden. Der Sollwert steht stattdessen oben im Test
+    // „die Rümpfe der Rollen bei voller Kapazität".
     {
       name: "extupgrader",
       from: 300,
@@ -339,7 +345,30 @@ test("die Rümpfe sind dieselben wie vor dem Zusammenziehen", async () => {
     },
   ];
 
-  assert.equal(legacy.length, Object.keys(BODIES).length, "jedes Profil braucht seine Referenz");
+  /**
+   * Profile, die **absichtlich** von der alten Formel abweichen und deshalb
+   * keine Referenz mehr haben. Die Liste ist bewusst benannt statt die Prüfung
+   * unten aufzuweichen: ein neu hinzugefügtes Profil ohne Referenz soll weiter
+   * auffallen, und wer hier etwas einträgt, muss es begründen können.
+   */
+  const deliberatelyChanged: Array<keyof typeof BODIES> = [
+    // Plan 04: 4 WORK / 18 CARRY / 18 MOVE → 15 / 5 / 5. Der Controller nimmt ab
+    // RCL8 fünfzehn Energie je Tick an; das alte Profil schöpfte davon 3 % aus.
+    "upgraderRcl8",
+  ];
+
+  assert.equal(
+    legacy.length + deliberatelyChanged.length,
+    Object.keys(BODIES).length,
+    "jedes Profil braucht seine Referenz oder einen Eintrag in deliberatelyChanged",
+  );
+
+  for (const name of deliberatelyChanged) {
+    assert.ok(
+      !legacy.some(entry => entry.name === name),
+      `${name} kann nicht zugleich eine Referenz und eine bewusste Abweichung haben`,
+    );
+  }
 
   for (const { name, from, body } of legacy) {
     for (let energy = from; energy <= 12_900; energy += 50) {

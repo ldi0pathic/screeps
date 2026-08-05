@@ -87,7 +87,16 @@ Wally repariert die schwächste gespeicherte Wand oder Rampart aus `Memory.rooms
 
 ### `upgrader` und `extupgrader`
 
-Der lokale Upgrader erntet bevorzugt vom Controller-Link, dann aus Storage, Containern und Resten. Bei RCL über 5 läuft er nach erfolgreichem Upgrade im Sparmodus nur noch in einem von `controller.level` abhängigen Tick. Er wird nur im eigenen Raum erzeugt und berücksichtigt bei RCL 8 Energie- und Downgrade-Reserven.
+Der lokale Upgrader erntet bevorzugt vom Controller-Link, dann aus Storage, Containern und Resten. Er wird nur im eigenen Raum erzeugt.
+
+**Zwei verschiedene Drosseln, und der Unterschied ist Absicht** (`_mayWork`, Plan 04):
+
+- **Bis RCL 7** die Tickdrossel: nach dem ersten erfolgreichen Upgrade setzt `memory.sparmodus` ein, und der Creep arbeitet nur noch in einem von `controller.level` Ticks. Grob, aber dort ist RCL-Fortschritt das Ziel und Energie knapp. Diese Stufen sind noch nicht überprüft — Plan 04, Punkt 3.
+- **Ab RCL 8** der Vorrat statt der Tickzahl. Der Controller nimmt dort nur noch 15 Energie je Tick an, RCL-Fortschritt gibt es nicht mehr, und der Raum hat typischerweise Überschuss. Gearbeitet wird bei mehr als 100 000 Energie im Storage (`RCL8_WORK_RESERVE`) oder wenn `ticksToDowngrade` unter 100 000 fällt (`DOWNGRADE_ALARM`) — der Timer schlägt den Vorrat, sonst verlöre ein Raum mit leerem Storage seine Stufe.
+
+Die **Arbeits**schwelle liegt bewusst unter der **Spawn**schwelle von 250 000: mit derselben Zahl auf beiden Seiten verstummte der Upgrader genau in dem Moment, in dem er anfängt, den Überschuss abzubauen. Gespawnt wird bei klarem Überschuss, gearbeitet, bis der Vorrat aufgebraucht ist.
+
+Das Rumpfprofil ab RCL 8 (`BODIES.upgraderRcl8`) hat **15 WORK, 5 CARRY, 5 MOVE** und schöpft die erlaubte Rate damit genau aus (`UPGRADE_CONTROLLER_POWER` ist 1 je WORK und Tick). Wenige `CARRY`, weil der Controller-Link in Reichweite 1 steht; wenige `MOVE`, weil der Creep nach der Anreise steht. Vorher standen dort 4 WORK, 18 CARRY und 18 MOVE — zusammen mit der Tickdrossel kam der Raum damit auf 0,5 von 15 erlaubten Energie je Tick. Das ist kein Detail am Rand: GCL wächst ausschließlich aus Controller-Upgrades und ist die Erlaubnis für den nächsten Raum.
 
 `extupgrader` ist die Fernraumvariante: Sie wird nur außerhalb des Spawnraums erzeugt, nutzt Link/Storage/Container/Quelle und upgradet ohne Invasions- oder Prioritäts-Spawn-Prüfung.
 
