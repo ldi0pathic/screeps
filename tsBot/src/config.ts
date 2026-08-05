@@ -81,36 +81,6 @@ bot.room = {
     //controller
     upgrader: 0,
   },
-  E58N4: {
-    room: "E58N4",
-    spawnRoom: "E59N4",
-    sendMiner: true,
-    sendDebitor: true,
-    sendFreeDebitor: false,
-    sendBuilder: false,
-    sendDefender: true,
-    sendClaimer: true,
-
-    //mining
-    debitorProSource: 1,
-    debitorAsFreelancer: 0,
-    energySources: ["5bbcb08d9099fc012e63c595"],
-    mineralSources: [],
-    useLinks: false,
-    targetLinks: [],
-    spawnLink: null,
-    controllerLink: null,
-
-    //structures
-    repairer: 0,
-    maxwallRepairer: 0,
-    maxbuilder: 1,
-    prioBuildings: [],
-    destroy: ["63adb4b3aeebaa08e3aa2851"],
-
-    //controller
-    upgrader: 0,
-  },
   E58N5: {
     room: "E58N5",
     spawnRoom: "E58N6",
@@ -284,7 +254,6 @@ bot.room = {
     //controller
     upgrader: 2,
   },
-
   E59N7: {
     room: "E59N7",
     spawnRoom: "E58N7",

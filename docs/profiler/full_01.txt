@@ -1,0 +1,1 @@
+10:09:27 PM][shard3][prof] Fenster=100T | CPU/Tick=9.12 | CPU/Raum=0.91 | CPU/Creep=0.21 | Bucket~2043 (min 1545) | Limit=20 | Top: debitor 40.1%, miner 18.5%, wally 7.7%
