@@ -28,7 +28,7 @@ Der Standplatz wird einmal je Creep berechnet (Nachbarfeld des Links, das auch a
 
 Körperprofil: die Zahl der `CARRY`-Teile ergibt sich aus `LINK_CAPACITY / CARRY_CAPACITY` (800/50 = 16 `CARRY`), damit ein Withdraw den vollen Link auf einmal aufnimmt, dazu genau ein `MOVE` — der Creep steht nach der Anreise dauerhaft still, weitere `MOVE`-Teile würden nur den einmaligen Hinweg beschleunigen. Kosten 850 Energie, 17 Körperteile, 51 Ticks Spawnzeit. Ein Rückfallprofil mit weniger `CARRY` greift, falls die Energiekapazität nicht reicht; praktisch nie nötig, weil Links erst ab RCL5 existieren und dort bereits deutlich mehr Kapazität zur Verfügung steht.
 
-Gespawnt wird die Rolle nur, wenn `sendLinkkeeper` und `useLinks` gesetzt sind, der Raum einen `spawnLink` konfiguriert hat, der Spawn im Spawnraum selbst steht und ein Storage existiert; es lebt höchstens ein Linkkeeper je Raum. In `roles/index.ts` steht die Rolle direkt hinter `debitor`, also weit vorn in der Spawn-Priorität — ein verstopfter Link kostet sonst den Durchsatz der ganzen Link-Strecke.
+Gespawnt wird die Rolle nur, wenn `sendLinkkeeper` gesetzt ist, der Raum Links nutzt (eigener Controller ab RCL5), in seiner erhobenen Linkliste ein Storage-Link steht, der Spawn im Spawnraum selbst steht und ein Storage existiert; es lebt höchstens ein Linkkeeper je Raum. In `roles/index.ts` steht die Rolle direkt hinter `debitor`, also weit vorn in der Spawn-Priorität — ein verstopfter Link kostet sonst den Durchsatz der ganzen Link-Strecke.
 
 ### `transfer`
 

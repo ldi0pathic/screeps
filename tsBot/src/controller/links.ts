@@ -12,7 +12,7 @@
  */
 
 import { bot } from "../globals";
-import { LinkList } from "./link-list";
+import { LinkList, usesLinks } from "./link-list";
 
 /**
  * Kleinste Menge, für die sich ein Sendevorgang lohnt.
@@ -34,15 +34,12 @@ export class LinkNetwork {
 
   /** Ein Durchgang: wählt Sender und Empfänger und sendet. */
   send(): void {
-    const roomConfig = bot.room[this.roomName];
-    if (!roomConfig?.useLinks) {
+    // `usesLinks` prüft Sicht, Besitz und RCL in einem.
+    if (!usesLinks(this.roomName)) {
       return;
     }
 
-    const room = Game.rooms[this.roomName];
-    if (!room) {
-      return;
-    }
+    const room = Game.rooms[this.roomName]!;
 
     if (!this.list.hasList) {
       // Analog zu ContainerList: einmal erheben, gesendet wird erst im
@@ -107,7 +104,7 @@ export class LinkNetwork {
   }
 }
 
-/** Alle verwalteten Räume mit `useLinks`. Aufruf je Tick aus `controller/timing.ts`. */
+/** Alle verwalteten Räume, deren RCL Links zulässt. Aufruf je Tick aus `controller/timing.ts`. */
 export function sendAll(): void {
   for (const roomName in bot.room) {
     new LinkNetwork(roomName).send();
@@ -117,12 +114,10 @@ export function sendAll(): void {
 /** Erhebt die Linklisten neu. Aufruf aus der Tagessequenz. */
 export function discoverAll(): void {
   for (const roomName in bot.room) {
-    const roomConfig = bot.room[roomName];
-    const room = Game.rooms[roomName];
-    if (!roomConfig?.useLinks || !room) {
+    if (!usesLinks(roomName)) {
       continue;
     }
 
-    new LinkList(roomName).discover(room);
+    new LinkList(roomName).discover(Game.rooms[roomName]!);
   }
 }

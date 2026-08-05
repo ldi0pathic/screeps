@@ -9,6 +9,7 @@
  */
 
 import { bot } from "../globals";
+import { LinkList, usesLinks } from "../controller/link-list";
 import * as creepBase from "../creep/base";
 import { BODIES } from "../creep/bodies";
 import { carryMove } from "../creep/body";
@@ -31,6 +32,18 @@ const NEVER_SELL = {
     "XGH2O": true,
     "XGHO2": true
 };
+
+/**
+ * Liefert das Linknetz des Raums die Energie tatsächlich ab?
+ *
+ * Nur dann darf ein Quellcontainer mit Link ohne Debitor bleiben. Der RCL
+ * allein genügt nicht: zwischen „Raum darf Links bauen" und „am Storage steht
+ * ein Empfänger, der sie annimmt" liegen mehrere Tage Bauzeit, und in dieser
+ * Lücke bliebe die Energie im Quell-Link liegen.
+ */
+function linksDeliver(workroom: string): boolean {
+    return usesLinks(workroom) && new LinkList(workroom).spawnLink !== null;
+}
 
 /** Siehe Dateikopf. `@profile` misst jede Methode dieser Klasse. */
 @profile
@@ -245,7 +258,10 @@ export class Debitor implements CreepRole {
         if (bot.room[workroom]!.transferEnergie && spawn.room.name != workroom || spawn.room.name != workroom && !Memory.rooms[workroom]!.claimed)
             return false;
 
-        if (bot.room[workroom]!.sendDebitor && bot.room[workroom]!.sendMiner && (!Memory.rooms[workroom]!.hasLinks || !bot.room[workroom]!.useLinks)) {
+        // Ein Quellcontainer mit Link braucht keinen Debitor — aber nur, wenn das
+        // Linknetz die Energie auch wirklich abliefert. Ohne Empfänger am Storage
+        // bliebe sie im Quell-Link liegen und der Raum verhungerte.
+        if (bot.room[workroom]!.sendDebitor && bot.room[workroom]!.sendMiner && (!Memory.rooms[workroom]!.hasLinks || !linksDeliver(workroom))) {
             for (var id in bot.room[workroom]!.energySources) {
                 if (!Game.getObjectById((bot.room[workroom]!.energySources as any)[id]))
                     continue;
@@ -303,7 +319,10 @@ export class Debitor implements CreepRole {
             if (link.length > 0) {
                 Memory.rooms[workroom]!.hasLinks = true;
 
-                if (Memory.rooms[workroom]!.useLinks)
+                // Vorher stand hier `Memory.rooms[workroom].useLinks` — einen
+                // solchen Memory-Schlüssel setzt niemand, die Prüfung war also
+                // immer falsch und der Zweig tot.
+                if (linksDeliver(workroom))
                     return false;
             }
         }

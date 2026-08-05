@@ -12,9 +12,16 @@
  * typischerweise), weil der Cooldown eines Links seiner Entfernung zum Ziel
  * entspricht – kurze Strecken heißen mehr Durchsatz. Gibt es noch keine
  * sendenden Links, dienen ersatzweise die Quellen des Raums als Referenz.
+ *
+ * Sender-Links (an den Quellen) baut nicht dieser Planer, sondern der Miner
+ * (`roles/miner.ts`). Damit bei knappen Linkplätzen (RCL5: nur zwei) nicht
+ * beide Empfänger die Plätze belegen und keiner für einen Sender übrig
+ * bleibt, hält `reservedSenderSlots()` je Quelle ohne Link einen Platz frei –
+ * abzüglich mindestens einem Platz, der immer für einen Empfänger bleibt.
  */
 
 import { bot } from "../globals";
+import { usesLinks } from "./link-list";
 
 // Straße, Container und Rampart tauchen hier bewusst nicht auf – sie
 // blockieren einen Linkplatz nicht. OBSTACLE_OBJECT_TYPES ist die von Screeps
@@ -29,16 +36,24 @@ export class LinkPlanner {
 
   /** Legt höchstens eine Linkbaustelle an. `true`, wenn eine entstanden ist. */
   plan(): boolean {
-    const config = bot.room[this.roomName];
-    if (!config?.useLinks) return false;
+    // Ob der Raum Links nutzt, folgt aus seinem RCL, nicht aus der Config:
+    // `usesLinks` prüft Sicht, Besitz und Linkkontingent in einem. Die
+    // Kontingentgrenze (RCL5) steht damit nur an einer Stelle im Bot.
+    if (!usesLinks(this.roomName)) return false;
 
-    const room = Game.rooms[this.roomName];
-    if (!room) return false;
+    const room = Game.rooms[this.roomName]!;
+    const controller = room.controller!;
 
-    const controller = room.controller;
-    if (!controller || !controller.my || controller.level < 5) return false;
+    const freeSlots = this.freeLinkSlots(room, controller.level);
+    if (freeSlots <= 0) return false;
 
-    if (this.freeLinkSlots(room, controller.level) <= 0) return false;
+    // Quell-Links baut nicht der Planer, sondern der Miner (roles/miner.ts,
+    // creep.memory.build) neben seinem Quellcontainer. Ohne reservierte
+    // Plätze würde der Planer bei knappen Linkplätzen (z. B. RCL5: nur zwei
+    // erlaubt) beide Empfänger bauen und keinen Platz für einen Sender
+    // übriglassen – ein Empfänger ohne Sender bewegt aber nichts.
+    const reserve = this.reservedSenderSlots(room, this.allowedLinks(controller.level));
+    if (freeSlots <= reserve) return false;
 
     const freeConstructionSlots = MAX_CONSTRUCTION_SITES - room.find(FIND_CONSTRUCTION_SITES).length;
     if (freeConstructionSlots <= 0) return false;
@@ -47,17 +62,36 @@ export class LinkPlanner {
     return this.buildStorageLink(room, controller);
   }
 
-  /** Wie viele Links in diesem Raum noch gebaut werden dürfen, abzüglich vorhandener und geplanter. */
-  private freeLinkSlots(room: Room, level: number): number {
+  /** Wie viele Links dieser RCL insgesamt erlaubt sind. */
+  private allowedLinks(level: number): number {
     // Defensiv gelesen: der Smoketest (pnpm smoke) stellt unbekannte
     // Screeps-Konstanten über einen Proxy als 0 bereit; ein direkter
     // Doppelindex würde dort werfen und den Smoketest rot machen.
-    const allowed = (CONTROLLER_STRUCTURES as any)?.[STRUCTURE_LINK]?.[level] ?? 0;
+    return (CONTROLLER_STRUCTURES as any)?.[STRUCTURE_LINK]?.[level] ?? 0;
+  }
 
+  /** Wie viele Links in diesem Raum noch gebaut werden dürfen, abzüglich vorhandener und geplanter. */
+  private freeLinkSlots(room: Room, level: number): number {
+    const allowed = this.allowedLinks(level);
     const built = room.find(FIND_MY_STRUCTURES, { filter: (s: any) => s.structureType === STRUCTURE_LINK }).length;
     const sites = room.find(FIND_CONSTRUCTION_SITES, { filter: (s: any) => s.structureType === STRUCTURE_LINK }).length;
 
     return allowed - built - sites;
+  }
+
+  /** Anzahl der Quellen des Raums, in deren Reichweite 2 noch kein Link und keine Linkbaustelle steht. */
+  private sourcesWithoutLink(room: Room): number {
+    return room.find(FIND_SOURCES).filter((source: any) => !this.hasLinkNear(room, source.pos, 2)).length;
+  }
+
+  /**
+   * Plätze, die für Quell-Links reserviert bleiben, bevor ein Empfänger
+   * gebaut wird: höchstens so viele wie es Quellen ohne Link gibt, aber
+   * mindestens ein Platz bleibt immer für einen Empfänger übrig (`- 1`) –
+   * auch wenn es mehr Quellen als erlaubte Links gäbe.
+   */
+  private reservedSenderSlots(room: Room, allowed: number): number {
+    return Math.min(this.sourcesWithoutLink(room), allowed - 1);
   }
 
   /** Plant den Controller-Link, falls in Reichweite 3 noch keiner steht (auch keine Baustelle). */

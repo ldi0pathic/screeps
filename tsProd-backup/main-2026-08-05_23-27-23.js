@@ -1,4 +1,4 @@
-// Build: 2026-08-05 23:55:59 +02:00
+// Build: 2026-08-05 23:27:23 +02:00
 "use strict";
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
@@ -89,9 +89,13 @@ bot.room = {
     sendDefender: true,
     sendClaimer: true,
     //mining
+    debitorProSource: 1,
     debitorAsFreelancer: 0,
     energySources: ["5bbcb07b9099fc012e63c406"],
     mineralSources: [],
+    useLinks: false,
+    spawnLink: null,
+    controllerLink: null,
     //structures
     repairer: 0,
     maxwallRepairer: 0,
@@ -110,9 +114,13 @@ bot.room = {
     sendDefender: true,
     sendClaimer: true,
     //mining
+    debitorProSource: 1,
     debitorAsFreelancer: 0,
     energySources: ["5bbcb08d9099fc012e63c593"],
     mineralSources: [],
+    useLinks: false,
+    spawnLink: null,
+    controllerLink: null,
     //structures
     repairer: 0,
     maxwallRepairer: 0,
@@ -132,15 +140,19 @@ bot.room = {
     sendBuilder: true,
     sendDefender: true,
     sendClaimer: false,
-    // Muss an sein, sobald der Raum Links nutzt (ab RCL5): seit dem Entfernen
-    // von `harvestSpawnLink` leert niemand sonst den Link in der Basis, und ein
+    // Muss an sein, solange `useLinks` gilt: seit dem Entfernen von
+    // `harvestSpawnLink` leert niemand sonst den Link in der Basis, und ein
     // voller Empfänger-Link blockiert alle Quell-Links, die auf ihn senden.
     sendLinkkeeper: true,
     saveRoads: true,
     //mining
+    debitorProSource: 1,
     debitorAsFreelancer: 1,
     energySources: ["5bbcb08d9099fc012e63c58f", "5bbcb08d9099fc012e63c590"],
     mineralSources: ["5bbcb72cd867df5e54207db1"],
+    useLinks: true,
+    spawnLink: "657f0915dbc7505af702443c",
+    controllerLink: "653aed0d2fa32d1c887ab4e7",
     //structures
     repairer: 0,
     maxwallRepairer: 1,
@@ -159,16 +171,20 @@ bot.room = {
     sendBuilder: true,
     sendDefender: true,
     sendClaimer: false,
-    // Muss an sein, sobald der Raum Links nutzt (ab RCL5): seit dem Entfernen
-    // von `harvestSpawnLink` leert niemand sonst den Link in der Basis, und ein
+    // Muss an sein, solange `useLinks` gilt: seit dem Entfernen von
+    // `harvestSpawnLink` leert niemand sonst den Link in der Basis, und ein
     // voller Empfänger-Link blockiert alle Quell-Links, die auf ihn senden.
     sendLinkkeeper: true,
     saveRoads: true,
     //mining
+    debitorProSource: 0,
     debitorAsFreelancer: 1,
     energySources: ["5bbcb08d9099fc012e63c58c", "5bbcb08d9099fc012e63c58a"],
     mineralSources: ["5bbcb72cd867df5e54207db0"],
     mineralContainerId: "658f0b73615ae9c2e4995fb6",
+    useLinks: true,
+    spawnLink: "655269336b163b788bbbaec1",
+    controllerLink: "65380c0c74becf6de75f0370",
     //structures
     repairer: 0,
     maxwallRepairer: 1,
@@ -187,14 +203,19 @@ bot.room = {
     sendDefender: true,
     sendClaimer: true,
     //mining
+    debitorProSource: 2,
     debitorAsFreelancer: 0,
     energySources: ["5bbcb08d9099fc012e63c588"],
     mineralSources: [],
+    useLinks: false,
+    spawnLink: null,
+    controllerLink: null,
     //structures
     repairer: 0,
     maxwallRepairer: 0,
     maxbuilder: 1,
     prioBuildings: [],
+    walls: [],
     //controller
     upgrader: 0
   },
@@ -208,16 +229,20 @@ bot.room = {
     sendBuilder: true,
     sendDefender: true,
     sendClaimer: false,
-    // Muss an sein, sobald der Raum Links nutzt (ab RCL5): seit dem Entfernen
-    // von `harvestSpawnLink` leert niemand sonst den Link in der Basis, und ein
+    // Muss an sein, solange `useLinks` gilt: seit dem Entfernen von
+    // `harvestSpawnLink` leert niemand sonst den Link in der Basis, und ein
     // voller Empfänger-Link blockiert alle Quell-Links, die auf ihn senden.
     sendLinkkeeper: true,
     saveRoads: true,
     //mining
+    debitorProSource: 1,
     debitorAsFreelancer: 1,
     energySources: ["5bbcb09f9099fc012e63c71f", "5bbcb09f9099fc012e63c71d"],
     mineralSources: ["5bbcb73ad867df5e54207e20"],
     mineralContainerId: null,
+    useLinks: true,
+    spawnLink: "65ad15e5e25690e38e742550",
+    controllerLink: "6666029dda8491c8c7f5b5f8",
     //structures
     repairer: 0,
     maxwallRepairer: 2,
@@ -236,9 +261,13 @@ bot.room = {
     sendDefender: true,
     sendClaimer: true,
     //mining
+    debitorProSource: 0,
     debitorAsFreelancer: 0,
     energySources: ["5bbcb09e9099fc012e63c711"],
     mineralSources: ["5bbcb739d867df5e54207e1c"],
+    useLinks: false,
+    spawnLink: null,
+    controllerLink: null,
     //structures
     repairer: 0,
     maxwallRepairer: 0,
@@ -257,9 +286,13 @@ bot.room = {
     sendDefender: true,
     sendClaimer: true,
     //mining
+    debitorProSource: 2,
     debitorAsFreelancer: 0,
     energySources: ["5bbcb09e9099fc012e63c70e"],
     mineralSources: [],
+    useLinks: false,
+    spawnLink: null,
+    controllerLink: null,
     //structures
     repairer: 0,
     maxwallRepairer: 0,
@@ -278,15 +311,19 @@ bot.room = {
     sendBuilder: true,
     sendDefender: true,
     sendClaimer: false,
-    // Muss an sein, sobald der Raum Links nutzt (ab RCL5): seit dem Entfernen
-    // von `harvestSpawnLink` leert niemand sonst den Link in der Basis, und ein
+    // Muss an sein, solange `useLinks` gilt: seit dem Entfernen von
+    // `harvestSpawnLink` leert niemand sonst den Link in der Basis, und ein
     // voller Empfänger-Link blockiert alle Quell-Links, die auf ihn senden.
     sendLinkkeeper: true,
     saveRoads: true,
     //mining
+    debitorProSource: 0,
     debitorAsFreelancer: 1,
     energySources: ["5bbcb09e9099fc012e63c70a", "5bbcb09e9099fc012e63c70b"],
     mineralSources: ["5bbcb739d867df5e54207e1a"],
+    useLinks: true,
+    spawnLink: "655261fc8c582e53825955a1",
+    controllerLink: "65354f9aade2340fef294995",
     //structures
     repairer: 0,
     maxwallRepairer: 1,
@@ -602,166 +639,6 @@ function tower() {
   }
 }
 
-// src/controller/link-list.ts
-function usesLinks(roomName) {
-  var _a, _b, _c;
-  const controller = (_a = Game.rooms[roomName]) == null ? void 0 : _a.controller;
-  if (!(controller == null ? void 0 : controller.my)) {
-    return false;
-  }
-  return ((_c = (_b = CONTROLLER_STRUCTURES == null ? void 0 : CONTROLLER_STRUCTURES[STRUCTURE_LINK]) == null ? void 0 : _b[controller.level]) != null ? _c : 0) > 0;
-}
-var LinkList = class {
-  constructor(roomName) {
-    this.roomName = roomName;
-  }
-  get roomMemory() {
-    return Memory.rooms[this.roomName];
-  }
-  /** Kennt der Bot den Raum überhaupt? Ohne Raum-Memory gibt es nichts zu tun. */
-  get isRoomKnown() {
-    return this.roomMemory !== void 0;
-  }
-  /** Liegt überhaupt eine Liste vor — auch eine ohne Sender? */
-  get hasList() {
-    var _a;
-    return ((_a = this.roomMemory) == null ? void 0 : _a.links) !== void 0;
-  }
-  /**
-   * Erhebt die Links des Raums, klassifiziert sie und schreibt sie ins Memory.
-   *
-   * Reihenfolge der Zuordnung: erst die Config, dann die Lage, und ein Link
-   * ist nie beides — Controller zuerst, Storage aus dem Rest, alle übrigen
-   * Links sind Sender.
-   */
-  discover(room) {
-    const memory = this.roomMemory;
-    if (!memory) {
-      return;
-    }
-    const links = room.find(FIND_MY_STRUCTURES, {
-      filter: (structure) => structure.structureType === STRUCTURE_LINK
-    });
-    const remaining = new Set(links.map((link) => link.id));
-    const controllerId = this.resolveController(room, links);
-    if (controllerId) {
-      remaining.delete(controllerId);
-    }
-    const spawnId = this.resolveSpawn(room, links, remaining);
-    if (spawnId) {
-      remaining.delete(spawnId);
-    }
-    const previous = memory.links;
-    memory.links = {
-      controller: controllerId,
-      spawn: spawnId,
-      sender: [...remaining]
-    };
-    this.reportChange(room.name, previous, memory.links);
-  }
-  /**
-   * Meldet eine geänderte Zuordnung auf der Konsole — nur bei Änderung, nicht
-   * bei jeder Erhebung.
-   *
-   * Der Grund ist Nachprüfbarkeit: seit die Empfänger nicht mehr in `config.ts`
-   * stehen, entscheidet allein die Lage. Ob sie richtig entscheidet, sieht man
-   * sonst nirgends. Ein Raum, in dem eine Quelle zufällig nah am Controller
-   * liegt, würde deren Quell-Link zum Empfänger machen — das fällt hier auf.
-   */
-  reportChange(roomName, previous, current) {
-    var _a, _b;
-    const unchanged = previous !== void 0 && previous.controller === current.controller && previous.spawn === current.spawn && previous.sender.length === current.sender.length && previous.sender.every((id, index) => id === current.sender[index]);
-    if (unchanged) {
-      return;
-    }
-    console.log(
-      `[${roomName}] Links: Controller=${(_a = current.controller) != null ? _a : "-"} Storage=${(_b = current.spawn) != null ? _b : "-"} Sender=${current.sender.length}`
-    );
-  }
-  /** Der Empfänger am Controller: der nächste Link in Reichweite 3. */
-  resolveController(room, links) {
-    var _a;
-    const controller = room.controller;
-    if (!controller) {
-      return void 0;
-    }
-    return (_a = this.nearestWithinRange(links, controller.pos, 3)) == null ? void 0 : _a.id;
-  }
-  /** Der Empfänger am Storage: der nächste noch freie Link in Reichweite 2. */
-  resolveSpawn(room, links, candidates) {
-    var _a;
-    const storage = room.storage;
-    if (!storage) {
-      return void 0;
-    }
-    const remainingLinks = links.filter((link) => candidates.has(link.id));
-    return (_a = this.nearestWithinRange(remainingLinks, storage.pos, 2)) == null ? void 0 : _a.id;
-  }
-  /** Der nächstgelegene Link zu `pos`, sofern innerhalb von `range`. */
-  nearestWithinRange(links, pos, range) {
-    let nearest;
-    let nearestDistance = Infinity;
-    for (const link of links) {
-      const distance = link.pos.getRangeTo(pos);
-      if (distance <= range && distance < nearestDistance) {
-        nearestDistance = distance;
-        nearest = link;
-      }
-    }
-    return nearest;
-  }
-  /** Verwirft die Liste; sie wird beim nächsten Tagesjob neu erhoben. */
-  forget() {
-    const memory = this.roomMemory;
-    if (memory) {
-      delete memory.links;
-    }
-  }
-  /**
-   * Löst eine gemerkte Id auf. Zeigt sie ins Leere (Link abgerissen), wird die
-   * ganze Liste verworfen — analog zu `forgetListOnStaleId` in `ContainerList`,
-   * hier aber ohne Ausnahme, weil es für Links keine zwei Seiten mit
-   * unterschiedlichem Verhalten gibt.
-   */
-  resolve(id) {
-    if (!id) {
-      return null;
-    }
-    const link = Game.getObjectById(id);
-    if (!link) {
-      this.forget();
-      return null;
-    }
-    return link;
-  }
-  /** Der Empfänger am Controller, oder null. */
-  get controllerLink() {
-    var _a, _b;
-    return this.resolve((_b = (_a = this.roomMemory) == null ? void 0 : _a.links) == null ? void 0 : _b.controller);
-  }
-  /** Der Empfänger am Storage, oder null. */
-  get spawnLink() {
-    var _a, _b;
-    return this.resolve((_b = (_a = this.roomMemory) == null ? void 0 : _a.links) == null ? void 0 : _b.spawn);
-  }
-  /** Alle sendenden Links, aufgelöst. */
-  senders() {
-    var _a, _b;
-    const ids = (_b = (_a = this.roomMemory) == null ? void 0 : _a.links) == null ? void 0 : _b.sender;
-    if (!ids) {
-      return [];
-    }
-    const result = [];
-    for (const id of ids) {
-      const link = this.resolve(id);
-      if (link) {
-        result.push(link);
-      }
-    }
-    return result;
-  }
-};
-
 // src/controller/link-planner.ts
 var blockingStructureTypes = OBSTACLE_OBJECT_TYPES;
 var MAX_CONSTRUCTION_SITES = 10;
@@ -771,42 +648,25 @@ var LinkPlanner = class {
   }
   /** Legt höchstens eine Linkbaustelle an. `true`, wenn eine entstanden ist. */
   plan() {
-    if (!usesLinks(this.roomName)) return false;
+    const config = bot.room[this.roomName];
+    if (!(config == null ? void 0 : config.useLinks)) return false;
     const room = Game.rooms[this.roomName];
+    if (!room) return false;
     const controller = room.controller;
-    const freeSlots = this.freeLinkSlots(room, controller.level);
-    if (freeSlots <= 0) return false;
-    const reserve = this.reservedSenderSlots(room, this.allowedLinks(controller.level));
-    if (freeSlots <= reserve) return false;
+    if (!controller || !controller.my || controller.level < 5) return false;
+    if (this.freeLinkSlots(room, controller.level) <= 0) return false;
     const freeConstructionSlots = MAX_CONSTRUCTION_SITES - room.find(FIND_CONSTRUCTION_SITES).length;
     if (freeConstructionSlots <= 0) return false;
     if (this.buildControllerLink(room, controller)) return true;
     return this.buildStorageLink(room, controller);
   }
-  /** Wie viele Links dieser RCL insgesamt erlaubt sind. */
-  allowedLinks(level) {
-    var _a, _b;
-    return (_b = (_a = CONTROLLER_STRUCTURES == null ? void 0 : CONTROLLER_STRUCTURES[STRUCTURE_LINK]) == null ? void 0 : _a[level]) != null ? _b : 0;
-  }
   /** Wie viele Links in diesem Raum noch gebaut werden dürfen, abzüglich vorhandener und geplanter. */
   freeLinkSlots(room, level) {
-    const allowed = this.allowedLinks(level);
+    var _a, _b;
+    const allowed = (_b = (_a = CONTROLLER_STRUCTURES == null ? void 0 : CONTROLLER_STRUCTURES[STRUCTURE_LINK]) == null ? void 0 : _a[level]) != null ? _b : 0;
     const built = room.find(FIND_MY_STRUCTURES, { filter: (s) => s.structureType === STRUCTURE_LINK }).length;
     const sites = room.find(FIND_CONSTRUCTION_SITES, { filter: (s) => s.structureType === STRUCTURE_LINK }).length;
     return allowed - built - sites;
-  }
-  /** Anzahl der Quellen des Raums, in deren Reichweite 2 noch kein Link und keine Linkbaustelle steht. */
-  sourcesWithoutLink(room) {
-    return room.find(FIND_SOURCES).filter((source) => !this.hasLinkNear(room, source.pos, 2)).length;
-  }
-  /**
-   * Plätze, die für Quell-Links reserviert bleiben, bevor ein Empfänger
-   * gebaut wird: höchstens so viele wie es Quellen ohne Link gibt, aber
-   * mindestens ein Platz bleibt immer für einen Empfänger übrig (`- 1`) –
-   * auch wenn es mehr Quellen als erlaubte Links gäbe.
-   */
-  reservedSenderSlots(room, allowed) {
-    return Math.min(this.sourcesWithoutLink(room), allowed - 1);
   }
   /** Plant den Controller-Link, falls in Reichweite 3 noch keiner steht (auch keine Baustelle). */
   buildControllerLink(room, controller) {
@@ -982,6 +842,146 @@ function planReceiverLinks() {
   }
 }
 
+// src/controller/link-list.ts
+var LinkList = class {
+  constructor(roomName) {
+    this.roomName = roomName;
+  }
+  get roomMemory() {
+    return Memory.rooms[this.roomName];
+  }
+  /** Kennt der Bot den Raum überhaupt? Ohne Raum-Memory gibt es nichts zu tun. */
+  get isRoomKnown() {
+    return this.roomMemory !== void 0;
+  }
+  /** Liegt überhaupt eine Liste vor — auch eine ohne Sender? */
+  get hasList() {
+    var _a;
+    return ((_a = this.roomMemory) == null ? void 0 : _a.links) !== void 0;
+  }
+  /**
+   * Erhebt die Links des Raums, klassifiziert sie und schreibt sie ins Memory.
+   *
+   * Reihenfolge der Zuordnung: erst die Config, dann die Lage, und ein Link
+   * ist nie beides — Controller zuerst, Storage aus dem Rest, alle übrigen
+   * Links sind Sender.
+   */
+  discover(room) {
+    const memory = this.roomMemory;
+    if (!memory) {
+      return;
+    }
+    const links = room.find(FIND_MY_STRUCTURES, {
+      filter: (structure) => structure.structureType === STRUCTURE_LINK
+    });
+    const roomConfig = bot.room[room.name];
+    const remaining = new Set(links.map((link) => link.id));
+    const controllerId = this.resolveController(room, links, roomConfig == null ? void 0 : roomConfig.controllerLink);
+    if (controllerId) {
+      remaining.delete(controllerId);
+    }
+    const spawnId = this.resolveSpawn(room, links, roomConfig == null ? void 0 : roomConfig.spawnLink, remaining);
+    if (spawnId) {
+      remaining.delete(spawnId);
+    }
+    memory.links = {
+      controller: controllerId,
+      spawn: spawnId,
+      sender: [...remaining]
+    };
+  }
+  /** Der Empfänger am Controller nach Config, sonst nach Lage (Reichweite 3). */
+  resolveController(room, links, configuredId) {
+    var _a;
+    const configured = links.find((link) => link.id === configuredId);
+    if (configured) {
+      return configured.id;
+    }
+    const controller = room.controller;
+    if (!controller) {
+      return void 0;
+    }
+    return (_a = this.nearestWithinRange(links, controller.pos, 3)) == null ? void 0 : _a.id;
+  }
+  /** Der Empfänger am Storage nach Config, sonst nach Lage (Reichweite 2). */
+  resolveSpawn(room, links, configuredId, candidates) {
+    var _a;
+    const configured = links.find((link) => link.id === configuredId);
+    if (configured) {
+      return configured.id;
+    }
+    const storage = room.storage;
+    if (!storage) {
+      return void 0;
+    }
+    const remainingLinks = links.filter((link) => candidates.has(link.id));
+    return (_a = this.nearestWithinRange(remainingLinks, storage.pos, 2)) == null ? void 0 : _a.id;
+  }
+  /** Der nächstgelegene Link zu `pos`, sofern innerhalb von `range`. */
+  nearestWithinRange(links, pos, range) {
+    let nearest;
+    let nearestDistance = Infinity;
+    for (const link of links) {
+      const distance = link.pos.getRangeTo(pos);
+      if (distance <= range && distance < nearestDistance) {
+        nearestDistance = distance;
+        nearest = link;
+      }
+    }
+    return nearest;
+  }
+  /** Verwirft die Liste; sie wird beim nächsten Tagesjob neu erhoben. */
+  forget() {
+    const memory = this.roomMemory;
+    if (memory) {
+      delete memory.links;
+    }
+  }
+  /**
+   * Löst eine gemerkte Id auf. Zeigt sie ins Leere (Link abgerissen), wird die
+   * ganze Liste verworfen — analog zu `forgetListOnStaleId` in `ContainerList`,
+   * hier aber ohne Ausnahme, weil es für Links keine zwei Seiten mit
+   * unterschiedlichem Verhalten gibt.
+   */
+  resolve(id) {
+    if (!id) {
+      return null;
+    }
+    const link = Game.getObjectById(id);
+    if (!link) {
+      this.forget();
+      return null;
+    }
+    return link;
+  }
+  /** Der Empfänger am Controller, oder null. */
+  get controllerLink() {
+    var _a, _b;
+    return this.resolve((_b = (_a = this.roomMemory) == null ? void 0 : _a.links) == null ? void 0 : _b.controller);
+  }
+  /** Der Empfänger am Storage, oder null. */
+  get spawnLink() {
+    var _a, _b;
+    return this.resolve((_b = (_a = this.roomMemory) == null ? void 0 : _a.links) == null ? void 0 : _b.spawn);
+  }
+  /** Alle sendenden Links, aufgelöst. */
+  senders() {
+    var _a, _b;
+    const ids = (_b = (_a = this.roomMemory) == null ? void 0 : _a.links) == null ? void 0 : _b.sender;
+    if (!ids) {
+      return [];
+    }
+    const result = [];
+    for (const id of ids) {
+      const link = this.resolve(id);
+      if (link) {
+        result.push(link);
+      }
+    }
+    return result;
+  }
+};
+
 // src/controller/links.ts
 var SEND_MIN = LINK_CAPACITY / 4;
 var LinkNetwork = class {
@@ -993,10 +993,14 @@ var LinkNetwork = class {
   /** Ein Durchgang: wählt Sender und Empfänger und sendet. */
   send() {
     var _a;
-    if (!usesLinks(this.roomName)) {
+    const roomConfig = bot.room[this.roomName];
+    if (!(roomConfig == null ? void 0 : roomConfig.useLinks)) {
       return;
     }
     const room = Game.rooms[this.roomName];
+    if (!room) {
+      return;
+    }
     if (!this.list.hasList) {
       if (this.list.isRoomKnown) {
         this.list.discover(room);
@@ -1052,10 +1056,12 @@ function sendAll() {
 }
 function discoverAll() {
   for (const roomName in bot.room) {
-    if (!usesLinks(roomName)) {
+    const roomConfig = bot.room[roomName];
+    const room = Game.rooms[roomName];
+    if (!(roomConfig == null ? void 0 : roomConfig.useLinks) || !room) {
       continue;
     }
-    new LinkList(roomName).discover(Game.rooms[roomName]);
+    new LinkList(roomName).discover(room);
   }
 }
 
@@ -1644,9 +1650,9 @@ function harvestRoomContainer(creep, type, mul) {
   return false;
 }
 function harvestControllerLink(creep, type) {
-  if (creep.memory.workroom != creep.room.name || !creep.room.controller.my || creep.room.controller.level < 5)
+  if (creep.memory.workroom != creep.room.name || !bot.room[creep.memory.workroom].controllerLink || !creep.room.controller.my || creep.room.controller.level < 5)
     return false;
-  var link = new LinkList(creep.memory.workroom).controllerLink;
+  var link = Game.getObjectById(bot.room[creep.memory.workroom].controllerLink);
   if (link && link.store[type] > 100) {
     return withdrawFrom(creep, link, type);
   }
@@ -2622,9 +2628,6 @@ var NEVER_SELL = {
   "XGH2O": true,
   "XGHO2": true
 };
-function linksDeliver(workroom) {
-  return usesLinks(workroom) && new LinkList(workroom).spawnLink !== null;
-}
 var Debitor = class {
   /** Holt Energie/Mineralien aus dem Arbeitsraum und transportiert sie in den Heimatraum. */
   doJob(creep) {
@@ -2785,7 +2788,7 @@ var Debitor = class {
   spawn(spawn3, workroom) {
     if (bot.room[workroom].transferEnergie && spawn3.room.name != workroom || spawn3.room.name != workroom && !Memory.rooms[workroom].claimed)
       return false;
-    if (bot.room[workroom].sendDebitor && bot.room[workroom].sendMiner && (!Memory.rooms[workroom].hasLinks || !linksDeliver(workroom))) {
+    if (bot.room[workroom].sendDebitor && bot.room[workroom].sendMiner && (!Memory.rooms[workroom].hasLinks || !bot.room[workroom].useLinks)) {
       for (var id in bot.room[workroom].energySources) {
         if (!Game.getObjectById(bot.room[workroom].energySources[id]))
           continue;
@@ -2829,7 +2832,7 @@ var Debitor = class {
       });
       if (link.length > 0) {
         Memory.rooms[workroom].hasLinks = true;
-        if (linksDeliver(workroom))
+        if (Memory.rooms[workroom].useLinks)
           return false;
       }
     } else {
@@ -3016,7 +3019,7 @@ var LinkKeeper = class {
     if (goToWorkroom2(creep)) return;
     if (!creep.memory.post) {
       const storage2 = creep.room.storage;
-      const link2 = storage2 ? new LinkList(creep.memory.workroom).spawnLink : null;
+      const link2 = storage2 ? Game.getObjectById(bot.room[creep.memory.workroom].spawnLink) : null;
       const post2 = link2 && storage2 ? this._findPost(link2, storage2, creep.memory.workroom) : null;
       if (!post2) {
         creep.say("\u2753");
@@ -3031,7 +3034,7 @@ var LinkKeeper = class {
     }
     const storage = creep.room.storage;
     if (!storage) return;
-    const link = new LinkList(creep.memory.workroom).spawnLink;
+    const link = Game.getObjectById(bot.room[creep.memory.workroom].spawnLink);
     if (!link) return;
     const carrying = creep.store.getUsedCapacity(RESOURCE_ENERGY);
     const inLink = link.store.getUsedCapacity(RESOURCE_ENERGY);
@@ -3066,7 +3069,7 @@ var LinkKeeper = class {
   spawn(spawn3, workroom) {
     if (!bot.room[workroom].sendLinkkeeper)
       return false;
-    if (!usesLinks(workroom) || !new LinkList(workroom).spawnLink)
+    if (!bot.room[workroom].useLinks || !bot.room[workroom].spawnLink)
       return false;
     if (spawn3.room.name != workroom)
       return false;
@@ -3581,7 +3584,7 @@ var Upgrader = class {
     if (creep.memory.sparmodus && Game.time % creep.room.controller.level != 0) return;
     creep.checkHarvest();
     if (creep.memory.harvest) {
-      if (!creep.memory.noLink && new LinkList(creep.memory.workroom).controllerLink && (creep.room.controller.my && creep.room.controller.level >= 5)) {
+      if (!creep.memory.noLink && bot.room[creep.memory.workroom].controllerLink && (creep.room.controller.my && creep.room.controller.level >= 5)) {
         if (harvestControllerLink(creep, RESOURCE_ENERGY)) return;
       } else {
         if (harvestRoomStorage(creep, RESOURCE_ENERGY))

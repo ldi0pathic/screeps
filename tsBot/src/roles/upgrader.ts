@@ -8,6 +8,7 @@
  */
 
 import { bot } from "../globals";
+import { LinkList } from "../controller/link-list";
 import * as creepBase from "../creep/base";
 import { BODIES } from "../creep/bodies";
 import type { CreepRole } from "../roles";
@@ -31,7 +32,7 @@ export class Upgrader implements CreepRole {
 
         if (creep.memory.harvest)
         {
-            if(!creep.memory.noLink && bot.room[creep.memory.workroom]!.controllerLink && (creep.room.controller!.my && creep.room.controller!.level >= 5) )
+            if(!creep.memory.noLink && new LinkList(creep.memory.workroom).controllerLink && (creep.room.controller!.my && creep.room.controller!.level >= 5) )
             {
                 if(creepBase.harvestControllerLink(creep,RESOURCE_ENERGY)) return;
 

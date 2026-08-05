@@ -14,7 +14,6 @@ import { moveCalls } from "./support/movement-stubs";
 import {
   actionCalls,
   actionResults,
-  configureRoom,
   installCreepWorld,
   roomMemory,
   stubActor,
@@ -199,7 +198,7 @@ test("Controller-Link: alle Bedingungen, sonst wird noLink gesetzt", async () =>
   const { harvestControllerLink } = await base();
 
   const link = stubStructure("clink", "link", 20, 20, "E58N6", stubStore(800, { energy: 500 }));
-  configureRoom("E58N6", { controllerLink: link.id });
+  roomMemory("E58N6", { links: { controller: link.id, sender: [] } });
 
   const creep = stubActor(10, 10, "E58N6", {
     memory: { workroom: "E58N6" },
@@ -211,7 +210,7 @@ test("Controller-Link: alle Bedingungen, sonst wird noLink gesetzt", async () =>
   // Leerer Link: der Creep merkt sich, dass es über den Link nicht geht.
   installCreepWorld();
   const emptyLink = stubStructure("clink", "link", 20, 20, "E58N6", stubStore(800, { energy: 50 }));
-  configureRoom("E58N6", { controllerLink: emptyLink.id });
+  roomMemory("E58N6", { links: { controller: emptyLink.id, sender: [] } });
   const waiting = stubActor(10, 10, "E58N6", {
     memory: { workroom: "E58N6" },
     room: stubRoom("E58N6", { controller: { my: true, level: 6 } }),
@@ -221,7 +220,7 @@ test("Controller-Link: alle Bedingungen, sonst wird noLink gesetzt", async () =>
 
   // Unter RCL5 gar nicht erst.
   installCreepWorld();
-  configureRoom("E58N6", { controllerLink: "clink" });
+  roomMemory("E58N6", { links: { controller: "clink", sender: [] } });
   const early = stubActor(10, 10, "E58N6", {
     memory: { workroom: "E58N6" },
     room: stubRoom("E58N6", { controller: { my: true, level: 4 } }),

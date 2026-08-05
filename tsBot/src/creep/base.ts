@@ -7,6 +7,7 @@
  * delegieren wie im Original an `creep/goto` und `creep/transport`.
  */
 
+import { LinkList } from "../controller/link-list";
 import { bot } from "../globals";
 import { ContainerList } from "./containers";
 import * as creepBaseGoTo from "./goto";
@@ -166,12 +167,13 @@ export function harvestRoomContainer(creep: Creep, type: string, mul?: number): 
 
 export function harvestControllerLink(creep: Creep, type: string): boolean {
     if (creep.memory.workroom != creep.room.name ||
-        !bot.room[creep.memory.workroom]!.controllerLink ||
         !creep.room.controller!.my ||
          creep.room.controller!.level <5)
         return false;
 
-    var link: any = Game.getObjectById(bot.room[creep.memory.workroom]!.controllerLink!);
+    // Welcher Link am Controller steht, weiß `ContainerList`s Gegenstück für
+    // Links — aus der Lage erhoben, nicht mehr aus der Config.
+    var link: any = new LinkList(creep.memory.workroom).controllerLink;
 
     if (link && link.store[type] > 100) {
         return withdrawFrom(creep, link, type);

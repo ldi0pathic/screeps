@@ -10,6 +10,7 @@
  */
 
 import { bot } from "../globals";
+import { LinkList, usesLinks } from "../controller/link-list";
 import * as creepBase from "../creep/base";
 import { BODIES } from "../creep/bodies";
 import type { CreepRole } from "../roles";
@@ -36,9 +37,7 @@ export class LinkKeeper implements CreepRole {
 
         if (!creep.memory.post) {
             const storage = creep.room.storage;
-            const link = storage
-                ? Game.getObjectById<StructureLink>(bot.room[creep.memory.workroom]!.spawnLink!)
-                : null;
+            const link = storage ? new LinkList(creep.memory.workroom).spawnLink : null;
 
             const post = link && storage ? this._findPost(link, storage, creep.memory.workroom) : null;
 
@@ -63,7 +62,7 @@ export class LinkKeeper implements CreepRole {
         const storage = creep.room.storage;
         if (!storage) return;
 
-        const link = Game.getObjectById<StructureLink>(bot.room[creep.memory.workroom]!.spawnLink!);
+        const link = new LinkList(creep.memory.workroom).spawnLink;
         if (!link) return;
 
         const carrying = creep.store.getUsedCapacity(RESOURCE_ENERGY);
@@ -121,7 +120,11 @@ export class LinkKeeper implements CreepRole {
         if (!bot.room[workroom]!.sendLinkkeeper)
             return false;
 
-        if (!bot.room[workroom]!.useLinks || !bot.room[workroom]!.spawnLink)
+        // Ob der Raum Links nutzt, folgt aus seinem RCL; welcher Link am Storage
+        // steht, aus der erhobenen Linkliste. Beides stand vorher in der Config.
+        // Solange die Liste noch nicht erhoben ist, wird kein Linkkeeper
+        // gespawnt — `LinkNetwork` erhebt sie im ersten Tick des Raums.
+        if (!usesLinks(workroom) || !new LinkList(workroom).spawnLink)
             return false;
 
         if (spawn.room.name != workroom)

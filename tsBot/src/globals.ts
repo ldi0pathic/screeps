@@ -27,7 +27,7 @@ export interface RoomConfig {
   sendClaimer?: boolean;
   /**
    * Hält den Link in der Basis (`spawnLink`) leer und schiebt seine Energie
-   * ins Storage. Nötig, sobald `useLinks` gesetzt ist: ein voller Empfänger-Link
+   * ins Storage. Nötig, sobald der Raum Links nutzt: ein voller Empfänger-Link
    * blockiert alle Quell-Links, die auf ihn senden.
    */
   sendLinkkeeper?: boolean;
@@ -36,21 +36,11 @@ export interface RoomConfig {
   saveRoads?: boolean;
 
   // Abbau
-  /** Derzeit von keinem Modul gelesen, nur dokumentierender Konfigwert. */
-  debitorProSource?: number;
   debitorAsFreelancer?: number;
   energySources?: string[];
   mineralSources?: string[];
   mineralContainerId?: string | null;
 
-  useLinks?: boolean;
-  /**
-   * Die beiden Empfängerlinks. Optional: findet `controller/link-list.ts` hier
-   * nichts, bestimmt es sie aus der Lage — nötig, weil der Linkplaner neue Links
-   * im laufenden Spiel baut, deren Ids niemand von Hand nachtragen kann.
-   */
-  spawnLink?: string | null;
-  controllerLink?: string | null;
 
   // Strukturen
   repairer?: number;
@@ -58,8 +48,6 @@ export interface RoomConfig {
   maxbuilder?: number;
   prioBuildings?: string[];
   destroy?: string[];
-  /** Derzeit von keinem Modul gelesen. */
-  walls?: string[];
 
   // Controller
   upgrader?: number;

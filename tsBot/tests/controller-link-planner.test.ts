@@ -2,8 +2,10 @@
  * Prüft den Linkplaner (`src/controller/link-planner.ts`): wann er nichts tut
  * (fehlende Konfiguration, fehlende Sicht, Controller unter RCL5, keine freien
  * Linkplätze, zehn Baustellen), welchen der beiden Empfängerlinks er zuerst
- * plant, und wie die Platzwahl arbeitet (Reichweite, Bewertung nach
- * Entfernungssumme, Standplatz des Linkkeepers, Wand/Bauwerk/Straße).
+ * plant, wie die Platzwahl arbeitet (Reichweite, Bewertung nach
+ * Entfernungssumme, Standplatz des Linkkeepers, Wand/Bauwerk/Straße) – und wie
+ * viele Empfängerlinks die Reserve für Quell-Links (Sender, gebaut vom Miner)
+ * je nach RCL und Quellenzahl tatsächlich zulässt.
  *
  * Die gestellte Welt ist absichtlich klein gehalten: ein Raum, wenige gesetzte
  * Felder (Wände über `walls`, Bauwerke über `blockingStructures`/`links`/
@@ -114,8 +116,6 @@ interface WorldSpec {
   blockingStructures?: Array<Vec2 & { structureType: string }>;
   roads?: Vec2[];
   sources?: Vec2[];
-  useLinks?: boolean;
-  hasConfig?: boolean;
   hasSight?: boolean;
 }
 
@@ -170,8 +170,10 @@ function buildWorld(spec: WorldSpec): void {
 
   if (spec.hasSight ?? true) game().rooms[ROOM] = room;
 
-  if (spec.hasConfig ?? true) {
-    anyGlobal.room[ROOM] = { room: ROOM, spawnRoom: ROOM, useLinks: spec.useLinks ?? true };
+  {
+    // `global.room` ist nur noch die Liste der verwalteten Räume; ob Links
+    // genutzt werden, entscheidet der RCL.
+    anyGlobal.room[ROOM] = { room: ROOM, spawnRoom: ROOM };
   }
 }
 
@@ -202,24 +204,6 @@ function runPlan(planner: { plan(): boolean }): boolean {
   }
 }
 
-test("ohne Konfiguration für den Raum unternimmt der Planer nichts", async () => {
-  const { LinkPlanner } = await loadPlanner();
-
-  buildWorld({ hasConfig: false, controller: { pos: { x: 10, y: 10 }, level: 5 } });
-
-  assert.equal(runPlan(new LinkPlanner(ROOM)), false);
-  assert.equal(createdSites.length, 0);
-});
-
-test("mit Konfiguration aber ohne useLinks unternimmt der Planer nichts", async () => {
-  const { LinkPlanner } = await loadPlanner();
-
-  buildWorld({ useLinks: false, controller: { pos: { x: 10, y: 10 }, level: 5 } });
-
-  assert.equal(runPlan(new LinkPlanner(ROOM)), false);
-  assert.equal(createdSites.length, 0);
-});
-
 test("ohne Sicht auf den Raum unternimmt der Planer nichts", async () => {
   const { LinkPlanner } = await loadPlanner();
 
@@ -229,6 +213,9 @@ test("ohne Sicht auf den Raum unternimmt der Planer nichts", async () => {
   assert.equal(createdSites.length, 0);
 });
 
+// Diese drei Fälle sind zusammen das ganze Tor `usesLinks`: seit `useLinks`
+// nicht mehr in der Config steht, entscheidet allein, ob der Raum uns gehört
+// und ob sein RCL Links zulässt.
 test("ohne eigenen Controller ab RCL5 unternimmt der Planer nichts", async () => {
   const { LinkPlanner } = await loadPlanner();
 
@@ -538,4 +525,180 @@ test("Wandfelder und blockierende Bauwerke scheiden aus, eine Straße aber nicht
   assert.equal(runPlan(new LinkPlanner(ROOM)), true);
   assert.equal(createdSites.length, 1);
   assert.deepEqual([createdSites[0]!.x, createdSites[0]!.y], [roadCell.x, roadCell.y]);
+});
+
+// Die folgenden Tests prüfen die Reserve für Sender-Links (Quell-Links, die
+// der Miner baut, nicht dieser Planer): reserve = min(Quellen ohne Link,
+// erlaubte Links - 1). Gebaut wird ein Empfänger nur, wenn freie Plätze >
+// reserve. Ohne diese Reserve würde der Planer auf RCL5 mit zwei Quellen
+// beide Empfängerplätze belegen und keinen Platz für einen Sender lassen.
+//
+// Jeder Test ruft `plan()` mehrfach nacheinander auf und reicht die eben
+// entstandene Baustelle als `links`-Eintrag in den nächsten `buildWorld()`-
+// Aufruf weiter – so wird sichtbar, wie viele Empfänger insgesamt entstehen,
+// ohne die genaue Kandidatenposition vorherzusagen (die hängt von der
+// Referenzbewertung ab und ist hier nicht der Prüfgegenstand).
+
+const CONTROLLER_POS = { x: 20, y: 20 };
+const STORAGE_POS = { x: 30, y: 30 };
+const FAR_SOURCES = [
+  { x: 5, y: 5 },
+  { x: 45, y: 45 },
+];
+
+test("RCL5 mit zwei Quellen ohne Link: reserve (=1) laesst nur einen Empfaenger zu", async () => {
+  const { LinkPlanner } = await loadPlanner();
+
+  buildWorld({ controller: { pos: CONTROLLER_POS, level: 5 }, storagePos: STORAGE_POS, sources: FAR_SOURCES });
+  assert.equal(runPlan(new LinkPlanner(ROOM)), true, "frei=2 > reserve=1: erster Empfaenger entsteht");
+  assert.equal(createdSites.length, 1);
+  const firstSite = { x: createdSites[0]!.x, y: createdSites[0]!.y };
+
+  buildWorld({
+    controller: { pos: CONTROLLER_POS, level: 5 },
+    storagePos: STORAGE_POS,
+    sources: FAR_SOURCES,
+    links: [firstSite],
+  });
+  assert.equal(runPlan(new LinkPlanner(ROOM)), false, "frei=1, reserve=1, nicht >1: zweiter Empfaenger entfaellt");
+  assert.equal(createdSites.length, 0);
+});
+
+test("RCL6 mit zwei Quellen ohne Link: reserve (=2) laesst nur einen Empfaenger zu", async () => {
+  const { LinkPlanner } = await loadPlanner();
+
+  buildWorld({ controller: { pos: CONTROLLER_POS, level: 6 }, storagePos: STORAGE_POS, sources: FAR_SOURCES });
+  assert.equal(runPlan(new LinkPlanner(ROOM)), true, "frei=3 > reserve=2: erster Empfaenger entsteht");
+  assert.equal(createdSites.length, 1);
+  const firstSite = { x: createdSites[0]!.x, y: createdSites[0]!.y };
+
+  buildWorld({
+    controller: { pos: CONTROLLER_POS, level: 6 },
+    storagePos: STORAGE_POS,
+    sources: FAR_SOURCES,
+    links: [firstSite],
+  });
+  assert.equal(runPlan(new LinkPlanner(ROOM)), false, "frei=2, reserve=2, nicht >2: zweiter Empfaenger entfaellt");
+  assert.equal(createdSites.length, 0);
+});
+
+test("RCL7 mit zwei Quellen ohne Link: reserve (=2) laesst zwei Empfaenger zu", async () => {
+  const { LinkPlanner } = await loadPlanner();
+
+  buildWorld({ controller: { pos: CONTROLLER_POS, level: 7 }, storagePos: STORAGE_POS, sources: FAR_SOURCES });
+  assert.equal(runPlan(new LinkPlanner(ROOM)), true, "frei=4 > reserve=2: erster Empfaenger entsteht");
+  assert.equal(createdSites.length, 1);
+  const firstSite = { x: createdSites[0]!.x, y: createdSites[0]!.y };
+
+  buildWorld({
+    controller: { pos: CONTROLLER_POS, level: 7 },
+    storagePos: STORAGE_POS,
+    sources: FAR_SOURCES,
+    links: [firstSite],
+  });
+  assert.equal(runPlan(new LinkPlanner(ROOM)), true, "frei=3 > reserve=2: zweiter Empfaenger entsteht");
+  assert.equal(createdSites.length, 1);
+  const secondSite = { x: createdSites[0]!.x, y: createdSites[0]!.y };
+
+  buildWorld({
+    controller: { pos: CONTROLLER_POS, level: 7 },
+    storagePos: STORAGE_POS,
+    sources: FAR_SOURCES,
+    links: [firstSite, secondSite],
+  });
+  assert.equal(runPlan(new LinkPlanner(ROOM)), false, "frei=2, reserve=2, nicht >2: dritter Empfaenger entfaellt");
+  assert.equal(createdSites.length, 0);
+});
+
+test("RCL8 mit zwei Quellen ohne Link: es entstehen weiterhin nur zwei Empfaenger, obwohl Plaetze frei bleiben", async () => {
+  const { LinkPlanner } = await loadPlanner();
+
+  buildWorld({ controller: { pos: CONTROLLER_POS, level: 8 }, storagePos: STORAGE_POS, sources: FAR_SOURCES });
+  assert.equal(runPlan(new LinkPlanner(ROOM)), true, "erster Empfaenger (Controller) entsteht");
+  assert.equal(createdSites.length, 1);
+  const firstSite = { x: createdSites[0]!.x, y: createdSites[0]!.y };
+
+  buildWorld({
+    controller: { pos: CONTROLLER_POS, level: 8 },
+    storagePos: STORAGE_POS,
+    sources: FAR_SOURCES,
+    links: [firstSite],
+  });
+  assert.equal(runPlan(new LinkPlanner(ROOM)), true, "zweiter Empfaenger (Storage) entsteht");
+  assert.equal(createdSites.length, 1);
+  const secondSite = { x: createdSites[0]!.x, y: createdSites[0]!.y };
+
+  // frei=4 > reserve=2: die Reserve wuerde einen dritten Empfaenger erlauben,
+  // aber es gibt nur zwei Empfaengertypen (Controller, Storage) – beide
+  // stehen schon, also bleibt es bei zwei, unabhaengig von der Reserve.
+  buildWorld({
+    controller: { pos: CONTROLLER_POS, level: 8 },
+    storagePos: STORAGE_POS,
+    sources: FAR_SOURCES,
+    links: [firstSite, secondSite],
+  });
+  assert.equal(runPlan(new LinkPlanner(ROOM)), false, "kein dritter Empfaengertyp vorhanden");
+  assert.equal(createdSites.length, 0);
+});
+
+test("stehen an beiden Quellen schon Links, ist reserve 0 und beide Empfaenger duerfen voll entstehen", async () => {
+  const { LinkPlanner } = await loadPlanner();
+
+  // Quell-Links liegen direkt neben den Quellen (Reichweite 2), aber weit
+  // weg von Controller und Storage – sie zaehlen also nicht als Empfaenger.
+  const sourceLinks = [
+    { x: 6, y: 5 },
+    { x: 44, y: 45 },
+  ];
+
+  buildWorld({
+    controller: { pos: CONTROLLER_POS, level: 7 },
+    storagePos: STORAGE_POS,
+    sources: FAR_SOURCES,
+    links: sourceLinks,
+  });
+  assert.equal(runPlan(new LinkPlanner(ROOM)), true, "reserve=0: erster Empfaenger entsteht");
+  assert.equal(createdSites.length, 1);
+  const firstSite = { x: createdSites[0]!.x, y: createdSites[0]!.y };
+
+  buildWorld({
+    controller: { pos: CONTROLLER_POS, level: 7 },
+    storagePos: STORAGE_POS,
+    sources: FAR_SOURCES,
+    links: [...sourceLinks, firstSite],
+  });
+  assert.equal(runPlan(new LinkPlanner(ROOM)), true, "reserve=0: zweiter Empfaenger entsteht ebenfalls");
+  assert.equal(createdSites.length, 1);
+});
+
+test("RCL6 mit nur einer Quelle ohne Link: reserve (=1) erlaubt beide Empfaenger (Kontrast zu zwei Quellen)", async () => {
+  const { LinkPlanner } = await loadPlanner();
+
+  const oneSource = [{ x: 5, y: 5 }];
+
+  buildWorld({ controller: { pos: CONTROLLER_POS, level: 6 }, storagePos: STORAGE_POS, sources: oneSource });
+  assert.equal(runPlan(new LinkPlanner(ROOM)), true, "frei=3 > reserve=1: erster Empfaenger entsteht");
+  assert.equal(createdSites.length, 1);
+  const firstSite = { x: createdSites[0]!.x, y: createdSites[0]!.y };
+
+  buildWorld({
+    controller: { pos: CONTROLLER_POS, level: 6 },
+    storagePos: STORAGE_POS,
+    sources: oneSource,
+    links: [firstSite],
+  });
+  // Anders als bei zwei Quellen (reserve=2, dort stoppt es hier) erlaubt eine
+  // einzelne Quelle (reserve=1) noch den zweiten Empfaenger: frei=2 > 1.
+  assert.equal(runPlan(new LinkPlanner(ROOM)), true, "frei=2 > reserve=1: zweiter Empfaenger entsteht auch");
+  assert.equal(createdSites.length, 1);
+  const secondSite = { x: createdSites[0]!.x, y: createdSites[0]!.y };
+
+  buildWorld({
+    controller: { pos: CONTROLLER_POS, level: 6 },
+    storagePos: STORAGE_POS,
+    sources: oneSource,
+    links: [firstSite, secondSite],
+  });
+  assert.equal(runPlan(new LinkPlanner(ROOM)), false, "frei=1, reserve=1, nicht >1: dritter Empfaenger entfaellt");
+  assert.equal(createdSites.length, 0);
 });

@@ -75,11 +75,23 @@ function stubLink(id: string, energy: number, freeCapacity: number, cooldown = 0
   return link;
 }
 
-/** Ein Raum mit RCL; `find(FIND_MY_STRUCTURES, …)` bedient nur `discover()`. */
-function stubRoom(name: string, options: { controllerLevel?: number; links?: any[] } = {}) {
+/**
+ * Ein Raum mit RCL; `find(FIND_MY_STRUCTURES, …)` bedient nur `discover()`.
+ *
+ * `usesLinks()` liest `controller.my` und `controller.level` direkt vom Raum
+ * (nicht mehr aus der Config) — deshalb trägt der Stub standardmäßig einen
+ * eigenen Controller (`my: true`), sofern ein Level angegeben ist.
+ */
+function stubRoom(
+  name: string,
+  options: { controllerLevel?: number; controllerMy?: boolean; links?: any[] } = {},
+) {
   return {
     name,
-    controller: options.controllerLevel !== undefined ? { level: options.controllerLevel } : undefined,
+    controller:
+      options.controllerLevel !== undefined
+        ? { my: options.controllerMy ?? true, level: options.controllerLevel }
+        : undefined,
     storage: undefined,
     find(type: number, opts?: { filter?: (structure: any) => boolean }): any[] {
       if (type !== FIND_MY_STRUCTURES) return [];
@@ -89,9 +101,9 @@ function stubRoom(name: string, options: { controllerLevel?: number; links?: any
   };
 }
 
-/** Trägt die Raumkonfiguration (`useLinks`) in `global.room` ein. */
-function setRoomConfig(name: string, config: Record<string, any> = { useLinks: true }): void {
-  anyGlobal.room[name] = config;
+/** Trägt den Raum in `global.room` ein — die Liste der verwalteten Räume für `sendAll()`/`discoverAll()`. */
+function registerRoom(name: string): void {
+  anyGlobal.room[name] = { room: name, spawnRoom: name };
 }
 
 /** Legt `Memory.rooms[name].links` direkt an — ohne `discover()` laufen zu lassen. */
@@ -110,7 +122,7 @@ test("kein Sendeversuch unter SEND_MIN: weder bei zu wenig Energie noch bei zu w
   const { LinkNetwork, SEND_MIN } = await loadLinks();
   const roomName = "E58N6";
 
-  setRoomConfig(roomName);
+  registerRoom(roomName);
   setRoomKnown(roomName);
   const weakSender = stubLink("sender", SEND_MIN - 1, 0);
   const openReceiver = stubLink("controller-link", 0, LINK_CAPACITY);
@@ -121,7 +133,7 @@ test("kein Sendeversuch unter SEND_MIN: weder bei zu wenig Energie noch bei zu w
   assert.equal(transferCalls.length, 0, "Sender unter SEND_MIN sendet nicht");
 
   installLinkWorld();
-  setRoomConfig(roomName);
+  registerRoom(roomName);
   setRoomKnown(roomName);
   const readySender = stubLink("sender", SEND_MIN, 0);
   const tightReceiver = stubLink("controller-link", 0, SEND_MIN - 1);
@@ -138,7 +150,7 @@ test("Vorrang unter RCL8: Controller-Link zuerst, ab RCL8 kippt es auf den Stora
 
   function runAndGetFirstReceiver(level: number): string | undefined {
     installLinkWorld();
-    setRoomConfig(roomName);
+    registerRoom(roomName);
     setRoomKnown(roomName);
     const sender = stubLink("sender", 500, 0);
     const controllerLink = stubLink("controller-link", 0, LINK_CAPACITY);
@@ -158,7 +170,7 @@ test("kein Doppelziel: zwei Sender treffen im selben Tick nie denselben Empfäng
   const { LinkNetwork } = await loadLinks();
   const roomName = "E58N6";
 
-  setRoomConfig(roomName);
+  registerRoom(roomName);
   setRoomKnown(roomName);
   const senderA = stubLink("sender-a", 500, 0);
   const senderB = stubLink("sender-b", 500, 0);
@@ -177,7 +189,7 @@ test("kein Doppelziel: zwei Sender treffen im selben Tick nie denselben Empfäng
   );
 
   installLinkWorld();
-  setRoomConfig(roomName);
+  registerRoom(roomName);
   setRoomKnown(roomName);
   const onlySenderA = stubLink("sender-a", 500, 0);
   const onlySenderB = stubLink("sender-b", 500, 0);
@@ -193,7 +205,7 @@ test("Menge explizit und richtig: min(Energie des Senders, freier Platz des Empf
   const { LinkNetwork } = await loadLinks();
   const roomName = "E58N6";
 
-  setRoomConfig(roomName);
+  registerRoom(roomName);
   setRoomKnown(roomName);
   const limitedSender = stubLink("sender", 300, 0);
   const spaciousReceiver = stubLink("controller-link", 0, LINK_CAPACITY);
@@ -205,7 +217,7 @@ test("Menge explizit und richtig: min(Energie des Senders, freier Platz des Empf
   assert.equal(transferCalls[0]!.amount, 300, "der Sender begrenzt die Menge");
 
   installLinkWorld();
-  setRoomConfig(roomName);
+  registerRoom(roomName);
   setRoomKnown(roomName);
   const fullSender = stubLink("sender", 700, 0);
   const tightReceiver = stubLink("controller-link", 0, 250);
@@ -222,7 +234,7 @@ test("ein Sender mit Cooldown wird übersprungen, ein anderer bereiter sendet tr
   const { LinkNetwork } = await loadLinks();
   const roomName = "E58N6";
 
-  setRoomConfig(roomName);
+  registerRoom(roomName);
   setRoomKnown(roomName);
   const cooling = stubLink("cooling", 500, 0, 5);
   const ready = stubLink("ready", 500, 0, 0);
@@ -240,7 +252,7 @@ test("Teilbefüllung: ein Empfänger mit wenig, aber ausreichend freiem Platz wi
   const { LinkNetwork, SEND_MIN } = await loadLinks();
   const roomName = "E58N6";
 
-  setRoomConfig(roomName);
+  registerRoom(roomName);
   setRoomKnown(roomName);
   const sender = stubLink("sender", 500, 0);
   const partialReceiver = stubLink("controller-link", 0, SEND_MIN);
@@ -253,16 +265,31 @@ test("Teilbefüllung: ein Empfänger mit wenig, aber ausreichend freiem Platz wi
   assert.equal(transferCalls[0]!.amount, SEND_MIN);
 });
 
-test("ohne useLinks in der Config passiert nichts, auch wenn alles bereit wäre", async () => {
+test("Controller gehört uns nicht: kein Senden, auch wenn alles bereit wäre", async () => {
   const { LinkNetwork } = await loadLinks();
   const roomName = "E58N6";
 
-  setRoomConfig(roomName, { useLinks: false });
+  registerRoom(roomName);
   setRoomKnown(roomName);
   const sender = stubLink("sender", 500, 0);
   const receiver = stubLink("controller-link", 0, LINK_CAPACITY);
   setLinks(roomName, { controller: receiver.id, sender: [sender.id] });
-  anyGlobal.Game.rooms[roomName] = stubRoom(roomName, { controllerLevel: 7 });
+  anyGlobal.Game.rooms[roomName] = stubRoom(roomName, { controllerLevel: 7, controllerMy: false });
+
+  new LinkNetwork(roomName).send();
+  assert.equal(transferCalls.length, 0);
+});
+
+test("RCL lässt noch keine Links zu: kein Senden, auch wenn alles bereit wäre", async () => {
+  const { LinkNetwork } = await loadLinks();
+  const roomName = "E58N6";
+
+  registerRoom(roomName);
+  setRoomKnown(roomName);
+  const sender = stubLink("sender", 500, 0);
+  const receiver = stubLink("controller-link", 0, LINK_CAPACITY);
+  setLinks(roomName, { controller: receiver.id, sender: [sender.id] });
+  anyGlobal.Game.rooms[roomName] = stubRoom(roomName, { controllerLevel: 4 });
 
   new LinkNetwork(roomName).send();
   assert.equal(transferCalls.length, 0);
@@ -272,7 +299,7 @@ test("ohne Sicht auf den Raum passiert nichts", async () => {
   const { LinkNetwork } = await loadLinks();
   const roomName = "E58N6";
 
-  setRoomConfig(roomName);
+  registerRoom(roomName);
   setRoomKnown(roomName);
   const sender = stubLink("sender", 500, 0);
   const receiver = stubLink("controller-link", 0, LINK_CAPACITY);
@@ -287,7 +314,7 @@ test("ohne Linkliste im Memory wird nichts gesendet, stattdessen eine Liste erho
   const { LinkNetwork } = await loadLinks();
   const roomName = "E58N6";
 
-  setRoomConfig(roomName);
+  registerRoom(roomName);
   setRoomKnown(roomName); // Raum bekannt, aber noch keine Linkliste.
   anyGlobal.Game.rooms[roomName] = stubRoom(roomName, { controllerLevel: 7, links: [] });
 
@@ -301,7 +328,7 @@ test("ohne verfügbaren Empfänger (keiner vorhanden oder alle zu knapp) wird ni
   const { LinkNetwork } = await loadLinks();
   const roomName = "E58N6";
 
-  setRoomConfig(roomName);
+  registerRoom(roomName);
   setRoomKnown(roomName);
   const sender = stubLink("sender", 500, 0);
   setLinks(roomName, { sender: [sender.id] }); // weder Controller- noch Storage-Link hinterlegt
@@ -311,13 +338,13 @@ test("ohne verfügbaren Empfänger (keiner vorhanden oder alle zu knapp) wird ni
   assert.equal(transferCalls.length, 0);
 });
 
-test("sendAll() läuft über alle konfigurierten Räume und überspringt die ohne useLinks", async () => {
+test("sendAll() läuft über alle konfigurierten Räume und überspringt Räume, deren RCL keine Links zulässt", async () => {
   const { sendAll } = await loadLinks();
   const roomWithLinks = "E58N6";
   const roomWithoutLinks = "E58N7";
 
-  setRoomConfig(roomWithLinks);
-  setRoomConfig(roomWithoutLinks, { useLinks: false });
+  registerRoom(roomWithLinks);
+  registerRoom(roomWithoutLinks);
   setRoomKnown(roomWithLinks);
   setRoomKnown(roomWithoutLinks);
 
@@ -329,10 +356,10 @@ test("sendAll() läuft über alle konfigurierten Räume und überspringt die ohn
   const senderB = stubLink("sender-b", 500, 0);
   const receiverB = stubLink("controller-b", 0, LINK_CAPACITY);
   setLinks(roomWithoutLinks, { controller: receiverB.id, sender: [senderB.id] });
-  anyGlobal.Game.rooms[roomWithoutLinks] = stubRoom(roomWithoutLinks, { controllerLevel: 7 });
+  anyGlobal.Game.rooms[roomWithoutLinks] = stubRoom(roomWithoutLinks, { controllerLevel: 4 });
 
   sendAll();
 
-  assert.equal(transferCalls.length, 1, "nur der Raum mit useLinks sendet");
+  assert.equal(transferCalls.length, 1, "nur der Raum mit ausreichendem RCL sendet");
   assert.equal(transferCalls[0]!.senderId, "sender-a");
 });

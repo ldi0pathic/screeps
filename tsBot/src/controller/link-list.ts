@@ -6,16 +6,38 @@
  * Position: ein Link am Controller nimmt ab, ein Link am Storage nimmt ab, alle
  * übrigen Links senden (typischerweise an einer Quelle).
  *
- * Die zwei Empfänger stehen heute als feste Ids in `config.ts`
- * (`spawnLink`/`controllerLink`), aber der Linkplaner baut neue Links im
- * laufenden Spiel — deren Ids kann niemand von Hand nachtragen. Darum die
- * Lage-Regel als Fallback: der nächste Link zum Controller (Reichweite 3, weil
- * Upgrader auf dieser Distanz arbeiten) bzw. zum Storage (Reichweite 2, weil der
- * Linkkeeper ein Feld braucht, das an Link **und** Storage grenzt) wird zum
- * Empfänger, wenn die Config keinen liefert.
+ * Die zwei Empfänger standen früher als feste Ids in `config.ts`
+ * (`spawnLink`/`controllerLink`). Das trägt nicht mehr, seit der Linkplaner
+ * Links im laufenden Spiel baut — deren Ids kann niemand von Hand nachtragen.
+ * Entschieden wird deshalb allein die Lage: der nächste Link zum Controller
+ * (Reichweite 3, weil Upgrader auf dieser Distanz arbeiten) und der nächste zum
+ * Storage (Reichweite 2, weil der Linkkeeper ein Feld braucht, das an Link
+ * **und** Storage grenzt). Alle übrigen senden.
+ *
+ * Der Preis dieser Freiheit: liegt eine Quelle zufällig nahe am Controller,
+ * würde ihr Quell-Link zum Empfänger. Dagegen hilft kein Code, sondern
+ * Nachsehen — `discover()` meldet jede geänderte Zuordnung auf der Konsole.
  */
 
-import { bot } from "../globals";
+/**
+ * Nutzt dieser Raum Links?
+ *
+ * Abgeleitet statt konfiguriert: ein eigener Raum, dessen RCL Links zulässt,
+ * soll sie auch nutzen. Bewusst am **Kontingent** festgemacht und nicht daran,
+ * ob schon Links stehen — sonst käme `controller/link-planner.ts` nie dazu, den
+ * ersten zu bauen.
+ *
+ * `CONTROLLER_STRUCTURES` wird defensiv gelesen, weil `pnpm smoke` unbekannte
+ * Konstanten über einen Proxy als `0` bereitstellt.
+ */
+export function usesLinks(roomName: string): boolean {
+  const controller = Game.rooms[roomName]?.controller;
+  if (!controller?.my) {
+    return false;
+  }
+
+  return ((CONTROLLER_STRUCTURES as any)?.[STRUCTURE_LINK]?.[controller.level] ?? 0) > 0;
+}
 
 /** Die klassifizierten Links eines Raums, wie sie im Memory liegen. */
 export interface RoomLinks {
@@ -66,37 +88,58 @@ export class LinkList {
       filter: structure => structure.structureType === STRUCTURE_LINK,
     }) as StructureLink[];
 
-    const roomConfig = bot.room[room.name];
     const remaining = new Set(links.map(link => link.id));
 
-    const controllerId = this.resolveController(room, links, roomConfig?.controllerLink);
+    const controllerId = this.resolveController(room, links);
     if (controllerId) {
       remaining.delete(controllerId);
     }
 
-    const spawnId = this.resolveSpawn(room, links, roomConfig?.spawnLink, remaining);
+    const spawnId = this.resolveSpawn(room, links, remaining);
     if (spawnId) {
       remaining.delete(spawnId);
     }
 
+    const previous = memory.links;
     memory.links = {
       controller: controllerId,
       spawn: spawnId,
       sender: [...remaining],
     };
+
+    this.reportChange(room.name, previous, memory.links);
   }
 
-  /** Der Empfänger am Controller nach Config, sonst nach Lage (Reichweite 3). */
-  private resolveController(
-    room: Room,
-    links: StructureLink[],
-    configuredId: string | null | undefined,
-  ): Id<StructureLink> | undefined {
-    const configured = links.find(link => link.id === configuredId);
-    if (configured) {
-      return configured.id;
+  /**
+   * Meldet eine geänderte Zuordnung auf der Konsole — nur bei Änderung, nicht
+   * bei jeder Erhebung.
+   *
+   * Der Grund ist Nachprüfbarkeit: seit die Empfänger nicht mehr in `config.ts`
+   * stehen, entscheidet allein die Lage. Ob sie richtig entscheidet, sieht man
+   * sonst nirgends. Ein Raum, in dem eine Quelle zufällig nah am Controller
+   * liegt, würde deren Quell-Link zum Empfänger machen — das fällt hier auf.
+   */
+  private reportChange(roomName: string, previous: RoomLinks | undefined, current: RoomLinks): void {
+    const unchanged =
+      previous !== undefined &&
+      previous.controller === current.controller &&
+      previous.spawn === current.spawn &&
+      previous.sender.length === current.sender.length &&
+      previous.sender.every((id, index) => id === current.sender[index]);
+
+    if (unchanged) {
+      return;
     }
 
+    console.log(
+      `[${roomName}] Links: Controller=${current.controller ?? "-"}` +
+        ` Storage=${current.spawn ?? "-"}` +
+        ` Sender=${current.sender.length}`,
+    );
+  }
+
+  /** Der Empfänger am Controller: der nächste Link in Reichweite 3. */
+  private resolveController(room: Room, links: StructureLink[]): Id<StructureLink> | undefined {
     const controller = room.controller;
     if (!controller) {
       return undefined;
@@ -105,18 +148,12 @@ export class LinkList {
     return this.nearestWithinRange(links, controller.pos, 3)?.id;
   }
 
-  /** Der Empfänger am Storage nach Config, sonst nach Lage (Reichweite 2). */
+  /** Der Empfänger am Storage: der nächste noch freie Link in Reichweite 2. */
   private resolveSpawn(
     room: Room,
     links: StructureLink[],
-    configuredId: string | null | undefined,
     candidates: Set<Id<StructureLink>>,
   ): Id<StructureLink> | undefined {
-    const configured = links.find(link => link.id === configuredId);
-    if (configured) {
-      return configured.id;
-    }
-
     const storage = room.storage;
     if (!storage) {
       return undefined;

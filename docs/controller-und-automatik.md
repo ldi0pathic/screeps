@@ -50,7 +50,9 @@ Für Räume mit `saveRoads` und RCL mindestens 7 erstellt `rebuildRoads()` fehle
 
 Ein Raum hat im Zielzustand vier Links: zwei an den Quellen, einen am Spawn/Storage und einen am Controller. **Empfänger sind Controller- und Storage-Link, alle übrigen Links senden.**
 
-`LinkList` hält den Bestand in `Memory.rooms[<raum>].links` (`{ controller, spawn, sender[] }`). Zugeordnet wird zuerst nach Config (`controllerLink`, `spawnLink` in `config.ts`), sonst nach Lage: der nächste Link in Reichweite 3 zum Controller, der nächste in Reichweite 2 zum Storage. Die Lage-Regel ist nötig, weil der Linkplaner Links im laufenden Spiel baut, deren Ids niemand von Hand nachtragen kann. Zeigt eine gemerkte Id ins Leere, wird die **ganze** Liste verworfen und neu erhoben.
+`LinkList` hält den Bestand in `Memory.rooms[<raum>].links` (`{ controller, spawn, sender[] }`). Zugeordnet wird allein nach Lage: der nächste Link in Reichweite 3 zum Controller, der nächste in Reichweite 2 zum Storage, alle übrigen senden. Config-Ids gibt es dafür nicht mehr — sie trügen nicht, seit der Linkplaner Links im laufenden Spiel baut. Zeigt eine gemerkte Id ins Leere, wird die **ganze** Liste verworfen und neu erhoben. Jede geänderte Zuordnung wird auf der Konsole gemeldet, damit eine Fehlzuordnung auffällt.
+
+Ob ein Raum überhaupt Links nutzt, beantwortet `usesLinks(raum)`: eigener Controller und ein RCL, dessen Kontingent Links zulässt (ab RCL5). Auch das steht nicht mehr in der Config.
 
 `LinkNetwork.send()` läuft je Raum und Tick:
 
@@ -65,7 +67,16 @@ Gesendet wird jeden Tick statt getaktet, weil der *empfangende* Link keinen Cool
 
 ## Linkplaner (`controller/link-planner.ts`)
 
-Baut die beiden Empfängerlinks selbst, ein Aufruf je Tagesdurchlauf und höchstens **eine** Baustelle je Raum. Voraussetzungen: `useLinks`, Sicht, eigener Controller ab RCL5, ein freier Linkplatz laut `CONTROLLER_STRUCTURES` (RCL5 zwei, RCL6 drei, RCL7 vier, RCL8 sechs) und weniger als zehn Baustellen im Raum. Eine laufende Baustelle zählt dabei wie ein fertiger Link.
+Baut die beiden Empfängerlinks selbst, ein Aufruf je Tagesdurchlauf und höchstens **eine** Baustelle je Raum. Voraussetzungen: `usesLinks` (Sicht, eigener Controller, RCL ab 5), ein freier Linkplatz laut `CONTROLLER_STRUCTURES` (RCL5 zwei, RCL6 drei, RCL7 vier, RCL8 sechs) und weniger als zehn Baustellen im Raum. Eine laufende Baustelle zählt dabei wie ein fertiger Link.
+
+**Der Planer reserviert Plätze für die Sender.** Quell-Links baut nicht er, sondern der Miner neben seinem Quellcontainer. Ohne Reservierung würde er auf RCL5 beide erlaubten Plätze mit Empfängern belegen — ein Linknetz aus zwei Empfängern und keinem Sender bewegt nichts. Die Regel: `reserve = min(Quellen ohne Link, erlaubteLinks − 1)`, gebaut wird nur bei `freie Plätze > reserve`. Das `− 1` hält immer einen Platz für einen Empfänger frei. Bei zwei Quellen ergibt das die üblichen Ausbaustufen:
+
+| RCL | erlaubt | reserve | Empfänger |
+| --- | --- | --- | --- |
+| 5 | 2 | 1 | einer |
+| 6 | 3 | 2 | einer |
+| 7 | 4 | 2 | zwei |
+| 8 | 6 | 2 | zwei (zwei Plätze bleiben frei) |
 
 Zuerst entsteht der Controller-Link, danach der Storage-Link. Kandidatenfelder:
 

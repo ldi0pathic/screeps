@@ -384,3 +384,28 @@ wurde.
 `prof.baseline("vor-linknetz")` ist nicht gelaufen, weil die Änderung in einem
 Zug entstanden ist. Die Wirkung auf den Durchsatz ist deshalb bis zur nächsten
 Messung eine begründete Erwartung, keine Zahl.
+
+## Runde 2026-08-05: Links ohne Konfiguration, Config verschlankt
+
+Nachtrag zur Runde davor. Leitsatz, der dabei entstanden und in `CLAUDE.md`
+festgehalten ist: **Absicht gehört in die Config, Tatsachen über die Welt
+nicht.**
+
+| Was | Warum | Wirkung |
+| --- | --- | --- |
+| `spawnLink` und `controllerLink` sind aus der Config verschwunden. `LinkList` entscheidet allein nach Lage; `linkkeeper`, `harvestControllerLink` und `upgrader` lesen sie jetzt von dort. | Von Hand gepflegte Ids tragen nicht mehr, seit der Linkplaner Links im laufenden Spiel baut. | Keine, solange die Lage stimmt. `discover()` meldet jede **geänderte** Zuordnung auf der Konsole — läge eine Quelle zufällig nahe am Controller, würde ihr Quell-Link zum Empfänger, und genau das fällt dort auf. |
+| `useLinks` ist entfallen und wird aus `controller.my` und `CONTROLLER_STRUCTURES[link][RCL] > 0` abgeleitet (`usesLinks()`). | Links gibt es ab RCL5; ein eigener Raum, der so weit ist, soll sie nutzen. Bewusst am **Kontingent** festgemacht statt an vorhandenen Links — sonst käme der Planer nie dazu, den ersten zu bauen. | **Verhaltensänderung.** Jeder eigene Raum ab RCL5 beginnt selbständig, seine Empfängerlinks zu bauen. Bisher galt das nur in vier von Hand eingetragenen Räumen. |
+| **Fehler im Linkplaner behoben:** er reserviert jetzt Plätze für die Sender, `reserve = min(Quellen ohne Link, erlaubteLinks − 1)`, gebaut wird nur bei `freie Plätze > reserve`. | Auf RCL5 sind nur zwei Links erlaubt. Der Planer hätte beide mit Empfängern belegt und keinen Platz für einen Quell-Link gelassen — ein Linknetz aus zwei Empfängern und keinem Sender bewegt nichts. Vorher fiel das nicht auf, weil `useLinks` nur in RCL8-Räumen stand. | Ergibt die üblichen Ausbaustufen: RCL5 ein Empfänger, RCL6 einer, RCL7 zwei, RCL8 zwei plus zwei freie Plätze. |
+| **Zweiter toter Zweig behoben:** `debitor._spawn` prüfte `Memory.rooms[workroom].useLinks` — einen solchen Memory-Schlüssel setzt niemand, die Bedingung war immer falsch. Ersetzt durch `linksDeliver(workroom)`. | Ein Quellcontainer mit Link braucht keinen Debitor — aber nur, wenn das Linknetz die Energie auch abliefert. | `linksDeliver` verlangt zusätzlich einen **Empfänger am Storage**. Der RCL allein genügt nicht: zwischen „Raum darf Links bauen" und „ein Empfänger nimmt sie an" liegen Tage Bauzeit, und in dieser Lücke hätte das Wegfallen der Container-Debitoren den Raum ausgehungert. |
+| **Toter Konfigwert entfernt:** `debitorProSource` und `walls`. | Beide las kein Modul; in `globals.ts` stand das sogar als Kommentar. | Keine. |
+| **`resetWorld()` in den Test-Stubs leert jetzt auch `Game.rooms` und `Game.creeps`.** | Ein Raum aus dem vorigen Test blieb sichtbar; ein Test für „keine Sicht auf den Raum" prüfte dadurch das Gegenteil dessen, was er behauptet. | Keine im Bot. Kein bestehender Test ist daran zerbrochen. |
+| **`CLAUDE.md` korrigiert:** `global.minSalePrice` und `global.maxOrderPrice` waren dort als Konfiguration beschrieben. | Beide existieren im TypeScript-Bot nirgends — Erbe aus `prod/`. | Keine. |
+
+`config.ts` schrumpft von 346 auf 309 Zeilen. Der größere Gewinn ist nicht die
+Länge, sondern dass eine Klasse von Fehlern wegfällt: eine Id in der Config, die
+nach einem Wiederaufbau ins Leere zeigt.
+
+**Noch offen:** `energySources`, `mineralSources` und `mineralContainerId` sind
+ebenfalls Tatsachen. Sie bleiben vorerst, weil `miner.spawn` und `debitor.spawn`
+sie für Räume **ohne Sicht** lesen — dafür braucht es erst einen einmalig
+erhobenen Bestand im Memory. Das gehört zu Plan 02.

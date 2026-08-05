@@ -69,11 +69,6 @@ function stubRoom(
   };
 }
 
-/** Trägt eine Raumkonfiguration in `global.room` ein (`controllerLink`/`spawnLink`). */
-function setRoomConfig(name: string, config: Record<string, any>): void {
-  anyGlobal.room[name] = config;
-}
-
 /** Legt `Memory.rooms[name]` an, damit `isRoomKnown` zutrifft. */
 function setRoomMemory(name: string, value: Record<string, any> = {}): Record<string, any> {
   anyGlobal.Memory.rooms ??= {};
@@ -109,7 +104,7 @@ test("ohne Config: Lage entscheidet — Controller- und Storage-Link, alle übri
   );
 });
 
-test("Config gewinnt über Lage, auch wenn ein anderer Link näher liegt", async () => {
+test("nur Links in Reichweite werden Empfänger, alle weiter entfernten senden", async () => {
   const { LinkList } = await loadLinkList();
   const roomName = "E58N6";
   setRoomMemory(roomName);
@@ -118,13 +113,11 @@ test("Config gewinnt über Lage, auch wenn ein anderer Link näher liegt", async
   const storagePos = stubPos(10, 10, roomName);
 
   const nearController = stubLink("near-controller", 22, 25, roomName); // Reichweite 3
-  const configuredController = stubLink("configured-controller", 20, 20, roomName); // weiter weg
+  const farFromController = stubLink("far-from-controller", 20, 20, roomName); // Reichweite 5
   const nearStorage = stubLink("near-storage", 12, 10, roomName); // Reichweite 2
-  const configuredSpawn = stubLink("configured-spawn", 5, 5, roomName); // weiter weg
+  const farFromStorage = stubLink("far-from-storage", 5, 5, roomName); // Reichweite 5
 
-  setRoomConfig(roomName, { controllerLink: "configured-controller", spawnLink: "configured-spawn" });
-
-  const room = stubRoom(roomName, [nearController, configuredController, nearStorage, configuredSpawn], {
+  const room = stubRoom(roomName, [nearController, farFromController, nearStorage, farFromStorage], {
     controller: controllerPos,
     storage: storagePos,
   });
@@ -132,30 +125,31 @@ test("Config gewinnt über Lage, auch wenn ein anderer Link näher liegt", async
   const list = new LinkList(roomName);
   list.discover(room as any);
 
-  assert.equal(list.controllerLink?.id, "configured-controller");
-  assert.equal(list.spawnLink?.id, "configured-spawn");
+  assert.equal(list.controllerLink?.id, "near-controller");
+  assert.equal(list.spawnLink?.id, "near-storage");
   assert.deepEqual(
     list.senders().map(link => link.id).sort(),
-    ["near-controller", "near-storage"],
+    ["far-from-controller", "far-from-storage"],
   );
 });
 
-test("eine Config-Id ohne passenden Link im Raum wird ignoriert — die Lage-Regel greift", async () => {
+test("liegen mehrere Links in Reichweite, wird der nächstgelegene Empfänger", async () => {
   const { LinkList } = await loadLinkList();
   const roomName = "E58N6";
   setRoomMemory(roomName);
 
   const controllerPos = stubPos(25, 25, roomName);
-  const nearController = stubLink("near-controller", 22, 25, roomName); // Reichweite 3
+  const adjacent = stubLink("adjacent", 24, 25, roomName); // Reichweite 1
+  const atEdgeOfRange = stubLink("at-edge-of-range", 22, 25, roomName); // Reichweite 3
 
-  setRoomConfig(roomName, { controllerLink: "verschwunden" });
-
-  const room = stubRoom(roomName, [nearController], { controller: controllerPos });
+  const room = stubRoom(roomName, [atEdgeOfRange, adjacent], { controller: controllerPos });
 
   const list = new LinkList(roomName);
   list.discover(room as any);
 
-  assert.equal(list.controllerLink?.id, "near-controller");
+  // Der weiter entfernte liegt zwar auch in Reichweite, sendet aber.
+  assert.equal(list.controllerLink?.id, "adjacent");
+  assert.deepEqual(list.senders().map(link => link.id), ["at-edge-of-range"]);
 });
 
 test("ein Link ist nie beides: liegt er bei Controller und Storage, wird er nur Controller-Empfänger", async () => {
