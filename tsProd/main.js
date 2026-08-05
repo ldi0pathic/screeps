@@ -1,4 +1,4 @@
-// Build: 2026-08-06 01:49:58 +02:00
+// Build: 2026-08-06 01:56:01 +02:00
 "use strict";
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
@@ -447,6 +447,19 @@ function findAndSaveTerminals() {
 }
 
 // src/controller/defence.ts
+var HostileScanCache = class {
+  constructor() {
+    __publicField(this, "entries", /* @__PURE__ */ new Map());
+  }
+  get(room) {
+    const cached = this.entries.get(room.name);
+    if (cached && cached.tick === Game.time) return cached.hostiles;
+    const hostiles = room.find(FIND_HOSTILE_CREEPS);
+    this.entries.set(room.name, { tick: Game.time, hostiles });
+    return hostiles;
+  }
+};
+var hostileScan = new HostileScanCache();
 function check() {
   for (var name in bot.room) {
     if (!bot.room[name].sendDefender) continue;
@@ -458,7 +471,7 @@ function check() {
     }
     var room = Game.rooms[bot.room[name].room];
     if (!room) continue;
-    var hostiles = room.find(FIND_HOSTILE_CREEPS);
+    var hostiles = hostileScan.get(room);
     var core = room.find(FIND_HOSTILE_STRUCTURES, {
       filter: (s) => s.structureType == STRUCTURE_INVADER_CORE
     });
@@ -506,7 +519,7 @@ function tower() {
     if (!room || !room.controller || !room.controller.my || !Memory.rooms[name].tower || Memory.rooms[name].tower.length == 0)
       continue;
     if (Memory.rooms[name].needDefence) {
-      var hostileCreeps = room.find(FIND_HOSTILE_CREEPS);
+      var hostileCreeps = hostileScan.get(room);
       if (hostileCreeps.length > 0) {
         hostileCreeps.sort(function(a, b) {
           var costA = a.body.reduce(function(total, part) {
@@ -549,15 +562,14 @@ function tower() {
             if (tower2) tower2.attack(target);
           }
         } else {
+          var allStructures = room.find(FIND_STRUCTURES);
           if (!Memory.rooms[name].structureHP) {
             Memory.rooms[name].structureHP = {};
-            var allStructures = room.find(FIND_STRUCTURES);
             for (var structure of allStructures) {
               Memory.rooms[name].structureHP[structure.id] = structure.hits;
             }
           }
           var damagedStructure = null;
-          var allStructures = room.find(FIND_STRUCTURES);
           for (var structure of allStructures) {
             if (Memory.rooms[name].structureHP[structure.id] && structure.hits < Memory.rooms[name].structureHP[structure.id]) {
               damagedStructure = structure;

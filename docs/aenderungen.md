@@ -579,3 +579,36 @@ auf `undefined` und warf einen `TypeError`. `main.ts` wirft Rollenfehler weiter,
 das hätte also den **kompletten Tick** abgebrochen: alle Rollen nach dem
 Upgrader und den Timing-Controller mit Türmen und Spawn. `_mayWork` steigt jetzt
 vor der Drossel aus, wenn kein Controller da ist.
+
+## Runde 2026-08-06: Ein Feind-Scan je Raum und Tick (Plan 05, Schritte 1 und 2)
+
+**Ohne Verhaltensänderung.** Der Bot tut danach exakt dasselbe, nur mit weniger
+Raumscans. Anlass ist Plan 05: bei zehn Räumen wächst die **Spitzenlast** je Tick
+linear mit der Raumzahl, und die Spitze entscheidet, ob der Tick durchläuft —
+greift das CPU-Limit, bricht das Spiel den Rest stillschweigend ab.
+
+| Was | Warum | Wirkung |
+| --- | --- | --- |
+| `defence.ts::tower()` rief im Reparaturzweig **zweimal** `room.find(FIND_STRUCTURES)` ohne Filter auf — einmal für den Hits-Schnappschuss, einmal für den Schadensvergleich. Jetzt eine Variable. | Zwischen beiden Aufrufen passierte nichts, das die Liste ändern könnte (kein `destroy`, kein Bau, kein anderer `find`) — geprüft, bevor zusammengelegt wurde. | Ein Strukturscan je Raum und Tick weniger im Reparaturzweig. |
+| Neue Klasse `HostileScanCache`: `check()` und `tower()` teilen sich einen `FIND_HOSTILE_CREEPS`-Scan je Raum und Tick. | Beide durchlaufen `bot.room` und fragten denselben Raum im selben Tick zweimal ab, obwohl sich der Feindbestand innerhalb eines Ticks nicht ändert. | Halbiert die Feind-Scans in den Ticks, in denen beide laufen (alle 7). |
+
+Drei Eigenschaften des Caches, die bewusst so sind:
+
+- **Er gilt genau einen Tick.** Der Vergleich läuft gegen `Game.time`, nie gegen
+  ein „schon gesehen"-Flag — damit ist er auch bei einem Tickwechsel ohne
+  Neuladen korrekt. Das Dreitickfenster des Vergleichsbots übernehmen wir
+  **nicht**: Feinde bewegen sich, und Turmfeuer ist taktisch.
+- **Er lebt im Modul, nicht in `Memory`.** Ein globaler Reset leert ihn von
+  selbst, und er kostet keine Tickkosten beim `JSON.parse` von `Memory`.
+- **Er wächst nicht.** Es gibt höchstens so viele Einträge wie Räume in
+  `bot.room`; ältere Ticks werden beim nächsten Zugriff überschrieben statt
+  zusätzlich gespeichert.
+
+**`tower()` wird ausdrücklich nicht gestaffelt.** Turmfeuer muss in jedem Tick
+für jeden bedrohten Raum laufen. Gestaffelt werden `check()` und die Tagesjobs,
+das ist ein eigener Schritt.
+
+Beim Lesen gemeldet, **nicht** geändert: im nicht-`needDefence`-Zweig von
+`tower()` steht ein dritter Strukturscan für den regulären Reparaturmodus
+(`Game.time % 3 == 2`). Er liegt in einem anderen Zweig als die beiden oben und
+gehört in einen eigenen Schritt.
