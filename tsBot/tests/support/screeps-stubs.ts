@@ -129,7 +129,24 @@ export const SCREEPS_CONSTANTS: Record<string, unknown> = {
   },
   MAX_CREEP_SIZE: 50,
   LINK_CAPACITY: 800,
+  LINK_LOSS_RATIO: 0.03,
   CARRY_CAPACITY: 50,
+
+  TERRAIN_MASK_WALL: 1,
+  TERRAIN_MASK_SWAMP: 2,
+
+  LOOK_STRUCTURES: "structure",
+  LOOK_CONSTRUCTION_SITES: "constructionSite",
+
+  /**
+   * Wie viele Bauwerke je RCL erlaubt sind — hier nur die Zeile, die der
+   * Linkplaner liest. Die Werte stehen in
+   * `docs/knowledge/mechanics/structures-rcl.md`: Links gibt es ab RCL5,
+   * dann 2, 3, 4 und ab RCL8 sechs Stück.
+   */
+  CONTROLLER_STRUCTURES: {
+    link: { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 2, 6: 3, 7: 4, 8: 6 },
+  },
 
   ...Object.fromEntries(
     Object.entries(COLOR).map(([name, value]) => [`COLOR_${name.toUpperCase()}`, value]),
@@ -248,6 +265,11 @@ export function installGlobals(): void {
 export function resetWorld(): void {
   for (const key of Object.keys(anyGlobal.Memory)) delete anyGlobal.Memory[key];
   for (const key of Object.keys(anyGlobal.Game.flags)) delete anyGlobal.Game.flags[key];
+  // Räume und Creeps gehören genauso geleert wie die Flaggen: ein Raum aus dem
+  // vorigen Test bleibt sonst sichtbar, und ein Test für „keine Sicht auf den
+  // Raum" prüft dann das Gegenteil dessen, was er behauptet.
+  for (const key of Object.keys(anyGlobal.Game.rooms)) delete anyGlobal.Game.rooms[key];
+  for (const key of Object.keys(anyGlobal.Game.creeps)) delete anyGlobal.Game.creeps[key];
   for (const key of Object.keys(anyGlobal.room)) delete anyGlobal.room[key];
   anyGlobal.Game.time = 1000;
   drawnCircles.length = 0;

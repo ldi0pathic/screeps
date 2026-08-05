@@ -63,8 +63,19 @@ export const SECTION = {
   defence: "timing.defence",
   /** Statuslog, `memory.writeStatus()`. */
   status: "timing.status",
+  /** Linknetz, `links.sendAll()`. */
+  links: "timing.links",
   /** Tagessequenz, `daylie()`. */
   daily: "timing.daily",
+  /**
+   * Straßenwiederaufbau, `rebuild.rebuildRoads()`. Eigener Abschnitt, obwohl
+   * der Aufruf innerhalb von `daylie()` steht: die Tagessequenz läuft nur alle
+   * 28 800 Ticks, ihr Sammelwert `timing.daily` ist in einem üblichen Messfenster
+   * deshalb null und verrät nichts über die Kosten des Planers.
+   */
+  roads: "timing.roads",
+  /** Linkplaner, `link-planner.planReceiverLinks()`. Eigener Abschnitt aus demselben Grund wie `roads`. */
+  linkplan: "timing.linkplan",
 } as const;
 
 /** Kennzahlen eines Abschnitts, einer Rolle oder eines Creeps im Fenster. */

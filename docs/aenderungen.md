@@ -338,3 +338,49 @@ gefunden:
    weiterhin ein eigener `switch`, mit Begründung im Code.
 3. Beim Terminal hatte ich die Kapazitätsprüfung negiert — dieselbe Falle wie in
    der Runde davor. Sie ist wieder positiv formuliert.
+
+## Runde 2026-08-05: Linknetz zentral gesteuert (Plan 09 Teil A)
+
+Erste Runde **mit** Verhaltensänderung seit der Migration: wer wann wohin sendet,
+ändert sich. Anlass war die erste Profilermessung aus dem Spiel
+(`docs/profiler/`) — sie hat die Annahme widerlegt, auf der Plan 09 aufgebaut
+war.
+
+**Was die Messung ergeben hat.** 9,12 CPU/Tick bei Limit 20. Der Debitor ist mit
+38,7 % der größte Posten, der Miner mit 11,1 % (0,07 je Creep) *nicht* die heiße
+Rolle, für die Plan 09 ihn hielt. Der Linkkeeper kostet 0,10 CPU/Tick — der
+Gegenbefund aus Plan 09, ihn nicht von einem Manager wecken zu lassen, ist damit
+gemessen statt argumentiert. Die Umstellung hier ist deshalb **keine
+CPU-Maßnahme, sondern eine Durchsatzmaßnahme**; sie wirkt auf die CPU nur
+mittelbar, weil kürzere Wege kleinere und weniger Debitoren brauchen.
+
+| Was | Warum | Wirkung |
+| --- | --- | --- |
+| Neue Klasse `LinkNetwork` (`src/controller/links.ts`), aufgerufen **jeden Tick** aus `controller/timing.ts`. Sie wählt je Raum die sendebereiten Links und die Empfänger nach Vorrang und sendet mit **expliziter Menge** `min(vorhanden, frei)`. | Bisher entschied jeder Miner einzeln: Ziel per `Math.random()` aus `targetLinks`, ohne Vorrang, ohne Mengenangabe. Ein Link-Cooldown entspricht der Entfernung zum Ziel (20 Felder = 20 Ticks, in denen bis zu 800 Energie hätten fließen können) und wurde so für beliebig kleine Mengen verbrannt. | **Verhaltensänderung.** Vorrang: unter RCL8 Controller-Link vor Storage-Link, ab RCL8 umgekehrt (dort zahlt Upgraden nur noch auf GCL ein). Zwei Sender zielen im selben Tick nie auf denselben Empfänger. |
+| Neue Klasse `LinkList` (`src/controller/link-list.ts`) für `Memory.rooms[<raum>].links`: erheben, klassifizieren, auflösen. **Controller- und Storage-Link sind Empfänger, alle übrigen Links sind Sender.** | Die Quell-Links standen nirgends: der Miner fand „seinen" Link per `findInRange` und legte die Id in **sein** Creep-Memory — das Wissen starb mit ihm. | Keine für sich. Zuordnung zuerst aus der Config (`spawnLink`, `controllerLink`), sonst aus der Lage: ≤3 zum Controller, ≤2 zum Storage. |
+| Neue Klasse `LinkPlanner` (`src/controller/link-planner.ts`): baut die beiden Empfängerlinks selbst, höchstens eine Baustelle je Tagesdurchlauf und Raum. | Ein Raum soll vier Links haben (zwei an den Quellen, einer am Spawn, einer am Controller). Von Hand gepflegte Ids skalieren dabei nicht. | **Neu.** Platzwahl: Controller-Link bevorzugt auf Reichweite 2 (Upgrader arbeiten auf 3 und können daneben stehen), Storage-Link nur auf Feldern, für die ein Standplatz des Linkkeepers existiert. Es gewinnt das Feld mit der kleinsten Entfernungssumme zu den sendenden Links — der Cooldown ist die Entfernung, kurze Strecken heißen Durchsatz. |
+| Der Miner verliert seine Weiterleitung (`roles/miner.ts`), er füllt nur noch seinen eigenen Link. | Siehe oben. | **Nebenbei ein Fehler behoben:** die alte Bedingung `link.cooldown < 1 && creep.transfer(...)` hat den Link **gar nicht befüllt**, solange sein Cooldown lief. Der Cooldown gehört zum *sendenden* Link und hat mit dem Einlagern nichts zu tun. |
+| `targetLinks` ist aus `config.ts` und `globals.ts` entfernt. | Nach dem Schnitt im Miner las es niemand mehr. Kein toter Code, kein toter Konfigwert. | Keine. |
+| Eigene Profilerabschnitte `timing.links`, `timing.roads` und `timing.linkplan`. | Der Straßenplaner lief bisher nur innerhalb des Sammelwerts `timing.daily`. Weil die Tagessequenz alle 28 800 Ticks läuft, stand der in der Messung auf 0,00 und verriet nichts über seine Kosten. | Keine. Die nächste Messung zeigt beide Planer einzeln. |
+
+**Zwei Entscheidungen, die bewusst so getroffen sind:**
+
+- **`SEND_MIN = LINK_CAPACITY / 4` (200).** Eine Quelle liefert 10 Energie/Tick,
+  ein Linkpaar über 20 Felder trägt 40/Tick — der Cooldown ist also nicht der
+  Engpass, Warten kostet nichts. Die Schwelle verhindert allein, dass ein
+  Cooldown für eine Handvoll Energie verbrannt wird.
+- **Gesendet wird jeden Tick, nicht getaktet.** Der *empfangende* Link hat keinen
+  Cooldown, es gibt also nichts, worauf man warten könnte; jeder ausgelassene
+  Tick wäre verlorener Durchsatz. Ohne sendebereiten Link ist der Durchgang
+  billig — er liest zwei Zahlen je Sender und steigt aus.
+
+**Drei Fehler des Vergleichsbots, die hier ausdrücklich nicht übernommen wurden**
+(vgl. Plan 09 Teil B): `800` hartcodiert statt `LINK_CAPACITY`; „nur senden, wenn
+der Empfänger die **ganze** Ladung aufnehmen kann" (ein halb gefüllter Empfänger
+bekäme so nie etwas); ein Zielzähler, der auch weiterläuft, wenn nichts gesendet
+wurde.
+
+**Was noch nicht gemessen ist.** Es gibt keine Grundlinie vor der Umstellung —
+`prof.baseline("vor-linknetz")` ist nicht gelaufen, weil die Änderung in einem
+Zug entstanden ist. Die Wirkung auf den Durchsatz ist deshalb bis zur nächsten
+Messung eine begründete Erwartung, keine Zahl.

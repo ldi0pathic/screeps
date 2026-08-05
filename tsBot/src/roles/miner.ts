@@ -284,35 +284,16 @@ export class Miner implements CreepRole {
                     }
                 }
 
-                if( creep.memory.link && creep.store.getFreeCapacity() == 0)
+                // Der Miner füllt nur noch seinen eigenen Link. Wohin dieser weitersendet,
+                // entscheidet `controller/links.ts` einmal je Raum und Tick — nach Vorrang
+                // statt zufällig und mit expliziter Menge.
+                if(creep.memory.link && creep.store.getFreeCapacity() == 0)
                 {
-                    var link: any = Game.getObjectById( creep.memory.link);
-
-                   if(link != null && link.cooldown < 1 && creep.transfer(link,RESOURCE_ENERGY) == ERR_FULL)
-                   {
-                        var target: any;
-                        if(creep.room.storage && creep.room.storage.store.getUsedCapacity()*0.5 > creep.room.storage.store.getFreeCapacity())
-                        {
-                            target = Game.getObjectById(bot.room[creep.room.name]!.controllerLink as any);
-                        }
-                        else
-                        {
-                            target = Game.getObjectById((bot.room[creep.room.name]!.targetLinks as any)[[Math.floor((Math.random()*bot.room[creep.room.name]!.targetLinks!.length))] as any]);
-                        }
-
-                        if(target && target.store.getFreeCapacity(RESOURCE_ENERGY) > 50)
-                        {
-                            link.transferEnergy(target);
-                        }
-                        else
-                        {
-                            if(container && container.store.getFreeCapacity() == 0 && creep.store.getFreeCapacity() == 0)
-                            {
-                                creep.say('🚯');
-                                return;
-                            }
-                        }
-                   }
+                    var link: any = Game.getObjectById(creep.memory.link);
+                    if(link)
+                    {
+                        creep.transfer(link, RESOURCE_ENERGY);
+                    }
                 }
             }
             else

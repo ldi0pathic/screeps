@@ -1,4 +1,6 @@
 import * as defenceController from "./defence";
+import * as linkPlannerController from "./link-planner";
+import * as linksController from "./links";
 import * as memoryController from "./memory";
 import * as rebuildController from "./rebuild";
 import * as spawnController from "./spawn";
@@ -42,6 +44,20 @@ export function controll(): void {
     }
   }
   end(SECTION.terminal);
+
+  begin(SECTION.links);
+  // Die Linkliste wird alle 1000 Ticks neu erhoben statt in der Tagessequenz:
+  // sie heilt sich zwar selbst, wenn ein Link **verschwindet** (eine Id ohne
+  // Objekt verwirft die Liste), aber nicht, wenn einer **dazukommt** — und
+  // genau das tut der Linkplaner. 28 800 Ticks wären dafür zu lang.
+  if (tick % 1000 === 0) {
+    linksController.discoverAll();
+  }
+  // Jeden Tick, nicht getaktet: der empfangende Link hat keinen Cooldown, es
+  // gibt also nichts, worauf man warten könnte — jeder ausgelassene Tick wäre
+  // verlorener Durchsatz. Ohne sendebereiten Link ist der Durchgang billig.
+  linksController.sendAll();
+  end(SECTION.links);
 
   if (tick % 3 === 0 && Game.cpu.bucket === 10_000) {
     begin(SECTION.pixel);
@@ -92,7 +108,14 @@ export function daylie(): void {
       memoryController.findAndSaveTerminals();
       return;
     case 5:
+      begin(SECTION.roads);
       rebuildController.rebuildRoads();
+      end(SECTION.roads);
+      return;
+    case 6:
+      begin(SECTION.linkplan);
+      linkPlannerController.planReceiverLinks();
+      end(SECTION.linkplan);
       return;
   }
 }

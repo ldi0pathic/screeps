@@ -90,7 +90,12 @@ Abschnittsnamen (aus `SECTION` in `profiler/types.ts`):
 | `timing.spawn` | Spawncontroller |
 | `timing.defence` | Verteidigungsscan |
 | `timing.status` | Statuslog |
+| `timing.links` | Linknetz, `links.sendAll()` — jeden Tick |
 | `timing.daily` | Tagessequenz |
+| `timing.roads` | Straßenwiederaufbau, innerhalb der Tagessequenz |
+| `timing.linkplan` | Linkplaner, innerhalb der Tagessequenz |
+
+`timing.roads` und `timing.linkplan` stecken in `timing.daily`. Sie haben eigene Messpunkte, weil die Tagessequenz nur alle 28.800 Ticks läuft: in einem üblichen Messfenster steht `timing.daily` auf 0,00 und verrät nichts über die Kosten der beiden Planer.
 
 Rollen erscheinen unter ihrem Rollennamen (`miner`, `transfer`, …), ihre
 Spawnprüfung zusätzlich als `<rolle>.spawn`. Klassenmethoden aus dem

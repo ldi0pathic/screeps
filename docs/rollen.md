@@ -8,7 +8,7 @@ Alle Rollen exportieren `doJob(creep)` und meist `spawn(spawn, workroom)`. Die S
 
 ### `miner`
 
-Ein Miner wird pro Quellen-ID erzeugt. Er sucht oder baut zuerst einen Container direkt neben der Quelle und stellt sich darauf. Bei Energiequellen baut/nutzt er ab RCL 4 zusätzlich einen Link; bei Mineralen nutzt er einen benachbarten Terminal, sofern vorhanden, und berücksichtigt den Extractor-Cooldown. Volle Links werden an den Controller-Link oder zufällig an einen konfigurierten Ziel-Link weitergeleitet. Das Standardprofil besteht aus Gruppen von `3 WORK, 1 CARRY, 2 MOVE`, maximal acht Gruppen.
+Ein Miner wird pro Quellen-ID erzeugt. Er sucht oder baut zuerst einen Container direkt neben der Quelle und stellt sich darauf. Bei Energiequellen baut/nutzt er ab RCL 4 zusätzlich einen Link; bei Mineralen nutzt er einen benachbarten Terminal, sofern vorhanden, und berücksichtigt den Extractor-Cooldown. **Der Miner füllt seinen Link nur noch**; wohin dieser weitersendet, entscheidet `controller/links.ts` einmal je Raum und Tick (siehe `controller-und-automatik.md`). Die frühere Weiterleitung im Miner wählte ihr Ziel zufällig und sendete ohne Mengenangabe. Das Standardprofil besteht aus Gruppen von `3 WORK, 1 CARRY, 2 MOVE`, maximal acht Gruppen.
 
 Die Spawnlogik plant beim Ausfall lokal früher nach (TTL-Grenze 150 statt 300). Fehlende Miner setzen `aktivPrioSpawn`; nach mehr als 25 fehlgeschlagenen Prioritätsversuchen versucht sie einen Notfallminer `[WORK,CARRY,MOVE]`. Unterhalb einer Raum-Energiekapazität von 450 (RCL1 oder ein Raum, der nach einem Angriff darunterfällt) fällt das reguläre Profil auf `[WORK,WORK,CARRY,MOVE]` für 300 Energie zurück, statt ein leeres Body-Array zu liefern, mit dem `spawnCreep` grundsätzlich fehlschlägt.
 

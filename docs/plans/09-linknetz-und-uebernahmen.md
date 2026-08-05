@@ -1,8 +1,44 @@
 # Plan 09: Linknetz betreiben — und was aus dem Vergleichsbot taugt
 
-Status: **Vorschlag.** Verhaltensänderung: **ja** für Teil A.
+Status: **Teil A gebaut** (2026-08-05, siehe `docs/aenderungen.md`). Teil B offen.
 Grundlage: Analyse von `C:\GIT\github\Screeps_TS` (der nie eingesetzte Bot),
 Fokus in dieser Reihenfolge: CPU, dann Wartbarkeit.
+
+## Nachtrag 2026-08-05: was die erste Messung an diesem Plan geändert hat
+
+Die Messung aus dem Spiel (`docs/profiler/`) liegt vor und widerlegt eine der
+Annahmen dieses Plans:
+
+- **Der Miner ist nicht die heiße Rolle.** 1,02 CPU/Tick über 15 Creeps, also
+  0,07 je Creep und 11,1 % — die Behauptung weiter unten, der Schnitt der
+  Weiterleitung sei „ein spürbarer Schnitt in der heißesten Rolle", ist falsch.
+  Teil A bleibt richtig, aber als **Durchsatzmaßnahme**, nicht als CPU-Maßnahme.
+- **Der Gegenbefund zum Linkkeeper ist bestätigt:** 0,10 CPU/Tick für vier
+  Creeps, 1,0 %. Der Rückfallvorschlag `Game.time % 2` für den Leerlauffall ist
+  damit erledigt — er könnte höchstens 0,05 CPU/Tick holen.
+- **Der eigentliche Posten ist der Debitor:** 38,7 % in der Detailmessung, 40,1 %
+  im Fenster, 0,27 CPU je Creep und damit viermal so teuer wie ein Miner. Er
+  kommt in diesem Plan nicht vor. Ursache ist die Zielwahl, nicht die Bewegung:
+  `findDeliveryTarget` in `creep/transport.ts` ruft `findClosestByPath` über
+  **alle** eigenen Bauwerke, jeden Tick neu und ohne Gedächtnis.
+- **`timing.spawn` ist die Spitze:** 1,09 CPU/Tick im Mittel, aber 5,47 je Aufruf
+  und **6,56 im teuersten Tick** — ein Drittel des Limits auf einen Schlag, alle
+  fünf Ticks. Das ist der konkrete Beleg für B2 (Staffelung mit Raumindex).
+
+**Neu hinzugekommen (Teil C, noch nicht geplant): Eingangslinks.** Sobald ein
+Raum voll ausgebaut ist, sind Linkplätze frei — vier belegt (zwei Quellen, Spawn,
+Controller), auf RCL8 sechs erlaubt. Ein Link an der Raumkante, an der die
+Debitoren aus den Fremdräumen einlaufen, würde deren Umlauf um die gesamte
+Strecke Kante→Storage kürzen. Weil `bodyFor` den Debitor aus der gemessenen
+Umlaufstrecke dimensioniert (`carry = ceil(2 × Median / 5)`, `needDebitors`),
+halbieren sich mit der Strecke Ladung **und** Anzahl — das senkt die 38,7 %
+dadurch, dass es weniger Debitor-Ticks gibt. Vorbedingung war Teil A: ein
+Eingangslink hat keinen Miner, der ihn sendet, es braucht den Sendecontroller.
+Der ist jetzt da. Offen bleibt die entscheidende Zahl: wie viel des Umlaufs
+überhaupt im Heimatraum steckt (`Memory.rooms[<raum>].distances` misst es
+bereits). Zu klären ist außerdem, dass verschiedene Fremdräume durch
+verschiedene Kanten einlaufen — E58N6 bedient E57N6 und E58N5 aus zwei
+Richtungen, das wären zwei Eingangslinks und damit alle sechs Plätze belegt.
 
 ## Kurzfassung
 

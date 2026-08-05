@@ -68,7 +68,6 @@ bot.room = {
     mineralSources: [],
 
     useLinks: false,
-    targetLinks: [],
     spawnLink: null,
     controllerLink: null,
 
@@ -97,7 +96,6 @@ bot.room = {
     energySources: ["5bbcb08d9099fc012e63c593"],
     mineralSources: [],
     useLinks: false,
-    targetLinks: [],
     spawnLink: null,
     controllerLink: null,
 
@@ -135,7 +133,6 @@ bot.room = {
     mineralSources: ["5bbcb72cd867df5e54207db1"],
 
     useLinks: true,
-    targetLinks: ["653aed0d2fa32d1c887ab4e7", "657f0915dbc7505af702443c"],
     spawnLink: "657f0915dbc7505af702443c",
     controllerLink: "653aed0d2fa32d1c887ab4e7",
 
@@ -173,7 +170,6 @@ bot.room = {
     mineralContainerId: "658f0b73615ae9c2e4995fb6",
 
     useLinks: true,
-    targetLinks: ["655269336b163b788bbbaec1", "65380c0c74becf6de75f0370"],
     spawnLink: "655269336b163b788bbbaec1",
     controllerLink: "65380c0c74becf6de75f0370",
 
@@ -203,7 +199,6 @@ bot.room = {
     mineralSources: [],
 
     useLinks: false,
-    targetLinks: [],
     spawnLink: null,
     controllerLink: null,
 
@@ -241,7 +236,6 @@ bot.room = {
     mineralSources: ["5bbcb73ad867df5e54207e20"],
     mineralContainerId: null,
     useLinks: true,
-    targetLinks: ["6666029dda8491c8c7f5b5f8", "65ad15e5e25690e38e742550"],
     spawnLink: "65ad15e5e25690e38e742550",
     controllerLink: "6666029dda8491c8c7f5b5f8",
 
@@ -271,7 +265,6 @@ bot.room = {
     mineralSources: ["5bbcb739d867df5e54207e1c"],
 
     useLinks: false,
-    targetLinks: [],
     spawnLink: null,
     controllerLink: null,
 
@@ -301,7 +294,6 @@ bot.room = {
     mineralSources: [],
 
     useLinks: false,
-    targetLinks: [],
     spawnLink: null,
     controllerLink: null,
 
@@ -338,7 +330,6 @@ bot.room = {
     mineralSources: ["5bbcb739d867df5e54207e1a"],
 
     useLinks: true,
-    targetLinks: ["655261fc8c582e53825955a1", "65354f9aade2340fef294995"],
     spawnLink: "655261fc8c582e53825955a1",
     controllerLink: "65354f9aade2340fef294995",
 

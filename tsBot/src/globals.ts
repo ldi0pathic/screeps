@@ -44,7 +44,11 @@ export interface RoomConfig {
   mineralContainerId?: string | null;
 
   useLinks?: boolean;
-  targetLinks?: string[];
+  /**
+   * Die beiden Empfängerlinks. Optional: findet `controller/link-list.ts` hier
+   * nichts, bestimmt es sie aus der Lage — nötig, weil der Linkplaner neue Links
+   * im laufenden Spiel baut, deren Ids niemand von Hand nachtragen kann.
+   */
   spawnLink?: string | null;
   controllerLink?: string | null;
 

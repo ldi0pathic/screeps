@@ -1,4 +1,4 @@
-// Build: 2026-08-05 23:27:23 +02:00
+// Build: 2026-08-05 21:53:26 +02:00
 "use strict";
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
@@ -94,6 +94,7 @@ bot.room = {
     energySources: ["5bbcb07b9099fc012e63c406"],
     mineralSources: [],
     useLinks: false,
+    targetLinks: [],
     spawnLink: null,
     controllerLink: null,
     //structures
@@ -101,6 +102,33 @@ bot.room = {
     maxwallRepairer: 0,
     maxbuilder: 1,
     prioBuildings: [],
+    //controller
+    upgrader: 0
+  },
+  E58N4: {
+    room: "E58N4",
+    spawnRoom: "E59N4",
+    sendMiner: true,
+    sendDebitor: true,
+    sendFreeDebitor: false,
+    sendBuilder: false,
+    sendDefender: true,
+    sendClaimer: true,
+    //mining
+    debitorProSource: 1,
+    debitorAsFreelancer: 0,
+    energySources: ["5bbcb08d9099fc012e63c595"],
+    mineralSources: [],
+    useLinks: false,
+    targetLinks: [],
+    spawnLink: null,
+    controllerLink: null,
+    //structures
+    repairer: 0,
+    maxwallRepairer: 0,
+    maxbuilder: 1,
+    prioBuildings: [],
+    destroy: ["63adb4b3aeebaa08e3aa2851"],
     //controller
     upgrader: 0
   },
@@ -119,6 +147,7 @@ bot.room = {
     energySources: ["5bbcb08d9099fc012e63c593"],
     mineralSources: [],
     useLinks: false,
+    targetLinks: [],
     spawnLink: null,
     controllerLink: null,
     //structures
@@ -151,6 +180,7 @@ bot.room = {
     energySources: ["5bbcb08d9099fc012e63c58f", "5bbcb08d9099fc012e63c590"],
     mineralSources: ["5bbcb72cd867df5e54207db1"],
     useLinks: true,
+    targetLinks: ["653aed0d2fa32d1c887ab4e7", "657f0915dbc7505af702443c"],
     spawnLink: "657f0915dbc7505af702443c",
     controllerLink: "653aed0d2fa32d1c887ab4e7",
     //structures
@@ -183,6 +213,7 @@ bot.room = {
     mineralSources: ["5bbcb72cd867df5e54207db0"],
     mineralContainerId: "658f0b73615ae9c2e4995fb6",
     useLinks: true,
+    targetLinks: ["655269336b163b788bbbaec1", "65380c0c74becf6de75f0370"],
     spawnLink: "655269336b163b788bbbaec1",
     controllerLink: "65380c0c74becf6de75f0370",
     //structures
@@ -208,6 +239,7 @@ bot.room = {
     energySources: ["5bbcb08d9099fc012e63c588"],
     mineralSources: [],
     useLinks: false,
+    targetLinks: [],
     spawnLink: null,
     controllerLink: null,
     //structures
@@ -241,6 +273,7 @@ bot.room = {
     mineralSources: ["5bbcb73ad867df5e54207e20"],
     mineralContainerId: null,
     useLinks: true,
+    targetLinks: ["6666029dda8491c8c7f5b5f8", "65ad15e5e25690e38e742550"],
     spawnLink: "65ad15e5e25690e38e742550",
     controllerLink: "6666029dda8491c8c7f5b5f8",
     //structures
@@ -266,6 +299,7 @@ bot.room = {
     energySources: ["5bbcb09e9099fc012e63c711"],
     mineralSources: ["5bbcb739d867df5e54207e1c"],
     useLinks: false,
+    targetLinks: [],
     spawnLink: null,
     controllerLink: null,
     //structures
@@ -291,6 +325,7 @@ bot.room = {
     energySources: ["5bbcb09e9099fc012e63c70e"],
     mineralSources: [],
     useLinks: false,
+    targetLinks: [],
     spawnLink: null,
     controllerLink: null,
     //structures
@@ -322,6 +357,7 @@ bot.room = {
     energySources: ["5bbcb09e9099fc012e63c70a", "5bbcb09e9099fc012e63c70b"],
     mineralSources: ["5bbcb739d867df5e54207e1a"],
     useLinks: true,
+    targetLinks: ["655261fc8c582e53825955a1", "65354f9aade2340fef294995"],
     spawnLink: "655261fc8c582e53825955a1",
     controllerLink: "65354f9aade2340fef294995",
     //structures
@@ -636,432 +672,6 @@ function tower() {
         }
       }
     }
-  }
-}
-
-// src/controller/link-planner.ts
-var blockingStructureTypes = OBSTACLE_OBJECT_TYPES;
-var MAX_CONSTRUCTION_SITES = 10;
-var LinkPlanner = class {
-  constructor(roomName) {
-    this.roomName = roomName;
-  }
-  /** Legt höchstens eine Linkbaustelle an. `true`, wenn eine entstanden ist. */
-  plan() {
-    const config = bot.room[this.roomName];
-    if (!(config == null ? void 0 : config.useLinks)) return false;
-    const room = Game.rooms[this.roomName];
-    if (!room) return false;
-    const controller = room.controller;
-    if (!controller || !controller.my || controller.level < 5) return false;
-    if (this.freeLinkSlots(room, controller.level) <= 0) return false;
-    const freeConstructionSlots = MAX_CONSTRUCTION_SITES - room.find(FIND_CONSTRUCTION_SITES).length;
-    if (freeConstructionSlots <= 0) return false;
-    if (this.buildControllerLink(room, controller)) return true;
-    return this.buildStorageLink(room, controller);
-  }
-  /** Wie viele Links in diesem Raum noch gebaut werden dürfen, abzüglich vorhandener und geplanter. */
-  freeLinkSlots(room, level) {
-    var _a, _b;
-    const allowed = (_b = (_a = CONTROLLER_STRUCTURES == null ? void 0 : CONTROLLER_STRUCTURES[STRUCTURE_LINK]) == null ? void 0 : _a[level]) != null ? _b : 0;
-    const built = room.find(FIND_MY_STRUCTURES, { filter: (s) => s.structureType === STRUCTURE_LINK }).length;
-    const sites = room.find(FIND_CONSTRUCTION_SITES, { filter: (s) => s.structureType === STRUCTURE_LINK }).length;
-    return allowed - built - sites;
-  }
-  /** Plant den Controller-Link, falls in Reichweite 3 noch keiner steht (auch keine Baustelle). */
-  buildControllerLink(room, controller) {
-    if (this.hasLinkNear(room, controller.pos, 3)) return false;
-    const candidates = this.candidatesNearController(room, controller.pos);
-    const best = this.selectBest(candidates, room, controller, room.storage);
-    if (!best) return false;
-    return this.build(room, best, "Controller");
-  }
-  /** Plant den Storage-Link, falls ein Storage existiert und in Reichweite 2 noch keiner steht. */
-  buildStorageLink(room, controller) {
-    const storage = room.storage;
-    if (!storage) return false;
-    if (this.hasLinkNear(room, storage.pos, 2)) return false;
-    const candidates = this.candidatesNearStorage(room, storage);
-    const best = this.selectBest(candidates, room, controller, storage);
-    if (!best) return false;
-    return this.build(room, best, "Storage");
-  }
-  /** Steht (gebaut oder als Baustelle) bereits ein Link in `range` um `pos`? */
-  hasLinkNear(room, pos, range) {
-    const links = room.find(FIND_MY_STRUCTURES, { filter: (s) => s.structureType === STRUCTURE_LINK });
-    if (links.some((link) => link.pos.getRangeTo(pos) <= range)) return true;
-    const sites = room.find(FIND_CONSTRUCTION_SITES, { filter: (s) => s.structureType === STRUCTURE_LINK });
-    return sites.some((site) => site.pos.getRangeTo(pos) <= range);
-  }
-  /**
-   * Kandidatenfelder für den Controller-Link: bevorzugt Reichweite 2, damit
-   * ein Upgrader (Arbeitsdistanz 3 zum Controller) neben dem Link stehen und
-   * zugleich upgraden kann. Findet sich dort keins, weicht die Suche auf
-   * Reichweite 3, danach auf Reichweite 1 aus.
-   */
-  candidatesNearController(room, controllerPos) {
-    for (const range of [2, 3, 1]) {
-      const positions = this.positionsAtRange(room, controllerPos, range).filter((pos) => this.isBuildable(pos, room));
-      if (positions.length > 0) return positions;
-    }
-    return [];
-  }
-  /**
-   * Kandidatenfelder für den Storage-Link: alle bebaubaren Felder bis
-   * Reichweite 2, für die zusätzlich ein Standplatz für den Linkkeeper
-   * existiert – ein begehbares Feld, das an Link **und** Storage zugleich
-   * angrenzt (siehe roles/linkkeeper.ts::_findPost). Ohne diesen Platz wäre
-   * der Link nicht leerbar.
-   */
-  candidatesNearStorage(room, storage) {
-    const positions = [];
-    for (let dx = -2; dx <= 2; dx++) {
-      for (let dy = -2; dy <= 2; dy++) {
-        const x = storage.pos.x + dx;
-        const y = storage.pos.y + dy;
-        if (x < 1 || x > 48 || y < 1 || y > 48) continue;
-        const pos = new RoomPosition(x, y, room.name);
-        if (!this.isBuildable(pos, room)) continue;
-        if (!this.hasKeeperPost(pos, storage, room)) continue;
-        positions.push(pos);
-      }
-    }
-    return positions;
-  }
-  /** Gibt es ein Feld, das an `linkPos` und `storage` zugleich angrenzt und begehbar ist? */
-  hasKeeperPost(linkPos, storage, room) {
-    for (let dx = -1; dx <= 1; dx++) {
-      for (let dy = -1; dy <= 1; dy++) {
-        if (dx === 0 && dy === 0) continue;
-        const x = linkPos.x + dx;
-        const y = linkPos.y + dy;
-        if (x < 1 || x > 48 || y < 1 || y > 48) continue;
-        const pos = new RoomPosition(x, y, room.name);
-        if (!pos.isNearTo(storage.pos)) continue;
-        if (!this.isBuildable(pos, room)) continue;
-        return true;
-      }
-    }
-    return false;
-  }
-  /** Alle Felder mit Chebyshev-Abstand `range` genau zu `center`, innerhalb der Raumgrenzen. */
-  positionsAtRange(room, center, range) {
-    const positions = [];
-    for (let dx = -range; dx <= range; dx++) {
-      for (let dy = -range; dy <= range; dy++) {
-        if (Math.max(Math.abs(dx), Math.abs(dy)) !== range) continue;
-        const x = center.x + dx;
-        const y = center.y + dy;
-        if (x < 1 || x > 48 || y < 1 || y > 48) continue;
-        positions.push(new RoomPosition(x, y, room.name));
-      }
-    }
-    return positions;
-  }
-  /** Feld begehbar und unverbaut: kein Wall-Terrain, kein blockierendes Bauwerk oder Baustelle. */
-  isBuildable(pos, room) {
-    if (pos.x < 1 || pos.x > 48 || pos.y < 1 || pos.y > 48) return false;
-    const terrain = room.getTerrain();
-    if ((terrain.get(pos.x, pos.y) & TERRAIN_MASK_WALL) !== 0) return false;
-    const blockedByStructure = pos.lookFor(LOOK_STRUCTURES).some((s) => blockingStructureTypes.includes(s.structureType));
-    if (blockedByStructure) return false;
-    const blockedBySite = pos.lookFor(LOOK_CONSTRUCTION_SITES).some((s) => blockingStructureTypes.includes(s.structureType));
-    return !blockedBySite;
-  }
-  /**
-   * Wählt aus `candidates` das beste Feld: kleinste Summe der Entfernungen zu
-   * den Referenzpositionen gewinnt, bei Gleichstand das Feld mit mehr
-   * begehbaren Nachbarfeldern – ein Link soll keinen Engpass zubauen.
-   */
-  selectBest(candidates, room, controller, storage) {
-    if (candidates.length === 0) return null;
-    const referencePositions = this.referencePositions(room, controller, storage);
-    let best = null;
-    let bestScore = Infinity;
-    let bestNeighbors = -1;
-    for (const candidate of candidates) {
-      const score = this.distanceSum(candidate, referencePositions);
-      const neighbors = this.walkableNeighborCount(candidate, room);
-      if (score < bestScore || score === bestScore && neighbors > bestNeighbors) {
-        best = candidate;
-        bestScore = score;
-        bestNeighbors = neighbors;
-      }
-    }
-    return best;
-  }
-  /**
-   * Referenzpositionen für die Entfernungsbewertung: die sendenden Links des
-   * Raums (weder Controller- noch Storage-Empfänger), ersatzweise die
-   * Quellen, solange noch kein sendender Link existiert.
-   */
-  referencePositions(room, controller, storage) {
-    const sendingLinks = this.sendingLinks(room, controller, storage);
-    if (sendingLinks.length > 0) return sendingLinks.map((link) => link.pos);
-    return room.find(FIND_SOURCES).map((source) => source.pos);
-  }
-  /** Alle gebauten Links des Raums, die weder Controller- noch Storage-Empfänger sind. */
-  sendingLinks(room, controller, storage) {
-    const links = room.find(FIND_MY_STRUCTURES, { filter: (s) => s.structureType === STRUCTURE_LINK });
-    return links.filter((link) => {
-      if (link.pos.getRangeTo(controller.pos) <= 3) return false;
-      if (storage && link.pos.getRangeTo(storage.pos) <= 2) return false;
-      return true;
-    });
-  }
-  distanceSum(pos, targets) {
-    let sum = 0;
-    for (const target of targets) sum += pos.getRangeTo(target);
-    return sum;
-  }
-  walkableNeighborCount(pos, room) {
-    const terrain = room.getTerrain();
-    let count = 0;
-    for (let dx = -1; dx <= 1; dx++) {
-      for (let dy = -1; dy <= 1; dy++) {
-        if (dx === 0 && dy === 0) continue;
-        const x = pos.x + dx;
-        const y = pos.y + dy;
-        if (x < 1 || x > 48 || y < 1 || y > 48) continue;
-        if ((terrain.get(x, y) & TERRAIN_MASK_WALL) === 0) count++;
-      }
-    }
-    return count;
-  }
-  /** Legt die Baustelle auf `pos` an und meldet das Ergebnis. */
-  build(room, pos, label) {
-    const result = pos.createConstructionSite(STRUCTURE_LINK);
-    if (result !== OK) return false;
-    console.log("[" + room.name + "] Linkbaustelle (" + label + "-Link) angelegt bei " + pos.x + "," + pos.y);
-    return true;
-  }
-};
-function planReceiverLinks() {
-  for (const roomName in bot.room) {
-    new LinkPlanner(roomName).plan();
-  }
-}
-
-// src/controller/link-list.ts
-var LinkList = class {
-  constructor(roomName) {
-    this.roomName = roomName;
-  }
-  get roomMemory() {
-    return Memory.rooms[this.roomName];
-  }
-  /** Kennt der Bot den Raum überhaupt? Ohne Raum-Memory gibt es nichts zu tun. */
-  get isRoomKnown() {
-    return this.roomMemory !== void 0;
-  }
-  /** Liegt überhaupt eine Liste vor — auch eine ohne Sender? */
-  get hasList() {
-    var _a;
-    return ((_a = this.roomMemory) == null ? void 0 : _a.links) !== void 0;
-  }
-  /**
-   * Erhebt die Links des Raums, klassifiziert sie und schreibt sie ins Memory.
-   *
-   * Reihenfolge der Zuordnung: erst die Config, dann die Lage, und ein Link
-   * ist nie beides — Controller zuerst, Storage aus dem Rest, alle übrigen
-   * Links sind Sender.
-   */
-  discover(room) {
-    const memory = this.roomMemory;
-    if (!memory) {
-      return;
-    }
-    const links = room.find(FIND_MY_STRUCTURES, {
-      filter: (structure) => structure.structureType === STRUCTURE_LINK
-    });
-    const roomConfig = bot.room[room.name];
-    const remaining = new Set(links.map((link) => link.id));
-    const controllerId = this.resolveController(room, links, roomConfig == null ? void 0 : roomConfig.controllerLink);
-    if (controllerId) {
-      remaining.delete(controllerId);
-    }
-    const spawnId = this.resolveSpawn(room, links, roomConfig == null ? void 0 : roomConfig.spawnLink, remaining);
-    if (spawnId) {
-      remaining.delete(spawnId);
-    }
-    memory.links = {
-      controller: controllerId,
-      spawn: spawnId,
-      sender: [...remaining]
-    };
-  }
-  /** Der Empfänger am Controller nach Config, sonst nach Lage (Reichweite 3). */
-  resolveController(room, links, configuredId) {
-    var _a;
-    const configured = links.find((link) => link.id === configuredId);
-    if (configured) {
-      return configured.id;
-    }
-    const controller = room.controller;
-    if (!controller) {
-      return void 0;
-    }
-    return (_a = this.nearestWithinRange(links, controller.pos, 3)) == null ? void 0 : _a.id;
-  }
-  /** Der Empfänger am Storage nach Config, sonst nach Lage (Reichweite 2). */
-  resolveSpawn(room, links, configuredId, candidates) {
-    var _a;
-    const configured = links.find((link) => link.id === configuredId);
-    if (configured) {
-      return configured.id;
-    }
-    const storage = room.storage;
-    if (!storage) {
-      return void 0;
-    }
-    const remainingLinks = links.filter((link) => candidates.has(link.id));
-    return (_a = this.nearestWithinRange(remainingLinks, storage.pos, 2)) == null ? void 0 : _a.id;
-  }
-  /** Der nächstgelegene Link zu `pos`, sofern innerhalb von `range`. */
-  nearestWithinRange(links, pos, range) {
-    let nearest;
-    let nearestDistance = Infinity;
-    for (const link of links) {
-      const distance = link.pos.getRangeTo(pos);
-      if (distance <= range && distance < nearestDistance) {
-        nearestDistance = distance;
-        nearest = link;
-      }
-    }
-    return nearest;
-  }
-  /** Verwirft die Liste; sie wird beim nächsten Tagesjob neu erhoben. */
-  forget() {
-    const memory = this.roomMemory;
-    if (memory) {
-      delete memory.links;
-    }
-  }
-  /**
-   * Löst eine gemerkte Id auf. Zeigt sie ins Leere (Link abgerissen), wird die
-   * ganze Liste verworfen — analog zu `forgetListOnStaleId` in `ContainerList`,
-   * hier aber ohne Ausnahme, weil es für Links keine zwei Seiten mit
-   * unterschiedlichem Verhalten gibt.
-   */
-  resolve(id) {
-    if (!id) {
-      return null;
-    }
-    const link = Game.getObjectById(id);
-    if (!link) {
-      this.forget();
-      return null;
-    }
-    return link;
-  }
-  /** Der Empfänger am Controller, oder null. */
-  get controllerLink() {
-    var _a, _b;
-    return this.resolve((_b = (_a = this.roomMemory) == null ? void 0 : _a.links) == null ? void 0 : _b.controller);
-  }
-  /** Der Empfänger am Storage, oder null. */
-  get spawnLink() {
-    var _a, _b;
-    return this.resolve((_b = (_a = this.roomMemory) == null ? void 0 : _a.links) == null ? void 0 : _b.spawn);
-  }
-  /** Alle sendenden Links, aufgelöst. */
-  senders() {
-    var _a, _b;
-    const ids = (_b = (_a = this.roomMemory) == null ? void 0 : _a.links) == null ? void 0 : _b.sender;
-    if (!ids) {
-      return [];
-    }
-    const result = [];
-    for (const id of ids) {
-      const link = this.resolve(id);
-      if (link) {
-        result.push(link);
-      }
-    }
-    return result;
-  }
-};
-
-// src/controller/links.ts
-var SEND_MIN = LINK_CAPACITY / 4;
-var LinkNetwork = class {
-  constructor(roomName) {
-    this.roomName = roomName;
-    __publicField(this, "list");
-    this.list = new LinkList(roomName);
-  }
-  /** Ein Durchgang: wählt Sender und Empfänger und sendet. */
-  send() {
-    var _a;
-    const roomConfig = bot.room[this.roomName];
-    if (!(roomConfig == null ? void 0 : roomConfig.useLinks)) {
-      return;
-    }
-    const room = Game.rooms[this.roomName];
-    if (!room) {
-      return;
-    }
-    if (!this.list.hasList) {
-      if (this.list.isRoomKnown) {
-        this.list.discover(room);
-      }
-      return;
-    }
-    const senders = this.readySenders();
-    if (senders.length === 0) {
-      return;
-    }
-    const receivers = this.receiversByPriority(room);
-    for (const sender of senders) {
-      const receiver = receivers.shift();
-      if (!receiver) {
-        return;
-      }
-      const amount = Math.min(sender.store[RESOURCE_ENERGY], (_a = receiver.store.getFreeCapacity(RESOURCE_ENERGY)) != null ? _a : 0);
-      if (amount < SEND_MIN) {
-        continue;
-      }
-      sender.transferEnergy(receiver, amount);
-    }
-  }
-  /** Sendende Links mit abgelaufenem Cooldown und ausreichend Ladung. */
-  readySenders() {
-    return this.list.senders().filter((link) => link.cooldown === 0 && link.store[RESOURCE_ENERGY] >= SEND_MIN);
-  }
-  /**
-   * Empfänger nach Vorrang, gefiltert auf ausreichend freien Platz.
-   *
-   * Der Vorrang kippt bei RCL8: darunter bekommt der Controller-Link zuerst
-   * (Upgraden bringt dort noch RCL-Fortschritt), ab RCL8 der Storage-Link
-   * (dort zahlt Upgraden nur noch auf GCL ein). Empfänger dürfen dabei
-   * teilweise befüllt werden — wer nur ganze Ladungen annimmt, bekäme als
-   * halb gefüllter Empfänger nie etwas ab.
-   */
-  receiversByPriority(room) {
-    var _a, _b;
-    const controllerFirst = ((_b = (_a = room.controller) == null ? void 0 : _a.level) != null ? _b : 0) < 8;
-    const ordered = controllerFirst ? [this.list.controllerLink, this.list.spawnLink] : [this.list.spawnLink, this.list.controllerLink];
-    return ordered.filter(
-      (link) => {
-        var _a2;
-        return link !== null && ((_a2 = link.store.getFreeCapacity(RESOURCE_ENERGY)) != null ? _a2 : 0) >= SEND_MIN;
-      }
-    );
-  }
-};
-function sendAll() {
-  for (const roomName in bot.room) {
-    new LinkNetwork(roomName).send();
-  }
-}
-function discoverAll() {
-  for (const roomName in bot.room) {
-    const roomConfig = bot.room[roomName];
-    const room = Game.rooms[roomName];
-    if (!(roomConfig == null ? void 0 : roomConfig.useLinks) || !room) {
-      continue;
-    }
-    new LinkList(roomName).discover(room);
   }
 }
 
@@ -1982,19 +1592,8 @@ var SECTION = {
   defence: "timing.defence",
   /** Statuslog, `memory.writeStatus()`. */
   status: "timing.status",
-  /** Linknetz, `links.sendAll()`. */
-  links: "timing.links",
   /** Tagessequenz, `daylie()`. */
-  daily: "timing.daily",
-  /**
-   * Straßenwiederaufbau, `rebuild.rebuildRoads()`. Eigener Abschnitt, obwohl
-   * der Aufruf innerhalb von `daylie()` steht: die Tagessequenz läuft nur alle
-   * 28 800 Ticks, ihr Sammelwert `timing.daily` ist in einem üblichen Messfenster
-   * deshalb null und verrät nichts über die Kosten des Planers.
-   */
-  roads: "timing.roads",
-  /** Linkplaner, `link-planner.planReceiverLinks()`. Eigener Abschnitt aus demselben Grund wie `roads`. */
-  linkplan: "timing.linkplan"
+  daily: "timing.daily"
 };
 
 // src/profiler/flag.ts
@@ -3012,7 +2611,7 @@ var extupgrader_default = new ExtUpgrader();
 
 // src/roles/linkkeeper.ts
 var role6 = "linkkeeper";
-var blockingStructureTypes2 = OBSTACLE_OBJECT_TYPES;
+var blockingStructureTypes = OBSTACLE_OBJECT_TYPES;
 var LinkKeeper = class {
   /** Bewegt den Creep auf seinen Standplatz zwischen Link und Storage und pendelt dort Energie um. */
   doJob(creep) {
@@ -3058,7 +2657,7 @@ var LinkKeeper = class {
         const pos = new RoomPosition(x, y, roomName);
         if (!pos.isNearTo(storage.pos)) continue;
         if ((terrain.get(x, y) & TERRAIN_MASK_WALL) !== 0) continue;
-        const blocked = pos.lookFor(LOOK_STRUCTURES).some((s) => blockingStructureTypes2.includes(s.structureType)) || pos.lookFor(LOOK_CONSTRUCTION_SITES).some((s) => blockingStructureTypes2.includes(s.structureType));
+        const blocked = pos.lookFor(LOOK_STRUCTURES).some((s) => blockingStructureTypes.includes(s.structureType)) || pos.lookFor(LOOK_CONSTRUCTION_SITES).some((s) => blockingStructureTypes.includes(s.structureType));
         if (blocked) continue;
         return pos;
       }
@@ -3259,8 +2858,21 @@ var Miner = class {
         }
         if (creep.memory.link && creep.store.getFreeCapacity() == 0) {
           var link = Game.getObjectById(creep.memory.link);
-          if (link) {
-            creep.transfer(link, RESOURCE_ENERGY);
+          if (link != null && link.cooldown < 1 && creep.transfer(link, RESOURCE_ENERGY) == ERR_FULL) {
+            var target;
+            if (creep.room.storage && creep.room.storage.store.getUsedCapacity() * 0.5 > creep.room.storage.store.getFreeCapacity()) {
+              target = Game.getObjectById(bot.room[creep.room.name].controllerLink);
+            } else {
+              target = Game.getObjectById(bot.room[creep.room.name].targetLinks[[Math.floor(Math.random() * bot.room[creep.room.name].targetLinks.length)]]);
+            }
+            if (target && target.store.getFreeCapacity(RESOURCE_ENERGY) > 50) {
+              link.transferEnergy(target);
+            } else {
+              if (container && container.store.getFreeCapacity() == 0 && creep.store.getFreeCapacity() == 0) {
+                creep.say("\u{1F6AF}");
+                return;
+              }
+            }
           }
         }
       } else {
@@ -4164,12 +3776,6 @@ function controll() {
     }
   }
   end(SECTION.terminal);
-  begin(SECTION.links);
-  if (tick2 % 1e3 === 0) {
-    discoverAll();
-  }
-  sendAll();
-  end(SECTION.links);
   if (tick2 % 3 === 0 && Game.cpu.bucket === 1e4) {
     begin(SECTION.pixel);
     Game.cpu.generatePixel();
@@ -4213,14 +3819,7 @@ function daylie() {
       findAndSaveTerminals();
       return;
     case 5:
-      begin(SECTION.roads);
       rebuildRoads();
-      end(SECTION.roads);
-      return;
-    case 6:
-      begin(SECTION.linkplan);
-      planReceiverLinks();
-      end(SECTION.linkplan);
       return;
   }
 }

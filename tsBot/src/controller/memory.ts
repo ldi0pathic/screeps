@@ -1,3 +1,5 @@
+import type { RoomLinks } from "./link-list";
+
 export type ManagedRoomConfig = {
   room: string;
   saveRoads?: boolean;
@@ -5,6 +7,8 @@ export type ManagedRoomConfig = {
 };
 
 export type BotRoomMemory = RoomMemory & {
+  /** Klassifizierte Links des Raums, erhoben von `controller/link-list.ts`. */
+  links?: RoomLinks;
   aktivPrioSpawn?: boolean;
   aktivPrioSpawnCount?: number;
   hasLinks?: boolean;
