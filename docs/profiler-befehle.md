@@ -28,6 +28,9 @@ Rückmeldung statt `undefined`.
 | `prof.detail(ticks)` | Detailmessung je Creep für `ticks` Ticks (Vorgabe 50), danach automatisch zurück |
 | `prof.baseline(name)` | Laufendes Fenster als benannte Grundlinie in `Memory` festhalten |
 | `prof.baselines()` | Alle Grundlinien plus die Zeile `jetzt` nebeneinander |
+| `prof.compare(name)` | Grundlinie gegen das laufende Fenster, **Abschnitt für Abschnitt und Rolle für Rolle** |
+| `prof.mail()` | Bericht per E-Mail an die im Profil hinterlegte Adresse |
+| `prof.history()` | Verlauf aller Fenster aus dem Speichersegment (Ergebnis kommt einen Tick später) |
 
 Ohne Tippen geht es auch: eine Flagge namens `prof` schaltet über ihre Farbe,
 siehe [Flaggen-Schalter](#flaggen-schalter-statt-tippen).
@@ -147,6 +150,67 @@ Die Zeile `jetzt` ist das laufende Fenster, keine gespeicherte Grundlinie.
 Höchstens **8** Grundlinien werden gehalten; bei Überlauf fällt die älteste
 heraus. Beide Fenster gehören nach [aenderungen.md](aenderungen.md).
 
+### `prof.compare(name)` — wo es teurer wurde
+
+`prof.baselines()` sagt, **dass** sich etwas geändert hat. `prof.compare(name)`
+sagt, **wo**: es stellt die Grundlinie Abschnitt für Abschnitt und Rolle für
+Rolle dem laufenden Fenster gegenüber, sortiert nach dem Betrag der Änderung.
+
+```
+Vergleich "vor-linknetz" (Grundlinie Tick 58412, 1000 Ticks) vs. jetzt (100 Ticks)
+
+== Abschnitte ==
+Name             Vorher   Jetzt     Diff  Hinweis
+timing.spawn       1.09    1.11    +0.02
+timing.links       0.00    0.06    +0.06  neu
+timing.roads       3.00    0.00    -3.00  weggefallen
+```
+
+Ein Abschnitt, den es nur auf einer Seite gibt, wird als `neu` oder
+`weggefallen` markiert — dort steht 0 und keine erfundene Zahl. Zwei Fälle
+liefern statt der Tabellen einen Hinweis, weil eine Tabelle dort das Gegenteil
+der Wahrheit behaupten würde:
+
+- Die **Grundlinie** entstand im Zustand `light` und kennt nur Gesamtzahlen.
+- Das **laufende Fenster** misst gerade in `light`. Sonst stünde jede Zeile der
+  Grundlinie als „weggefallen" da, obwohl nur niemand misst.
+
+### `prof.mail()` — Bericht als E-Mail
+
+Schickt den Bericht über `Game.notify` an die im Screeps-Profil hinterlegte
+Adresse. Damit überlebt er den Moment im Log.
+
+Die API begrenzt auf **1000 Zeichen je Nachricht** und **20 Nachrichten je
+Tick**; der Bericht wird deshalb an Zeilengrenzen in Blöcke `[1/8] …` zerlegt.
+Ein Detailbericht braucht rund acht davon, passt also in einen Tick. Reicht es
+nicht, sagt die Rückgabe ausdrücklich, wie viele Blöcke weggefallen sind — es
+wird nichts stillschweigend abgeschnitten.
+
+Bewusst **kein Automatismus**: der Versand ist ein Befehl. Ein automatischer
+Versand bei jedem fertigen Bericht würde außerdem den Smoketest rot machen, der
+jedes `Game.notify` als Fehlermeldung des Bots wertet.
+
+### `prof.history()` — Verlauf über Tage
+
+`Memory.stats` hält immer nur das **letzte** Fenster. Der Verlauf liegt deshalb
+in **Speichersegment 99** (`RawMemory.segments`), eine Zeile je vollem Fenster,
+bis zu 1000 Zeilen im Ringpuffer.
+
+```
+> prof.history()
+Verlaufssegment angefordert. prof.history() im nächsten Tick noch einmal aufrufen.
+> prof.history()
+     Tick   Ticks   Modus  CPU/Tick   CPU/Max  CPU/Raum  CPU/Creep   Bucket-Ø  ...
+    61150     100    full      9.12     14.30      0.91       0.21       2043  ...
+    61250     100    full      8.87     12.10      0.89       0.20       2530  ...
+```
+
+Der doppelte Aufruf ist die API, kein Fehler: ein Segment wird erst im **nächsten**
+Tick lesbar. Der Grund für den Umweg ist CPU — `Memory` wird bei der ersten
+Berührung in **jedem** Tick per `JSON.parse` ausgepackt, ein Segment nur, wenn
+man es anfordert. Der Verlauf kostet damit nichts, solange niemand hinsieht.
+Angefordert wird das Segment automatisch, sobald der Profiler nicht `off` ist.
+
 ## Flaggen-Schalter statt tippen
 
 Screeps hat keine API für eigene Bedienelemente: `RoomVisual` zeichnet nur und
@@ -199,11 +263,19 @@ Regeln, die man kennen muss:
 ## Memory prüfen
 
 ```javascript
-JSON.stringify(Memory.profiler).length   // muss unter 1024 bleiben
+JSON.stringify(Memory.profiler).length   // Budget: unter 8192
 Memory.profiler                          // mode, detailUntil, detailReturnTo, baselines
 Memory.stats                             // flaches Zahlenobjekt in Grafana-Konvention
 delete Memory.profiler.baselines         // alle Grundlinien wegwerfen
 ```
+
+Das Budget lag früher bei 1 KB. Seit eine Grundlinie zusätzlich die CPU **je
+Abschnitt und je Rolle** festhält (nötig für `prof.compare`), sind es acht
+Grundlinien mal rund zwanzig gerundete Zahlen. Das ist bewusst gekauft: alles in
+`Memory` wird in **jedem** Tick per `JSON.parse` ausgepackt, und dafür gibt es
+eine Gegenleistung — die Antwort auf „welcher Abschnitt wurde teurer".
+Methoden und einzelne Creeps bleiben deshalb draußen; die gehen in den Verlauf
+und in die E-Mail, wo sie nichts kosten.
 
 `Memory.stats` schreibt jedes volle Fenster neu (komplett ersetzt, damit keine
 verwaisten Schlüssel stehenbleiben) und wird von `prof.off()` gelöscht. Schlüssel

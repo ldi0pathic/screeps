@@ -1,4 +1,4 @@
-// Build: 2026-08-06 00:21:03 +02:00
+// Build: 2026-08-05 23:55:59 +02:00
 "use strict";
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
@@ -3786,235 +3786,8 @@ function spawn2() {
   }
 }
 
-// src/profiler/history.ts
-var HISTORY_SEGMENT = 99;
-var HISTORY_MAX_ENTRIES = 1e3;
-var MAX_SEGMENT_CHARS = 100 * 1024;
-var FIELD_COUNT = 11;
-function hasRawMemory() {
-  return typeof RawMemory !== "undefined";
-}
-function requestSegment() {
-  if (!hasRawMemory()) return;
-  RawMemory.setActiveSegments([HISTORY_SEGMENT]);
-}
-function isAvailable() {
-  if (!hasRawMemory()) return false;
-  return RawMemory.segments[HISTORY_SEGMENT] !== void 0;
-}
-function buildEntry(metrics) {
-  return {
-    tick: Game.time,
-    ticks: metrics.ticks,
-    mode: metrics.mode,
-    cpuPerTick: metrics.cpuPerTick,
-    cpuMaxTick: metrics.cpuMaxTick,
-    cpuPerRoom: metrics.cpuPerRoom,
-    cpuPerCreep: metrics.cpuPerCreep,
-    bucketMean: metrics.bucketMean,
-    bucketMin: metrics.bucketMin,
-    rooms: metrics.rooms,
-    creeps: metrics.creeps
-  };
-}
-function serializeEntry(entry) {
-  return [
-    entry.tick.toFixed(2),
-    entry.ticks.toFixed(2),
-    entry.mode,
-    entry.cpuPerTick.toFixed(2),
-    entry.cpuMaxTick.toFixed(2),
-    entry.cpuPerRoom.toFixed(2),
-    entry.cpuPerCreep.toFixed(2),
-    entry.bucketMean.toFixed(2),
-    entry.bucketMin.toFixed(2),
-    entry.rooms.toFixed(2),
-    entry.creeps.toFixed(2)
-  ].join(";");
-}
-function parseEntry(line) {
-  const fields = line.split(";");
-  if (fields.length !== FIELD_COUNT) return void 0;
-  const mode = fields[2];
-  const numberFields = [
-    fields[0],
-    fields[1],
-    fields[3],
-    fields[4],
-    fields[5],
-    fields[6],
-    fields[7],
-    fields[8],
-    fields[9],
-    fields[10]
-  ].map(Number);
-  if (numberFields.some((value) => !Number.isFinite(value))) return void 0;
-  if (mode.length === 0) return void 0;
-  const [tick2, ticks, cpuPerTick, cpuMaxTick, cpuPerRoom, cpuPerCreep, bucketMean, bucketMin, rooms, creeps] = numberFields;
-  return {
-    tick: tick2,
-    ticks,
-    mode,
-    cpuPerTick,
-    cpuMaxTick,
-    cpuPerRoom,
-    cpuPerCreep,
-    bucketMean,
-    bucketMin,
-    rooms,
-    creeps
-  };
-}
-function read() {
-  if (!isAvailable()) return [];
-  const raw = RawMemory.segments[HISTORY_SEGMENT];
-  if (raw === void 0 || raw.length === 0) return [];
-  const entries = [];
-  for (const line of raw.split("\n")) {
-    if (line.length === 0) continue;
-    const entry = parseEntry(line);
-    if (entry !== void 0) entries.push(entry);
-  }
-  return entries;
-}
-function append(metrics) {
-  if (!isAvailable()) return false;
-  const entries = read();
-  entries.push(buildEntry(metrics));
-  while (entries.length > HISTORY_MAX_ENTRIES) entries.shift();
-  let serialized = entries.map(serializeEntry).join("\n");
-  while (serialized.length > MAX_SEGMENT_CHARS && entries.length > 0) {
-    entries.shift();
-    serialized = entries.map(serializeEntry).join("\n");
-  }
-  RawMemory.segments[HISTORY_SEGMENT] = serialized;
-  return true;
-}
-function fmt(value, decimals = 2) {
-  if (!Number.isFinite(value)) return "-";
-  return value.toFixed(decimals);
-}
-var COLUMN_WIDTHS = {
-  tick: 8,
-  ticks: 6,
-  mode: 6,
-  cpuPerTick: 9,
-  cpuMaxTick: 8,
-  cpuPerRoom: 9,
-  cpuPerCreep: 10,
-  bucketMean: 10,
-  bucketMin: 11,
-  rooms: 6,
-  creeps: 7
-};
-function formatRow(entry) {
-  return [
-    fmt(entry.tick, 0).padStart(COLUMN_WIDTHS.tick),
-    fmt(entry.ticks, 0).padStart(COLUMN_WIDTHS.ticks),
-    entry.mode.padStart(COLUMN_WIDTHS.mode),
-    fmt(entry.cpuPerTick).padStart(COLUMN_WIDTHS.cpuPerTick),
-    fmt(entry.cpuMaxTick).padStart(COLUMN_WIDTHS.cpuMaxTick),
-    fmt(entry.cpuPerRoom).padStart(COLUMN_WIDTHS.cpuPerRoom),
-    fmt(entry.cpuPerCreep).padStart(COLUMN_WIDTHS.cpuPerCreep),
-    fmt(entry.bucketMean, 0).padStart(COLUMN_WIDTHS.bucketMean),
-    fmt(entry.bucketMin, 0).padStart(COLUMN_WIDTHS.bucketMin),
-    fmt(entry.rooms).padStart(COLUMN_WIDTHS.rooms),
-    fmt(entry.creeps).padStart(COLUMN_WIDTHS.creeps)
-  ].join("  ");
-}
-function format(entries) {
-  if (entries.length === 0) {
-    return "Kein Verlauf vorhanden. Mit prof.light() oder prof.on() messen \u2014 je volles Fenster (100 Ticks) kommt eine Zeile dazu.";
-  }
-  const header = [
-    "Tick".padStart(COLUMN_WIDTHS.tick),
-    "Ticks".padStart(COLUMN_WIDTHS.ticks),
-    "Modus".padStart(COLUMN_WIDTHS.mode),
-    "CPU/Tick".padStart(COLUMN_WIDTHS.cpuPerTick),
-    "CPU/Max".padStart(COLUMN_WIDTHS.cpuMaxTick),
-    "CPU/Raum".padStart(COLUMN_WIDTHS.cpuPerRoom),
-    "CPU/Creep".padStart(COLUMN_WIDTHS.cpuPerCreep),
-    "Bucket-\xD8".padStart(COLUMN_WIDTHS.bucketMean),
-    "Bucket-Min".padStart(COLUMN_WIDTHS.bucketMin),
-    "R\xE4ume".padStart(COLUMN_WIDTHS.rooms),
-    "Creeps".padStart(COLUMN_WIDTHS.creeps)
-  ].join("  ");
-  const separator = "-".repeat(header.length);
-  const rows = entries.map(formatRow);
-  return [header, separator, ...rows].join("\n");
-}
-
-// src/profiler/mail.ts
-var NOTIFY_MAX_CHARS = 1e3;
-var NOTIFY_MAX_PER_TICK = 20;
-function prefixLength(digitWidth) {
-  return 4 + 2 * digitWidth;
-}
-function greedySplitLines(lines, maxContentChars) {
-  const blocks = [];
-  let current = "";
-  for (const line of lines) {
-    if (line.length > maxContentChars) {
-      if (current.length > 0) {
-        blocks.push(current);
-        current = "";
-      }
-      let rest = line;
-      while (rest.length > 0) {
-        blocks.push(rest.slice(0, maxContentChars));
-        rest = rest.slice(maxContentChars);
-      }
-      continue;
-    }
-    const candidate = current.length === 0 ? line : `${current}
-${line}`;
-    if (candidate.length <= maxContentChars) {
-      current = candidate;
-    } else {
-      blocks.push(current);
-      current = line;
-    }
-  }
-  if (current.length > 0) blocks.push(current);
-  return blocks;
-}
-function splitForNotify(text, maxChars = NOTIFY_MAX_CHARS) {
-  if (text.trim().length === 0) return [];
-  const lines = text.split("\n");
-  let digitWidth = 1;
-  let blocks = [];
-  for (let iteration = 0; iteration < 5; iteration += 1) {
-    const maxContentChars = Math.max(1, maxChars - prefixLength(digitWidth));
-    blocks = greedySplitLines(lines, maxContentChars);
-    const neededWidth = String(blocks.length).length;
-    if (neededWidth === digitWidth) break;
-    digitWidth = neededWidth;
-  }
-  const total = blocks.length;
-  return blocks.map((block, index) => `[${index + 1}/${total}] ${block}`);
-}
-function mailReport(title, text) {
-  if (text.trim().length === 0) {
-    return "Leerer Bericht, nichts verschickt.";
-  }
-  const blocks = splitForNotify(`${title}
-${text}`);
-  if (blocks.length === 0) {
-    return "Leerer Bericht, nichts verschickt.";
-  }
-  const toSend = blocks.slice(0, NOTIFY_MAX_PER_TICK);
-  for (const block of toSend) {
-    Game.notify(block, 0);
-  }
-  const omitted = blocks.length - toSend.length;
-  if (omitted > 0) {
-    return `Bericht als ${toSend.length} E-Mail(s) verschickt, ${omitted} Block(e) weggelassen (Limit ${NOTIFY_MAX_PER_TICK} je Tick).`;
-  }
-  return `Bericht als ${toSend.length} E-Mail(s) verschickt.`;
-}
-
 // src/profiler/report.ts
-function fmt2(value, decimals = 2) {
+function fmt(value, decimals = 2) {
   if (!Number.isFinite(value)) return "-";
   return value.toFixed(decimals);
 }
@@ -4028,7 +3801,7 @@ function topEntries(entries, count) {
 }
 function formatWindowLine(metrics) {
   const top = topEntries(metrics.roles, 3);
-  return `[prof] Fenster=${fmt2(metrics.ticks, 0)}T | CPU/Tick=${fmt2(metrics.cpuPerTick)} | CPU/Raum=${fmt2(metrics.cpuPerRoom)} | CPU/Creep=${fmt2(metrics.cpuPerCreep)} | Bucket~${fmt2(metrics.bucketMean, 0)} (min ${fmt2(metrics.bucketMin, 0)}) | Limit=${fmt2(metrics.limit, 0)} | Top: ${top}`;
+  return `[prof] Fenster=${fmt(metrics.ticks, 0)}T | CPU/Tick=${fmt(metrics.cpuPerTick)} | CPU/Raum=${fmt(metrics.cpuPerRoom)} | CPU/Creep=${fmt(metrics.cpuPerCreep)} | Bucket~${fmt(metrics.bucketMean, 0)} (min ${fmt(metrics.bucketMin, 0)}) | Limit=${fmt(metrics.limit, 0)} | Top: ${top}`;
 }
 var NUMBER_COLUMN_WIDTHS = {
   cpuPerTick: 9,
@@ -4040,10 +3813,10 @@ var NUMBER_COLUMN_WIDTHS = {
 function formatRankedRow(entry, widths) {
   return [
     entry.name.padEnd(widths.name),
-    fmt2(entry.cpuPerTick).padStart(widths.cpuPerTick),
-    fmt2(entry.cpuPerCall).padStart(widths.cpuPerCall),
-    fmt2(entry.callsPerTick).padStart(widths.callsPerTick),
-    fmt2(entry.max).padStart(widths.max),
+    fmt(entry.cpuPerTick).padStart(widths.cpuPerTick),
+    fmt(entry.cpuPerCall).padStart(widths.cpuPerCall),
+    fmt(entry.callsPerTick).padStart(widths.callsPerTick),
+    fmt(entry.max).padStart(widths.max),
     fmtPercent(entry.share).padStart(widths.share)
   ].join("  ");
 }
@@ -4087,12 +3860,12 @@ var BASELINE_NUMBER_WIDTHS = {
 function formatBaselineRow(row, widths) {
   return [
     row.name.padEnd(widths.name),
-    fmt2(row.tick, 0).padStart(widths.tick),
-    fmt2(row.ticks, 0).padStart(widths.ticks),
-    fmt2(row.cpuPerTick).padStart(widths.cpuPerTick),
-    fmt2(row.cpuPerRoom).padStart(widths.cpuPerRoom),
-    fmt2(row.cpuPerCreep).padStart(widths.cpuPerCreep),
-    fmt2(row.bucketMean).padStart(widths.bucketMean)
+    fmt(row.tick, 0).padStart(widths.tick),
+    fmt(row.ticks, 0).padStart(widths.ticks),
+    fmt(row.cpuPerTick).padStart(widths.cpuPerTick),
+    fmt(row.cpuPerRoom).padStart(widths.cpuPerRoom),
+    fmt(row.cpuPerCreep).padStart(widths.cpuPerCreep),
+    fmt(row.bucketMean).padStart(widths.bucketMean)
   ].join("  ");
 }
 function formatBaselines(baselines, current) {
@@ -4138,100 +3911,6 @@ function formatBaselines(baselines, current) {
   const dataRows = rows.map((row) => formatBaselineRow(row, widths));
   return [header, separator, ...dataRows].join("\n");
 }
-function fmtSigned(value, decimals = 2) {
-  if (!Number.isFinite(value)) return "-";
-  const sign = value >= 0 ? "+" : "";
-  return `${sign}${value.toFixed(decimals)}`;
-}
-function buildOverallRows(baseline, current) {
-  const metrics = [
-    ["cpuPerTick", baseline.cpuPerTick, current.cpuPerTick],
-    ["cpuPerRoom", baseline.cpuPerRoom, current.cpuPerRoom],
-    ["cpuPerCreep", baseline.cpuPerCreep, current.cpuPerCreep],
-    ["bucketMean", baseline.bucketMean, current.bucketMean]
-  ];
-  return metrics.map(([entryName, before, after]) => ({ name: entryName, before, after, diff: after - before })).sort((a, b) => Math.abs(b.diff) - Math.abs(a.diff));
-}
-function buildComparisonRows(before, after) {
-  const afterByName = new Map(after.map((entry) => [entry.name, entry.cpuPerTick]));
-  const names = /* @__PURE__ */ new Set([...Object.keys(before != null ? before : {}), ...afterByName.keys()]);
-  const rows = [...names].map((entryName) => {
-    const beforeValue = before == null ? void 0 : before[entryName];
-    const afterValue = afterByName.get(entryName);
-    const hasBefore = beforeValue !== void 0;
-    const hasAfter = afterValue !== void 0;
-    const beforeNumber = beforeValue != null ? beforeValue : 0;
-    const afterNumber = afterValue != null ? afterValue : 0;
-    const row = {
-      name: entryName,
-      before: beforeNumber,
-      after: afterNumber,
-      diff: afterNumber - beforeNumber
-    };
-    if (hasBefore && !hasAfter) row.status = "weggefallen";
-    if (!hasBefore && hasAfter) row.status = "neu";
-    return row;
-  });
-  return rows.sort((a, b) => Math.abs(b.diff) - Math.abs(a.diff));
-}
-function formatComparisonRow(row, widths) {
-  var _a;
-  const note = (_a = row.status) != null ? _a : "";
-  return [
-    row.name.padEnd(widths.name),
-    fmt2(row.before).padStart(widths.before),
-    fmt2(row.after).padStart(widths.after),
-    fmtSigned(row.diff).padStart(widths.diff),
-    note.padEnd(widths.note)
-  ].join("  ").trimEnd();
-}
-function formatComparisonBlock(title, rows) {
-  if (rows.length === 0) return "";
-  const nameWidth = Math.max("Name".length, ...rows.map((row) => row.name.length));
-  const beforeWidth = Math.max("Vorher".length, ...rows.map((row) => fmt2(row.before).length));
-  const afterWidth = Math.max("Jetzt".length, ...rows.map((row) => fmt2(row.after).length));
-  const diffWidth = Math.max("Diff".length, ...rows.map((row) => fmtSigned(row.diff).length));
-  const noteWidth = Math.max("Hinweis".length, ...rows.map((row) => {
-    var _a;
-    return ((_a = row.status) != null ? _a : "").length;
-  }));
-  const widths = {
-    name: nameWidth,
-    before: beforeWidth,
-    after: afterWidth,
-    diff: diffWidth,
-    note: noteWidth
-  };
-  const header = [
-    "Name".padEnd(widths.name),
-    "Vorher".padStart(widths.before),
-    "Jetzt".padStart(widths.after),
-    "Diff".padStart(widths.diff),
-    "Hinweis".padEnd(widths.note)
-  ].join("  ").trimEnd();
-  const separator = "-".repeat(header.length);
-  const dataRows = rows.map((row) => formatComparisonRow(row, widths));
-  return [`== ${title} ==`, header, separator, ...dataRows].join("\n");
-}
-function formatComparison(name, baseline, current) {
-  const header = `Vergleich "${name}" (Grundlinie Tick ${fmt2(baseline.tick, 0)}, ${fmt2(baseline.ticks, 0)} Ticks) vs. jetzt (${fmt2(current.ticks, 0)} Ticks)`;
-  const blocks = [header, formatComparisonBlock("Gesamt", buildOverallRows(baseline, current))];
-  const baselineHasDetail = baseline.sections !== void 0 || baseline.roles !== void 0;
-  const currentHasDetail = current.mode === "full";
-  if (!baselineHasDetail) {
-    blocks.push(
-      "Die Grundlinie kennt nur Gesamtzahlen (Zustand light bei ihrer Aufnahme). F\xFCr einen Vergleich je Abschnitt und Rolle ist eine neue Grundlinie im Zustand full n\xF6tig."
-    );
-  } else if (!currentHasDetail) {
-    blocks.push(
-      "Das laufende Fenster kennt keine Abschnitte und Rollen (Zustand light). F\xFCr den Vergleich mit prof.on() messen."
-    );
-  } else {
-    blocks.push(formatComparisonBlock("Abschnitte", buildComparisonRows(baseline.sections, current.sections)));
-    blocks.push(formatComparisonBlock("Rollen", buildComparisonRows(baseline.roles, current.roles)));
-  }
-  return blocks.filter((block) => block.length > 0).join("\n\n");
-}
 
 // src/profiler/stats.ts
 var statsMemory = Memory;
@@ -4269,15 +3948,8 @@ function clearStats() {
 }
 
 // src/profiler/index.ts
-function toCpuMap(entries) {
-  const map = {};
-  for (const entry of entries) {
-    map[entry.name] = Math.round(entry.cpuPerTick * 100) / 100;
-  }
-  return map;
-}
 function toBaseline(metrics) {
-  const baseline = {
+  return {
     tick: Game.time,
     ticks: metrics.ticks,
     mode: metrics.mode,
@@ -4288,11 +3960,6 @@ function toBaseline(metrics) {
     rooms: metrics.rooms,
     creeps: metrics.creeps
   };
-  if (metrics.mode === "full") {
-    baseline.sections = toCpuMap(metrics.sections);
-    baseline.roles = toCpuMap(metrics.roles);
-  }
-  return baseline;
 }
 var Profiler = class {
   constructor(state2, measurement2, flagSwitch2) {
@@ -4312,9 +3979,6 @@ var Profiler = class {
    */
   tick() {
     this.state.syncFromMemory();
-    if (this.state.mode !== "off") {
-      requestSegment();
-    }
     this.applyFlagRequest();
     this.drawFlagLegend();
     if (this.state.expireDetail()) {
@@ -4341,7 +4005,6 @@ ${formatDetailReport(this.measurement.metrics())}`
     const metrics = this.measurement.metrics();
     console.log(formatWindowLine(metrics));
     writeStats(metrics);
-    append(metrics);
     this.measurement.reset();
   }
   on() {
@@ -4407,31 +4070,6 @@ ${formatDetailReport(metrics)}`;
   baselines() {
     const metrics = this.measurement.metrics();
     return formatBaselines(this.state.readBaselines(), metrics.ticks > 0 ? metrics : null);
-  }
-  compare(name) {
-    if (!name) {
-      return 'Name fehlt. Beispiel: prof.compare("vor-linknetz")';
-    }
-    const baseline = this.state.readBaselines()[name];
-    if (!baseline) {
-      return `Keine Grundlinie "${name}". Vorhandene zeigt prof.baselines().`;
-    }
-    const metrics = this.measurement.metrics();
-    if (metrics.ticks === 0) {
-      return "Kein gemessener Tick im Fenster \u2014 es gibt nichts zu vergleichen.";
-    }
-    return formatComparison(name, baseline, metrics);
-  }
-  mail() {
-    const report = this.report();
-    return mailReport(`[prof] Bericht Tick ${Game.time}`, report);
-  }
-  history() {
-    if (!isAvailable()) {
-      requestSegment();
-      return "Verlaufssegment angefordert. prof.history() im n\xE4chsten Tick noch einmal aufrufen.";
-    }
-    return format(read());
   }
   /**
    * Wechselt den Zustand und beginnt ein frisches Fenster.

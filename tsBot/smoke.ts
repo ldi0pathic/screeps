@@ -199,6 +199,20 @@ function loadBundle(): {
     RoomVisual: RoomVisualStub,
     PathFinder: { search: () => ({ path: [], incomplete: true }), CostMatrix: class {} },
     Memory: {},
+    // Für den Verlauf des Profilers (`profiler/history.ts`). Ohne diesen Eintrag
+    // fiele `RawMemory` in den Proxy für unbekannte Konstanten und wäre `0` —
+    // der erste Zugriff darauf würde werfen.
+    //
+    // Bewusst anders als im Spiel: ein angefordertes Segment ist hier **sofort**
+    // lesbar statt erst im nächsten Tick. Damit läuft im Smoketest auch der
+    // Schreibpfad durch, statt immer am „noch nicht bereit" abzubiegen.
+    RawMemory: {
+      segments: {} as Record<string, string>,
+      setActiveSegments(ids: number[]): void {
+        const segments = (this as { segments: Record<string, string> }).segments;
+        for (const id of ids) segments[id] ??= "";
+      },
+    },
     console: {
       log: (...args: unknown[]) => void logged.push(args.map(String).join(" ")),
     },
@@ -273,6 +287,25 @@ function smoke(): void {
       assert.match(report, /CPU\/Tick/, `Bericht ohne CPU-Zahl in ${mode}`);
     }
   }
+
+  // Die Befehle, die auf Grundlinien und Speichersegmente zugreifen. Sie müssen
+  // auch dann Text liefern, wenn es nichts zu zeigen gibt — eine Ausnahme aus
+  // der Konsole wäre im Spiel besonders ärgerlich, weil man sie nur dort sieht.
+  // `prof.mail()` steht bewusst **nicht** hier: es setzt `Game.notify` ab, und
+  // die Prüfung am Ende dieses Tests unterscheidet Bericht und Fehlermeldung
+  // nicht.
+  assert.equal(typeof sandbox.prof.history(), "string", "prof.history() liefert keinen Text");
+  assert.equal(typeof sandbox.prof.compare("gibt-es-nicht"), "string", "prof.compare() liefert keinen Text");
+  assert.equal(typeof sandbox.prof.compare(""), "string", "prof.compare() ohne Namen liefert keinen Text");
+  sandbox.prof.on();
+  sandbox.Game.time += 1;
+  loop();
+  assert.match(
+    sandbox.prof.baseline("smoke"),
+    /smoke/,
+    "prof.baseline() hat die Grundlinie nicht bestätigt",
+  );
+  assert.match(sandbox.prof.compare("smoke"), /smoke/, "prof.compare() nennt die Grundlinie nicht");
 
   // Der Flaggen-Schalter: eine grüne Flagge muss den Zustand `full` setzen.
   sandbox.prof.off();

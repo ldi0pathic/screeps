@@ -1,4 +1,4 @@
-// Build: 2026-08-06 00:21:03 +02:00
+// Build: 2026-08-06 00:17:50 +02:00
 "use strict";
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
@@ -3924,7 +3924,7 @@ function formatRow(entry) {
 }
 function format(entries) {
   if (entries.length === 0) {
-    return "Kein Verlauf vorhanden. Mit prof.light() oder prof.on() messen \u2014 je volles Fenster (100 Ticks) kommt eine Zeile dazu.";
+    return "Kein Verlauf vorhanden. Mit requestSegment() das Segment anfordern und append() befuellen.";
   }
   const header = [
     "Tick".padStart(COLUMN_WIDTHS.tick),

@@ -182,6 +182,46 @@ export type SetColorCall = [number, number | undefined];
 /** Alle `setColor`-Aufrufe seit dem letzten `resetWorld()`. */
 export const setColorCalls: SetColorCall[] = [];
 
+/** Eine über `Game.notify` verschickte Meldung. */
+export interface Notification {
+  message: string;
+  groupInterval: number | undefined;
+}
+
+/** Alle `Game.notify`-Aufrufe seit dem letzten `resetWorld()`. */
+export const notifications: Notification[] = [];
+
+/**
+ * Zustand von `RawMemory`. `segments` enthält nur die **aktiven** Segmente — im
+ * Spiel ist ein Segment erst im Tick nach `setActiveSegments` lesbar, und ein
+ * Schreibzugriff auf ein inaktives Segment verpufft. `stored` ist der
+ * dauerhafte Inhalt dahinter, den ein Test setzen und prüfen kann.
+ */
+export const rawMemory = {
+  stored: {} as Record<number, string>,
+  activeIds: [] as number[],
+  setActiveSegmentsCalls: [] as number[][],
+};
+
+/**
+ * Stellt einen Tickwechsel für die Segmente nach: was in einem aktiven Segment
+ * steht, wird dauerhaft übernommen, danach sind die zuletzt angeforderten
+ * Segmente lesbar. Genau in dieser Reihenfolge, sonst ginge ein Schreibzugriff
+ * aus dem laufenden Tick verloren.
+ */
+export function advanceSegmentTick(): void {
+  const segments = anyGlobal.RawMemory.segments as Record<number, string>;
+
+  for (const key of Object.keys(segments)) {
+    rawMemory.stored[Number(key)] = segments[Number(key)]!;
+    delete segments[Number(key)];
+  }
+
+  for (const id of rawMemory.activeIds) {
+    segments[id] = rawMemory.stored[id] ?? "";
+  }
+}
+
 export interface FlagStub {
   name: string;
   color: number;
@@ -257,7 +297,17 @@ export function installGlobals(): void {
         return cpu.tickLimit;
       },
     },
-    notify: () => undefined,
+    notify: (message: string, groupInterval?: number) =>
+      void notifications.push({ message, groupInterval }),
+  };
+
+  anyGlobal.RawMemory = {
+    segments: {} as Record<number, string>,
+    setActiveSegments(ids: number[]): void {
+      // Spätere Aufrufe überschreiben frühere — wie in der API.
+      rawMemory.activeIds = [...ids];
+      rawMemory.setActiveSegmentsCalls.push([...ids]);
+    },
   };
 }
 
@@ -280,6 +330,13 @@ export function resetWorld(): void {
   cpu.getUsedCalls = 0;
   drawnTexts.length = 0;
   setColorCalls.length = 0;
+  notifications.length = 0;
+
+  const segments = anyGlobal.RawMemory.segments as Record<number, string>;
+  for (const key of Object.keys(segments)) delete segments[Number(key)];
+  for (const key of Object.keys(rawMemory.stored)) delete rawMemory.stored[Number(key)];
+  rawMemory.activeIds.length = 0;
+  rawMemory.setActiveSegmentsCalls.length = 0;
 }
 
 /** Trägt Räume in `global.room` ein, als hätte `config.ts` sie definiert. */

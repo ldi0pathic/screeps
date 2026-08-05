@@ -409,3 +409,25 @@ nach einem Wiederaufbau ins Leere zeigt.
 ebenfalls Tatsachen. Sie bleiben vorerst, weil `miner.spawn` und `debitor.spawn`
 sie für Räume **ohne Sicht** lesen — dafür braucht es erst einen einmalig
 erhobenen Bestand im Memory. Das gehört zu Plan 02.
+
+## Runde 2026-08-06: Profilerdaten überleben den Moment im Log
+
+Ohne Verhaltensänderung am Bot. Anlass: der Detailbericht ging nur auf die
+Konsole — wer den Moment verpasste, verlor ihn. `Memory.stats` hielt zwar die
+groben Zahlen, aber immer nur das **letzte** Fenster, und die Grundlinien nur
+Skalare.
+
+| Was | Warum | Wirkung |
+| --- | --- | --- |
+| **`prof.compare(name)`** (`profiler/report.ts::formatComparison`): stellt eine Grundlinie dem laufenden Fenster gegenüber, Abschnitt für Abschnitt und Rolle für Rolle, sortiert nach dem Betrag der Änderung. Dafür hält `Baseline` jetzt auch `sections` und `roles`. | `prof.baselines()` konnte sagen, **dass** es teurer wurde, aber nicht **wo** — und genau dafür legt man Grundlinien an. | Neuer Befehl. Ein Eintrag, den es nur auf einer Seite gibt, wird als `neu` oder `weggefallen` markiert statt eine Zahl zu erfinden. |
+| **`prof.mail()`** (`profiler/mail.ts`): schickt den Bericht über `Game.notify` an die Profiladresse, zerlegt in Blöcke `[i/n]`. | Der Bericht soll das Spiel überleben. | Neuer Befehl. Die API begrenzt auf 1000 Zeichen je Nachricht und 20 je Tick; ein Detailbericht braucht rund acht Blöcke. Mehr als 20 werden **nicht** stillschweigend abgeschnitten, die Rückgabe benennt die weggelassenen. |
+| **`prof.history()`** (`profiler/history.ts`): Verlauf aller Fenster in **Speichersegment 99**, eine Zeile je Fenster, Ringpuffer über 1000 Zeilen mit harter 100-KB-Grenze. | `Memory` wird bei der ersten Berührung in **jedem** Tick per `JSON.parse` ausgepackt — Verlauf gehört dort nicht hin. Ein Segment kostet nichts, solange es nicht angefordert ist. | Neuer Befehl. Der erste Aufruf fordert das Segment nur an, die Ausgabe kommt einen Tick später — das ist die API, kein Fehler. |
+| `Memory.profiler`-Budget von 1 KB auf 8 KB angehoben. | Die Grundlinien halten jetzt Abschnitte und Rollen. Auf zwei Nachkommastellen gerundet, weil feiner bei CPU-Werten Rauschen ist und jedes Zeichen in jedem Tick mitgeparst wird. | Bewusst gekaufte Tickkosten gegen die Antwort auf „welcher Abschnitt wurde teurer". Methoden und einzelne Creeps bleiben draußen. |
+| Eigene Messpunkte gab es schon; **`RawMemory` ist jetzt auch im Smoketest gestellt**, und der prüft `prof.history()`, `prof.compare()` und `prof.baseline()` gegen das gebaute Bundle. | Ohne den Eintrag fiele `RawMemory` in den Proxy für unbekannte Konstanten und wäre `0` — der erste Zugriff hätte geworfen. | Der Smoketest deckt die neuen Befehle mit ab. `prof.mail()` bewusst nicht: er wertet jedes `Game.notify` als Fehlermeldung des Bots. |
+
+**Ein Fehler, der beim Gegenlesen der eigenen Änderung auffiel:** `formatComparison`
+prüfte nur, ob die **Grundlinie** Abschnitte kennt. Läuft das **laufende Fenster**
+in `light`, hätte die Tabelle jede Zeile der Grundlinie als „weggefallen"
+ausgewiesen — obwohl nichts weg ist, sondern nur niemand misst. Unterschieden
+wird jetzt am Zustand (`metrics.mode === "full"`), nicht an leeren Listen: eine
+leere Liste **in `full`** heißt sehr wohl „ist weg" und soll auch so dastehen.
