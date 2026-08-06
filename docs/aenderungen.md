@@ -777,3 +777,49 @@ während die Energiezweige `continue` machen.
 **Noch offen aus Plan 02:** `mineralContainerId` und `prioBuildings` stehen
 weiter in der Config. Schritt 2 (Links geometrisch zuordnen) ist mit dem
 Linknetz aus Plan 09 bereits erledigt.
+
+## Runde 2026-08-06: Umlaufmessung als eigene Klasse (Plan 03, Vorbereitung zu Punkt 3)
+
+**Ohne Verhaltensänderung.** Neu: `creep/round-trip.ts` mit der Klasse
+`RoundTrip`. Der Debitor benutzt sie, rechnet aber Bit für Bit dasselbe wie
+vorher.
+
+Der Debitor ist die einzige Rolle im Bot, die ihre Dimensionierung **misst**
+statt sie zu schätzen: er zählt die tatsächliche Umlaufzeit seiner Creeps und
+leitet daraus Tragfähigkeit und Anzahl ab. Das ist die bessere Lösung — der
+Vergleichsbot schätzt aus Raumsprüngen und widerspricht sich dabei an zwei
+Stellen selbst. Nur steckte sie mitten in `Debitor.bodyFor` fest, weshalb
+`transfer.ts` weiter stumpf `min(25, energieKapazität / 100)` rechnet: bei RCL8
+also 25 CARRY und 25 MOVE für 2500 Energie und 150 Spawnticks, unabhängig davon,
+ob der Weg fünf oder fünfzig Felder lang ist.
+
+Die Memory-Schlüssel kommen aus dem Konstruktor
+(`{ samples: "distances", size: "needDebitorSize", count: "needDebitors" }`).
+Das ist der Grund für die Klasse: die bestehenden Schlüssel stehen im laufenden
+Spiel und dürfen sich nicht ändern, aber ein zweiter Nutzer braucht eigene, um
+dem Debitor nicht seine Messreihe wegzunehmen.
+
+Die beiden wortgleich duplizierten `checkHarvest`-Rückrufe in `Debitor.doJob`
+sind dabei zu einer Methode zusammengefasst — dieselbe Stelle, keine
+Logikänderung.
+
+### Drei Eigenarten, wörtlich erhalten statt begradigt
+
+- **Der „Median" ist keiner.** Der Index ist `ceil(länge × 0,5)` auf der
+  sortierten Reihe, also bei gerader Länge der obere der beiden mittleren Werte.
+- **Die Festschreibung greift bei rund 61 Messungen, nicht bei 31.** Verglichen
+  wird nicht die Zahl der Messwerte, sondern der Medianindex — `length > 30`
+  steht dort für „mehr als 30 **Indexschritte**". Das ist die überraschendste
+  Stelle der ganzen Arithmetik und jetzt als Test festgehalten.
+- **Eine einzige Messung liefert `NaN`**, weil der Medianindex dann außerhalb
+  des Arrays liegt. Abgefangen wird das weiter unten in `carryMove`. Auch das ist
+  festgehalten, damit es nicht unbemerkt kippt.
+
+Nachgewiesen wurde die Gleichwertigkeit durch einen Zahlenvergleich alt gegen
+neu über fünf Messreihen (1, 5, 10, 31, 40 Werte) mal drei Energiekapazitäten
+(300, 2300, 12900) plus vier Reihen um den Umschlagpunkt herum — alle Ergebnisse
+identisch.
+
+**Noch offen:** `transfer.ts` benutzt die Klasse noch nicht. Das ist der
+eigentliche Punkt 3 des Plans und kommt als eigener Commit mit
+Verhaltensänderung.

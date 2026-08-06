@@ -14,10 +14,14 @@ import { linksDeliver } from "../controller/link-list";
 import * as creepBase from "../creep/base";
 import { BODIES } from "../creep/bodies";
 import { carryMove } from "../creep/body";
+import { RoundTrip, type RoundTripKeys } from "../creep/round-trip";
 import type { CreepRole } from "../roles";
 import { profile } from "../profiler/decorator";
 
 const role = "debitor";
+
+/** Raum-Memory-Schlüssel der gemessenen Umlaufdimensionierung, siehe `RoundTrip`. */
+const ROUND_TRIP_KEYS: RoundTripKeys = { samples: "distances", size: "needDebitorSize", count: "needDebitors" };
 const NEVER_SELL = {
     "energy": true,
     "power": true,
@@ -44,34 +48,10 @@ export class Debitor implements CreepRole {
             creep.memory.mineral = RESOURCE_ENERGY;
 
         creep.checkHarvest(
-            function (this: any) {
-                if (this.memory.home == this.memory.workroom)
-                    return;
-
-                if (!Memory.rooms[this.memory.workroom]!.needDebitorSize) {
-                    if (this.memory.distance > 0) {
-                        if (!Memory.rooms[this.memory.workroom]!.distances)
-                            Memory.rooms[this.memory.workroom]!.distances = [];
-
-                        Memory.rooms[this.memory.workroom]!.distances.push(this.memory.distance)
-                        this.memory.distance = 0
-                    }
-                }
-            },
-            function (this: any) {
+            () => this.recordRoundTrip(creep),
+            () => {
                 creep.memory.mineral = RESOURCE_ENERGY;
-                if (this.memory.home == this.memory.workroom)
-                    return;
-
-                if (!Memory.rooms[this.memory.workroom]!.needDebitorSize) {
-                    if (this.memory.distance > 0) {
-                        if (!Memory.rooms[this.memory.workroom]!.distances)
-                            Memory.rooms[this.memory.workroom]!.distances = [];
-
-                        Memory.rooms[this.memory.workroom]!.distances.push(this.memory.distance)
-                        this.memory.distance = 0
-                    }
-                }
+                this.recordRoundTrip(creep);
             }
         );
 
@@ -195,6 +175,21 @@ export class Debitor implements CreepRole {
     }
 
     /**
+     * Nimmt für `checkHarvest` eine Streckenmessung auf, solange die
+     * Umlaufgröße für den Arbeitsraum noch nicht feststeht. Kein Effekt, wenn
+     * Arbeits- und Heimatraum identisch sind (kein Remote-Umlauf).
+     */
+    private recordRoundTrip(creep: Creep): void {
+        if (creep.memory.home == creep.memory.workroom)
+            return;
+
+        const roundTrip = new RoundTrip(creep.memory.workroom, ROUND_TRIP_KEYS);
+        if (roundTrip.record(creep.memory.distance)) {
+            creep.memory.distance = 0;
+        }
+    }
+
+    /**
      *
      * @param {StructureSpawn} spawn
      */
@@ -208,29 +203,9 @@ export class Debitor implements CreepRole {
         // Spawnraums. Reicht ein Creep für die Strecke nicht, werden mehrere
         // kleinere geschickt (`needDebitors`).
         if (spawn.room.name != workroom) {
-            var carry = Memory.rooms[workroom]!.needDebitorSize;
-            var distances = Memory.rooms[workroom]!.distances;
-            var c = 1;
-            if (!carry && distances) {
-                var length = Math.ceil(distances.length * 0.5)
-                var meridian = distances.sort(function (a: any, b: any) {
-                    return a - b;
-                })[length];
-                carry = Math.ceil((2 * meridian) / 5)
-                var max = BODIES.debitor.setsFor(spawn.room.energyCapacityAvailable);
-
-                if (max >= carry) {
-                    Memory.rooms[workroom]!.needDebitors = 1;
-                }
-                else {
-                    c = Memory.rooms[workroom]!.needDebitors = Math.ceil(carry / max);
-                    carry = Math.ceil(carry / c);
-                }
-                if (length > 30) {
-                    Memory.rooms[workroom]!.needDebitorSize = carry;
-                    delete Memory.rooms[workroom]!.distances;
-                }
-            }
+            const roundTrip = new RoundTrip(workroom, ROUND_TRIP_KEYS);
+            const maxSetsForEnergy = BODIES.debitor.setsFor(spawn.room.energyCapacityAvailable);
+            const carry = roundTrip.carryFor(maxSetsForEnergy);
             return carryMove(carry as number);
         }
 

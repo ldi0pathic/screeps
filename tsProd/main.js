@@ -1,4 +1,4 @@
-// Build: 2026-08-06 02:38:01 +02:00
+// Build: 2026-08-06 02:49:00 +02:00
 "use strict";
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
@@ -2732,8 +2732,81 @@ Claimer = __decorateClass([
 ], Claimer);
 var claimer_default = new Claimer();
 
+// src/creep/round-trip.ts
+var RoundTrip = class {
+  constructor(workroom, keys) {
+    this.workroom = workroom;
+    this.keys = keys;
+  }
+  /** Ob die Größe bereits festgeschrieben ist — ab dann werden keine neuen Messwerte mehr aufgenommen. */
+  get isFixed() {
+    return !!Memory.rooms[this.workroom][this.keys.size];
+  }
+  /** Die festgeschriebene Tragfähigkeit (CARRY-Paare), falls schon bekannt. */
+  get size() {
+    return Memory.rooms[this.workroom][this.keys.size];
+  }
+  /** Die zuletzt abgeleitete bzw. festgeschriebene Creepzahl, falls schon bekannt. */
+  get count() {
+    return Memory.rooms[this.workroom][this.keys.count];
+  }
+  /**
+   * Nimmt eine gemessene Umlaufstrecke (ein Weg, nicht der ganze Umlauf) auf,
+   * solange die Größe noch nicht feststeht. Liefert `true`, wenn der Wert
+   * gespeichert wurde — der Aufrufer setzt dann sein eigenes
+   * `creep.memory.distance` zurück auf 0 (das gehört dem Creep, nicht dieser
+   * Klasse).
+   */
+  record(distance) {
+    if (this.isFixed)
+      return false;
+    if (!(distance > 0))
+      return false;
+    const room = Memory.rooms[this.workroom];
+    if (!room[this.keys.samples])
+      room[this.keys.samples] = [];
+    room[this.keys.samples].push(distance);
+    return true;
+  }
+  /**
+   * Leitet aus den gesammelten Strecken die nötige Tragfähigkeit (CARRY-Paare
+   * je Creep) ab. `maxSetsForEnergy` ist die maximal bezahlbare Satzzahl bei
+   * der verfügbaren Energie (heute `BODIES.debitor.setsFor(...)`) — reicht ein
+   * Creep für die errechnete Tragfähigkeit nicht, wird die Creepzahl
+   * (`count`) erhöht und die Tragfähigkeit entsprechend geteilt.
+   *
+   * Ist die Größe schon festgeschrieben, wird nur ihr Wert zurückgegeben.
+   * Stehen weder Festschreibung noch Messwerte zur Verfügung, liefert die
+   * Methode `undefined`.
+   */
+  carryFor(maxSetsForEnergy) {
+    const room = Memory.rooms[this.workroom];
+    let carry = room[this.keys.size];
+    const distances = room[this.keys.samples];
+    if (!carry && distances) {
+      const length = Math.ceil(distances.length * 0.5);
+      const median = distances.sort(function(a, b) {
+        return a - b;
+      })[length];
+      carry = Math.ceil(2 * median / 5);
+      if (maxSetsForEnergy >= carry) {
+        room[this.keys.count] = 1;
+      } else {
+        const count = room[this.keys.count] = Math.ceil(carry / maxSetsForEnergy);
+        carry = Math.ceil(carry / count);
+      }
+      if (length > 30) {
+        room[this.keys.size] = carry;
+        delete room[this.keys.samples];
+      }
+    }
+    return carry;
+  }
+};
+
 // src/roles/debitor.ts
 var role3 = "debitor";
+var ROUND_TRIP_KEYS = { samples: "distances", size: "needDebitorSize", count: "needDebitors" };
 var NEVER_SELL = {
   "energy": true,
   "power": true,
@@ -2755,30 +2828,10 @@ var Debitor = class {
     if (!creep.memory.mineral)
       creep.memory.mineral = RESOURCE_ENERGY;
     creep.checkHarvest(
-      function() {
-        if (this.memory.home == this.memory.workroom)
-          return;
-        if (!Memory.rooms[this.memory.workroom].needDebitorSize) {
-          if (this.memory.distance > 0) {
-            if (!Memory.rooms[this.memory.workroom].distances)
-              Memory.rooms[this.memory.workroom].distances = [];
-            Memory.rooms[this.memory.workroom].distances.push(this.memory.distance);
-            this.memory.distance = 0;
-          }
-        }
-      },
-      function() {
+      () => this.recordRoundTrip(creep),
+      () => {
         creep.memory.mineral = RESOURCE_ENERGY;
-        if (this.memory.home == this.memory.workroom)
-          return;
-        if (!Memory.rooms[this.memory.workroom].needDebitorSize) {
-          if (this.memory.distance > 0) {
-            if (!Memory.rooms[this.memory.workroom].distances)
-              Memory.rooms[this.memory.workroom].distances = [];
-            Memory.rooms[this.memory.workroom].distances.push(this.memory.distance);
-            this.memory.distance = 0;
-          }
-        }
+        this.recordRoundTrip(creep);
       }
     );
     if (creep.memory.home != creep.memory.workroom)
@@ -2869,6 +2922,19 @@ var Debitor = class {
     return;
   }
   /**
+   * Nimmt für `checkHarvest` eine Streckenmessung auf, solange die
+   * Umlaufgröße für den Arbeitsraum noch nicht feststeht. Kein Effekt, wenn
+   * Arbeits- und Heimatraum identisch sind (kein Remote-Umlauf).
+   */
+  recordRoundTrip(creep) {
+    if (creep.memory.home == creep.memory.workroom)
+      return;
+    const roundTrip = new RoundTrip(creep.memory.workroom, ROUND_TRIP_KEYS);
+    if (roundTrip.record(creep.memory.distance)) {
+      creep.memory.distance = 0;
+    }
+  }
+  /**
    *
    * @param {StructureSpawn} spawn
    */
@@ -2877,27 +2943,9 @@ var Debitor = class {
       return carryMove(2);
     }
     if (spawn3.room.name != workroom) {
-      var carry = Memory.rooms[workroom].needDebitorSize;
-      var distances = Memory.rooms[workroom].distances;
-      var c = 1;
-      if (!carry && distances) {
-        var length = Math.ceil(distances.length * 0.5);
-        var meridian = distances.sort(function(a, b) {
-          return a - b;
-        })[length];
-        carry = Math.ceil(2 * meridian / 5);
-        var max = BODIES.debitor.setsFor(spawn3.room.energyCapacityAvailable);
-        if (max >= carry) {
-          Memory.rooms[workroom].needDebitors = 1;
-        } else {
-          c = Memory.rooms[workroom].needDebitors = Math.ceil(carry / max);
-          carry = Math.ceil(carry / c);
-        }
-        if (length > 30) {
-          Memory.rooms[workroom].needDebitorSize = carry;
-          delete Memory.rooms[workroom].distances;
-        }
-      }
+      const roundTrip = new RoundTrip(workroom, ROUND_TRIP_KEYS);
+      const maxSetsForEnergy = BODIES.debitor.setsFor(spawn3.room.energyCapacityAvailable);
+      const carry = roundTrip.carryFor(maxSetsForEnergy);
       return carryMove(carry);
     }
     if (containerId == "") {
