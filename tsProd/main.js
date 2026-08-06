@@ -1,4 +1,4 @@
-// Build: 2026-08-06 19:20:16 +02:00
+// Build: 2026-08-06 19:20:48 +02:00
 "use strict";
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
@@ -465,6 +465,521 @@ function mayRunNormal() {
   return false;
 }
 
+// src/profiler/types.ts
+var WINDOW_TICKS = 100;
+var DEFAULT_DETAIL_TICKS = 50;
+var SECTION = {
+  /** Raum-Visuals und Memory-Init, erste Schleife in `main.ts::loop`. */
+  rooms: "rooms",
+  /** Creep-Schleife gesamt, zweite Schleife in `main.ts::loop`. */
+  creeps: "creeps",
+  /** `controller/timing.ts::controll` gesamt. */
+  timing: "timing",
+  /** Türme, `defence.tower()`. */
+  tower: "timing.tower",
+  /** Terminal und Markt. */
+  terminal: "timing.terminal",
+  /** Pixelgenerierung. */
+  pixel: "timing.pixel",
+  /** Spawncontroller, `spawn.spawn()`. */
+  spawn: "timing.spawn",
+  /** Verteidigungsscan, `defence.check()`. */
+  defence: "timing.defence",
+  /** Statuslog, `memory.writeStatus()`. */
+  status: "timing.status",
+  /** Linknetz, `links.sendAll()`. */
+  links: "timing.links",
+  /** Tagessequenz, `daylie()`. */
+  daily: "timing.daily",
+  /**
+   * Straßenwiederaufbau, `rebuild.rebuildRoads()`. Eigener Abschnitt, obwohl
+   * der Aufruf innerhalb von `daylie()` steht: die Tagessequenz läuft nur alle
+   * 28 800 Ticks, ihr Sammelwert `timing.daily` ist in einem üblichen Messfenster
+   * deshalb null und verrät nichts über die Kosten des Planers.
+   */
+  roads: "timing.roads",
+  /** Linkplaner, `link-planner.planReceiverLinks()`. Eigener Abschnitt aus demselben Grund wie `roads`. */
+  linkplan: "timing.linkplan"
+};
+
+// src/profiler/flag.ts
+var FLAG_NAME = "prof";
+var SWITCH_COLORS = [
+  { color: COLOR_GREY, request: "off", label: "grau", meaning: "aus", css: "#b4b4b4" },
+  { color: COLOR_WHITE, request: "light", label: "wei\xDF", meaning: "light", css: "#ffffff" },
+  { color: COLOR_GREEN, request: "full", label: "gr\xFCn", meaning: "full", css: "#00ff00" },
+  {
+    color: COLOR_RED,
+    request: "detail",
+    label: "rot",
+    meaning: `Detail ${DEFAULT_DETAIL_TICKS}T`,
+    css: "#ff3030"
+  }
+];
+function bySwitchColor(color) {
+  return SWITCH_COLORS.find((entry) => entry.color === color);
+}
+function byRequest(request) {
+  return SWITCH_COLORS.find((entry) => entry.request === request);
+}
+function statusLine(data) {
+  const window = data.ticks === 0 ? "noch keine Messung" : `Fenster ${data.ticks}T | CPU/Tick ${data.cpuPerTick.toFixed(2)}`;
+  return data.detailRemaining > 0 ? `${window} | Detail noch ${data.detailRemaining}T` : window;
+}
+function isActive(entry, data) {
+  if (entry.request === "detail") return data.detailRemaining > 0;
+  return data.detailRemaining === 0 && entry.request === data.mode;
+}
+var FlagSwitch = class {
+  constructor(state2, flagName = FLAG_NAME) {
+    this.state = state2;
+    this.flagName = flagName;
+  }
+  /** Die Schalterflagge, falls gesetzt. */
+  get flag() {
+    return Game.flags[this.flagName];
+  }
+  /**
+   * Liefert die Anforderung der Flagge — **nur** bei einer Farbänderung, danach
+   * `null`, solange die Farbe steht. Eine unbelegte Farbe wird einmal gemeldet
+   * und dann wie „keine Änderung" behandelt.
+   */
+  readRequest() {
+    const flag = this.flag;
+    if (flag === void 0) return null;
+    if (flag.color === this.state.flagColor) return null;
+    this.state.flagColor = flag.color;
+    const entry = bySwitchColor(flag.color);
+    if (entry === void 0) {
+      const belegt = SWITCH_COLORS.map((item) => `${item.label}=${item.meaning}`).join(", ");
+      console.log(
+        `[prof] Flagge "${this.flagName}": diese Farbe ist nicht belegt. Belegt sind ${belegt}.`
+      );
+      return null;
+    }
+    return entry.request;
+  }
+  /**
+   * Färbt die Flagge passend zu `request` und merkt die Farbe als verarbeitet, so
+   * dass daraus keine Flanke wird. Damit lügt die Flagge nie: auch ein Umschalten
+   * über die Konsole färbt sie mit, rot bedeutet „misst gerade", und nach der
+   * Detailmessung fällt sie von allein auf die Farbe des Zustands zurück, in dem
+   * der Profiler weiterläuft.
+   *
+   * Ohne gesetzte Flagge tut die Methode nichts — dann kostet sie auch keinen
+   * Intent.
+   */
+  acknowledge(request) {
+    const flag = this.flag;
+    if (flag === void 0) return;
+    const color = byRequest(request).color;
+    if (flag.color !== color) {
+      flag.setColor(color, flag.secondaryColor);
+    }
+    this.state.flagColor = color;
+  }
+  /** Kurzbeschreibung der Flagge für `prof.status()`, `null` ohne Flagge. */
+  describe() {
+    const flag = this.flag;
+    if (flag === void 0) return null;
+    const entry = bySwitchColor(flag.color);
+    const color = entry !== void 0 ? `${entry.label} = ${entry.meaning}` : "unbelegte Farbe";
+    return `Flagge ${this.flagName} in ${flag.pos.roomName}: ${color}`;
+  }
+  /**
+   * Zeichnet die Legende neben die Flagge. Nur wenn die Flagge steht — sie ist
+   * damit der Ein- und Ausschalter der ganzen Anzeige. Room Visuals leben einen
+   * Tick, das hier läuft deshalb jeden Tick erneut.
+   */
+  draw(data) {
+    const flag = this.flag;
+    if (flag === void 0) return;
+    const visual = new RoomVisual(flag.pos.roomName);
+    const toLeft = flag.pos.x >= 25;
+    const x = toLeft ? flag.pos.x - 0.8 : flag.pos.x + 0.8;
+    const align = toLeft ? "right" : "left";
+    const top = Math.min(Math.max(flag.pos.y - 2, 0.8), 45);
+    const lineHeight = 0.7;
+    const style = {
+      align,
+      font: 0.5,
+      backgroundColor: "#000000",
+      backgroundPadding: 0.12
+    };
+    visual.text(`prof: ${data.mode}`, x, top, { ...style, color: "#ffffff" });
+    SWITCH_COLORS.forEach((entry, index) => {
+      const active = isActive(entry, data);
+      visual.text(
+        `${active ? "\u25B6" : "\xB7"} ${entry.label} = ${entry.meaning}`,
+        x,
+        top + lineHeight * (index + 1),
+        { ...style, color: entry.css, opacity: active ? 1 : 0.4 }
+      );
+    });
+    visual.text(statusLine(data), x, top + lineHeight * (SWITCH_COLORS.length + 1), {
+      ...style,
+      color: "#cccccc",
+      opacity: 0.8
+    });
+  }
+};
+
+// src/profiler/state.ts
+var _ProfilerState = class _ProfilerState {
+  constructor() {
+    /** Gespiegelter Zustand, einmal je Tick aus `Memory.profiler` übernommen. */
+    __publicField(this, "mirroredMode", "off");
+  }
+  /** `Memory.profiler`, bei Bedarf mit Standard `off` angelegt. */
+  get entry() {
+    var _a;
+    const memory = Memory;
+    return (_a = memory.profiler) != null ? _a : memory.profiler = { mode: "off" };
+  }
+  /** Der gespiegelte Zustand. Billig — nur ein Feldzugriff. */
+  get mode() {
+    return this.mirroredMode;
+  }
+  /** Setzt den Zustand in `Memory` und im Spiegel. */
+  set mode(mode) {
+    this.entry.mode = mode;
+    this.mirroredMode = mode;
+  }
+  /** Spiegelt den Zustand aus `Memory`. Einmal je Tick, als erstes. */
+  syncFromMemory() {
+    this.mirroredMode = this.entry.mode;
+    return this.mirroredMode;
+  }
+  /** Startet die Detailmessung für `ticks` Ticks und merkt den Rückkehrzustand. */
+  startDetail(ticks) {
+    const entry = this.entry;
+    if (entry.detailUntil === void 0) {
+      entry.detailReturnTo = this.mirroredMode;
+    }
+    entry.detailUntil = Game.time + ticks;
+    entry.mode = "full";
+    this.mirroredMode = "full";
+  }
+  /**
+   * Bricht eine laufende Detailmessung ab, **ohne** den Rückkehrzustand
+   * anzuwenden. Für einen Zustandswechsel über Konsole oder Flagge: wer
+   * ausdrücklich `off`, `light` oder `full` verlangt, will nicht, dass die
+   * Detailmessung Ticks später ihren alten Zustand zurückholt.
+   */
+  cancelDetail() {
+    const entry = this.entry;
+    delete entry.detailUntil;
+    delete entry.detailReturnTo;
+  }
+  /** Läuft gerade eine Detailmessung? */
+  detailActive() {
+    return this.entry.detailUntil !== void 0;
+  }
+  /** Restticks der Detailmessung, 0 wenn sie nicht läuft. */
+  detailRemaining() {
+    const until = this.entry.detailUntil;
+    if (until === void 0) {
+      return 0;
+    }
+    const remaining = until - Game.time;
+    return remaining > 0 ? remaining : 0;
+  }
+  /**
+   * Liefert `true` genau in dem Tick, in dem die Detailmessung abgelaufen ist,
+   * und stellt dabei den Rückkehrzustand wieder her. Danach `false`.
+   */
+  expireDetail() {
+    var _a;
+    const entry = this.entry;
+    if (entry.detailUntil === void 0 || Game.time < entry.detailUntil) {
+      return false;
+    }
+    const returnTo = (_a = entry.detailReturnTo) != null ? _a : "off";
+    this.cancelDetail();
+    entry.mode = returnTo;
+    this.mirroredMode = returnTo;
+    return true;
+  }
+  /** Hält ein Fenster als benannte Grundlinie fest. */
+  saveBaseline(name, baseline) {
+    var _a, _b;
+    const baselines = (_b = (_a = this.entry).baselines) != null ? _b : _a.baselines = {};
+    baselines[name] = baseline;
+    const names = Object.keys(baselines);
+    if (names.length <= _ProfilerState.MAX_BASELINES) {
+      return;
+    }
+    let oldestName = names[0];
+    for (const candidate of names) {
+      if (baselines[candidate].tick < baselines[oldestName].tick) {
+        oldestName = candidate;
+      }
+    }
+    delete baselines[oldestName];
+  }
+  /** Alle festgehaltenen Grundlinien, leeres Objekt statt `undefined`. */
+  readBaselines() {
+    var _a;
+    return (_a = this.entry.baselines) != null ? _a : {};
+  }
+  /** Zuletzt verarbeitete Farbe der Schalterflagge, `undefined` wenn noch keine. */
+  get flagColor() {
+    return this.entry.flagColor;
+  }
+  /** Merkt eine Flaggenfarbe als verarbeitet, damit sie keine Flanke mehr auslöst. */
+  set flagColor(color) {
+    this.entry.flagColor = color;
+  }
+};
+/** Höchstzahl gespeicherter Grundlinien, damit `Memory.profiler` klein bleibt. */
+__publicField(_ProfilerState, "MAX_BASELINES", 8);
+var ProfilerState = _ProfilerState;
+
+// src/profiler/window.ts
+function createEmptySnapshot() {
+  return {
+    startTick: 0,
+    ticks: 0,
+    mode: "off",
+    cpuTotal: 0,
+    cpuMax: 0,
+    bucketTotal: 0,
+    bucketMin: Infinity,
+    roomTotal: 0,
+    creepTotal: 0,
+    limit: 0,
+    tickLimit: 0,
+    sections: {},
+    roles: {},
+    methods: {},
+    creepDetail: {}
+  };
+}
+function record(map, key, cpu) {
+  const existing = map[key];
+  if (existing === void 0) {
+    map[key] = { total: cpu, max: cpu, calls: 1 };
+    return;
+  }
+  existing.total += cpu;
+  existing.calls += 1;
+  if (cpu > existing.max) existing.max = cpu;
+}
+function safeDiv(numerator, denominator) {
+  return denominator > 0 ? numerator / denominator : 0;
+}
+function rank(map, ticks, cpuTotal) {
+  const entries = [];
+  for (const name in map) {
+    const stat = map[name];
+    entries.push({
+      name,
+      cpuPerTick: safeDiv(stat.total, ticks),
+      cpuPerCall: safeDiv(stat.total, stat.calls),
+      callsPerTick: safeDiv(stat.calls, ticks),
+      max: stat.max,
+      share: safeDiv(stat.total, cpuTotal)
+    });
+  }
+  entries.sort((a, b) => b.cpuPerTick - a.cpuPerTick);
+  return entries;
+}
+var MeasurementWindow = class {
+  constructor(state2) {
+    this.state = state2;
+    /** Startzeitpunkt (`Game.cpu.getUsed()`) je noch offener `begin()`-Messung. */
+    __publicField(this, "openSections", /* @__PURE__ */ new Map());
+    __publicField(this, "window", createEmptySnapshot());
+  }
+  /** Rohzustand des laufenden Fensters. */
+  get snapshot() {
+    return this.window;
+  }
+  /** `true`, wenn das Fenster `WINDOW_TICKS` Ticks voll hat. */
+  get isDue() {
+    return this.window.ticks >= WINDOW_TICKS;
+  }
+  /** Abschnittsmessung starten. Nur im Zustand `full` aktiv. */
+  begin(section) {
+    if (this.state.mode !== "full") return;
+    this.openSections.set(section, Game.cpu.getUsed());
+  }
+  /** Abschnittsmessung beenden und verbuchen. Gleicher Wächter wie `begin`. */
+  end(section) {
+    if (this.state.mode !== "full") return;
+    const start = this.openSections.get(section);
+    if (start === void 0) return;
+    this.openSections.delete(section);
+    record(this.window.sections, section, Game.cpu.getUsed() - start);
+  }
+  /**
+   * Tickgrenze am Anfang von `loop()`. Zählt nur den Tick fürs Fenster — bewusst
+   * **kein** `Game.cpu.getUsed()` hier. Der eine sinnvolle Gesamtwert je Tick
+   * wird zentral in `endTick` gelesen, siehe dortiger Kommentar.
+   */
+  beginTick() {
+    if (this.state.mode === "off") return;
+    if (this.window.ticks === 0) {
+      this.window.startTick = Game.time;
+    }
+    this.window.ticks += 1;
+  }
+  /**
+   * Tickende. Verbucht Gesamttick, Bucket, Räume und Creeps. Läuft in `light`
+   * und `full`, aber nicht in `off`.
+   */
+  endTick(creepCount) {
+    const mode = this.state.mode;
+    if (mode === "off") return;
+    const cpu = Game.cpu.getUsed();
+    const window = this.window;
+    window.mode = mode;
+    window.cpuTotal += cpu;
+    if (cpu > window.cpuMax) window.cpuMax = cpu;
+    const bucket = Game.cpu.bucket;
+    window.bucketTotal += bucket;
+    if (bucket < window.bucketMin) window.bucketMin = bucket;
+    window.roomTotal += Object.keys(bot.room).length;
+    window.creepTotal += creepCount;
+    window.limit = Game.cpu.limit;
+    window.tickLimit = Game.cpu.tickLimit;
+  }
+  /** Rollenzeit verbuchen. Genutzt vom Rollen-Wrapper in `decorator.ts`. */
+  recordRole(role14, cpu) {
+    record(this.window.roles, role14, cpu);
+  }
+  /** Zeit einer Klassenmethode verbuchen. Genutzt vom `@profile`-Dekorator. */
+  recordMethod(key, cpu) {
+    record(this.window.methods, key, cpu);
+  }
+  /**
+   * Zeit eines einzelnen Creeps verbuchen. Der Rollen-Wrapper in `decorator.ts`
+   * ruft das bewusst bei jedem `doJob` im Zustand `full` auf, ohne selbst nach
+   * Detailmessung zu unterscheiden. Der Vertrag in `types.ts` verlangt aber, dass
+   * `creepDetail` nur während der Detailmessung gefüllt wird (sonst landen alle
+   * ~60 Creeps jeden Tick in der sortierten Liste), also sitzt der Wächter hier.
+   * Der Zustand zuerst, damit in `light` gar nicht erst auf `Memory.profiler`
+   * zugegriffen wird.
+   */
+  recordCreep(creepName, cpu) {
+    if (this.state.mode !== "full") return;
+    if (!this.state.detailActive()) return;
+    record(this.window.creepDetail, creepName, cpu);
+  }
+  /**
+   * Leitet die Kennzahlen aus dem laufenden Fenster ab. Die einzige Stelle, die
+   * dividiert — jede Division ist gegen einen Nenner von 0 abgesichert, damit
+   * ein leeres Fenster niemals `NaN`/`Infinity` liefert.
+   */
+  metrics() {
+    const window = this.window;
+    const ticks = window.ticks;
+    const rooms = safeDiv(window.roomTotal, ticks);
+    const creeps = safeDiv(window.creepTotal, ticks);
+    const cpuPerTick = safeDiv(window.cpuTotal, ticks);
+    return {
+      ticks,
+      mode: window.mode,
+      cpuPerTick,
+      cpuMaxTick: window.cpuMax,
+      cpuPerRoom: safeDiv(cpuPerTick, rooms),
+      cpuPerCreep: safeDiv(cpuPerTick, creeps),
+      rooms,
+      creeps,
+      bucketMean: safeDiv(window.bucketTotal, ticks),
+      bucketMin: window.bucketMin === Infinity ? 0 : window.bucketMin,
+      limit: window.limit,
+      tickLimit: window.tickLimit,
+      sections: rank(window.sections, ticks, window.cpuTotal),
+      roles: rank(window.roles, ticks, window.cpuTotal),
+      methods: rank(window.methods, ticks, window.cpuTotal),
+      creepDetail: rank(window.creepDetail, ticks, window.cpuTotal)
+    };
+  }
+  /** Fenster verwerfen und neu beginnen. */
+  reset() {
+    this.openSections.clear();
+    this.window = createEmptySnapshot();
+  }
+};
+
+// src/profiler/runtime.ts
+var state = new ProfilerState();
+var measurement = new MeasurementWindow(state);
+var flagSwitch = new FlagSwitch(state);
+
+// src/profiler/decorator.ts
+function wrapFunction(obj, key, className) {
+  const descriptor = Reflect.getOwnPropertyDescriptor(obj, key);
+  if (!descriptor || descriptor.get || descriptor.set) {
+    return;
+  }
+  if (key === "constructor") {
+    return;
+  }
+  const originalFunction = descriptor.value;
+  if (!originalFunction || typeof originalFunction !== "function") {
+    return;
+  }
+  const resolvedClassName = className != null ? className : obj.constructor ? obj.constructor.name : "";
+  const memKey = `${resolvedClassName}.${String(key)}`;
+  const savedName = `__${String(key)}__`;
+  if (Reflect.has(obj, savedName)) {
+    return;
+  }
+  Reflect.set(obj, savedName, originalFunction);
+  Reflect.set(obj, key, function(...args) {
+    if (state.mode !== "full") {
+      return originalFunction.apply(this, args);
+    }
+    const start = Game.cpu.getUsed();
+    const result = originalFunction.apply(this, args);
+    measurement.recordMethod(memKey, Game.cpu.getUsed() - start);
+    return result;
+  });
+}
+function profile(target, key, _descriptor) {
+  if (key === void 0) {
+    const ctor = target;
+    const prototype = ctor.prototype;
+    for (const propertyKey of Object.getOwnPropertyNames(prototype)) {
+      wrapFunction(prototype, propertyKey, ctor.name);
+    }
+    return;
+  }
+  const className = typeof target === "function" ? target.name : target.constructor.name;
+  wrapFunction(target, key, className);
+}
+function wrapRoles(jobs2) {
+  const wrapped = {};
+  for (const role14 in jobs2) {
+    const original = jobs2[role14];
+    wrapped[role14] = {
+      doJob(creep) {
+        if (state.mode !== "full") {
+          original.doJob(creep);
+          return;
+        }
+        const start = Game.cpu.getUsed();
+        original.doJob(creep);
+        const cpu = Game.cpu.getUsed() - start;
+        measurement.recordRole(role14, cpu);
+        measurement.recordCreep(creep.name, cpu);
+      },
+      spawn(spawn3, workroom) {
+        if (state.mode !== "full") {
+          return original.spawn(spawn3, workroom);
+        }
+        const start = Game.cpu.getUsed();
+        const result = original.spawn(spawn3, workroom);
+        measurement.recordRole(`${role14}.spawn`, Game.cpu.getUsed() - start);
+        return result;
+      }
+    };
+  }
+  return wrapped;
+}
+
 // src/controller/defence.ts
 var HostileScanCache = class {
   constructor() {
@@ -478,164 +993,198 @@ var HostileScanCache = class {
     return hostiles;
   }
 };
-var hostileScan = new HostileScanCache();
 var CHECK_INTERVAL = 7;
-function check() {
-  var roomIndex = 0;
-  for (var name in bot.room) {
-    var offset = roomIndex++;
-    if ((Game.time + offset) % CHECK_INTERVAL !== 0) continue;
-    if (!bot.room[name].sendDefender) continue;
-    if (Memory.rooms[name].invaderCoreEndTick && Game.time + 10 > Memory.rooms[name].invaderCoreEndTick) {
-      Memory.rooms[name].invaderCore = false;
-    }
-    if (Memory.rooms[name].needDefenceEndTick && Game.time + 10 > Memory.rooms[name].needDefenceEndTick) {
-      Memory.rooms[name].needDefence = false;
-    }
-    var room = Game.rooms[bot.room[name].room];
-    if (!room) continue;
-    var hostiles = hostileScan.get(room);
-    var core = room.find(FIND_HOSTILE_STRUCTURES, {
-      filter: (s) => s.structureType == STRUCTURE_INVADER_CORE
-    });
-    var nukes = room.find(FIND_NUKES);
-    Memory.rooms[name].needDefence = hostiles.length > 0;
-    if (hostiles.length > (bot.room[name].minHostile || 1)) {
-      let maxLifeTime = 0;
-      for (var creep of hostiles) {
-        if (creep.ticksToLive !== void 0 && creep.ticksToLive > maxLifeTime) {
-          maxLifeTime = creep.ticksToLive;
-        }
-      }
-      Memory.rooms[name].needDefenceEndTick = Game.time + maxLifeTime;
-    }
-    Memory.rooms[name].invaderCore = core.length > 0;
-    if (core.length > 0) {
-      Memory.rooms[name].claimed = false;
-      var timeRemaining = 0;
-      for (var effect of core[0].effects || []) {
-        const time = effect.ticksRemaining;
-        if (time > timeRemaining) {
-          timeRemaining = time;
-        }
-      }
-      Memory.rooms[name].invaderCoreEndTick = Game.time + timeRemaining;
-    }
-    if (nukes.length > 0) {
-      var msg = "";
-      Memory.rooms[name].nukepos = [];
-      for (var nuke of nukes) {
-        msg += "Raum " + nuke.room + " wird in " + nuke.timeToLand + " ticks von Raum " + nuke.launchRoomName + " aus genuked!\r\n";
-        if (!Memory.rooms[name].nukepos.includes(nuke.pos))
-          Memory.rooms[name].nukepos.push(nuke.pos);
-      }
-      if (msg.length > 0 && !Memory.rooms[name].nuke) Game.notify(msg);
-    } else {
-      if (Memory.rooms[name].nukepos) Memory.rooms[name].nukepos = [];
-    }
-    Memory.rooms[name].nuke = nukes.length > 0;
+var DefenceController = class {
+  constructor() {
+    __publicField(this, "hostileScan", new HostileScanCache());
   }
-}
-function tower() {
-  for (var name in bot.room) {
-    var room = Game.rooms[name];
-    if (!room || !room.controller || !room.controller.my || !Memory.rooms[name].tower || Memory.rooms[name].tower.length == 0)
-      continue;
-    if (Memory.rooms[name].needDefence) {
-      var hostileCreeps = hostileScan.get(room);
-      if (hostileCreeps.length > 0) {
-        hostileCreeps.sort(function(a, b) {
-          var costA = a.body.reduce(function(total, part) {
-            return total + BODYPART_COST[part.type];
-          }, 0);
-          var costB = b.body.reduce(function(total, part) {
-            return total + BODYPART_COST[part.type];
-          }, 0);
-          return costB - costA;
-        });
-        var totalHealPower = 0;
-        for (var healer of hostileCreeps) {
-          var healParts = healer.body.filter((part) => part.type === HEAL).length;
-          totalHealPower += healParts * HEAL_POWER;
+  /**
+   * Verteidigungsscan, **gestaffelt**: ein Raum je Tick statt alle im selben.
+   *
+   * Wird seit Plan 05 in **jedem** Tick gerufen, nicht mehr nur alle sieben. Die
+   * Häufigkeit je Raum bleibt dieselbe (`(Game.time + index) % 7`), aber die
+   * Räume verteilen sich über die sieben Ticks. Das ändert nicht die Summe,
+   * sondern die **Spitze** — und die entscheidet, ob der Tick durchläuft: greift
+   * das CPU-Limit, bricht das Spiel den Rest stillschweigend ab. Mit neun Räumen
+   * fielen bisher neun Raumscans in denselben Tick, jetzt sind es ein bis zwei.
+   *
+   * Der Versatz kommt aus der Position des Raums in `bot.room`. Die
+   * Schlüsselreihenfolge eines Objekts ist für Stringschlüssel die
+   * Einfügereihenfolge, also stabil — ein Raum behält seinen Tick, solange
+   * `config.ts` unverändert bleibt. Ändert sie sich, verschiebt sich der Versatz
+   * einmalig; das ist folgenlos, weil jede Prüfung für sich steht.
+   *
+   * `tower()` wird ausdrücklich **nicht** gestaffelt: Turmfeuer ist taktisch und
+   * muss in jedem Tick für jeden bedrohten Raum laufen.
+   */
+  check() {
+    let roomIndex = 0;
+    for (const name in bot.room) {
+      const offset = roomIndex++;
+      if ((Game.time + offset) % CHECK_INTERVAL !== 0) continue;
+      if (!bot.room[name].sendDefender) continue;
+      if (Memory.rooms[name].invaderCoreEndTick && Game.time + 10 > Memory.rooms[name].invaderCoreEndTick) {
+        Memory.rooms[name].invaderCore = false;
+      }
+      if (Memory.rooms[name].needDefenceEndTick && Game.time + 10 > Memory.rooms[name].needDefenceEndTick) {
+        Memory.rooms[name].needDefence = false;
+      }
+      const room = Game.rooms[bot.room[name].room];
+      if (!room) continue;
+      const hostiles = this.hostileScan.get(room);
+      const core = room.find(FIND_HOSTILE_STRUCTURES, {
+        filter: (s) => s.structureType === STRUCTURE_INVADER_CORE
+      });
+      const nukes = room.find(FIND_NUKES);
+      Memory.rooms[name].needDefence = hostiles.length > 0;
+      if (hostiles.length > (bot.room[name].minHostile || 1)) {
+        let maxLifeTime = 0;
+        for (const creep of hostiles) {
+          if (creep.ticksToLive !== void 0 && creep.ticksToLive > maxLifeTime) {
+            maxLifeTime = creep.ticksToLive;
+          }
         }
-        var target = null;
-        for (var candidate of hostileCreeps) {
-          var towerDamage = 0;
-          for (var towerid of Memory.rooms[name].tower) {
-            var t = Game.getObjectById(towerid);
-            if (!t || t.store.getUsedCapacity(RESOURCE_ENERGY) < TOWER_ENERGY_COST) continue;
-            var range = t.pos.getRangeTo(candidate.pos);
-            if (range <= TOWER_OPTIMAL_RANGE) {
-              towerDamage += TOWER_POWER_ATTACK;
-            } else if (range >= TOWER_FALLOFF_RANGE) {
-              towerDamage += TOWER_POWER_ATTACK * (1 - TOWER_FALLOFF);
-            } else {
-              var fallOffShare = (range - TOWER_OPTIMAL_RANGE) / (TOWER_FALLOFF_RANGE - TOWER_OPTIMAL_RANGE);
-              towerDamage += TOWER_POWER_ATTACK * (1 - TOWER_FALLOFF * fallOffShare);
-            }
-          }
-          if (towerDamage > totalHealPower) {
-            target = candidate;
-            break;
+        Memory.rooms[name].needDefenceEndTick = Game.time + maxLifeTime;
+      }
+      Memory.rooms[name].invaderCore = core.length > 0;
+      if (core.length > 0) {
+        Memory.rooms[name].claimed = false;
+        let timeRemaining = 0;
+        for (const effect of core[0].effects || []) {
+          const time = effect.ticksRemaining;
+          if (time > timeRemaining) {
+            timeRemaining = time;
           }
         }
-        if (target) {
-          for (var towerid of Memory.rooms[name].tower) {
-            var tower2 = Game.getObjectById(towerid);
-            if (tower2) tower2.attack(target);
+        Memory.rooms[name].invaderCoreEndTick = Game.time + timeRemaining;
+      }
+      if (nukes.length > 0) {
+        let msg = "";
+        Memory.rooms[name].nukepos = [];
+        for (const nuke of nukes) {
+          msg += "Raum " + nuke.room + " wird in " + nuke.timeToLand + " ticks von Raum " + nuke.launchRoomName + " aus genuked!\r\n";
+          if (!Memory.rooms[name].nukepos.includes(nuke.pos))
+            Memory.rooms[name].nukepos.push(nuke.pos);
+        }
+        if (msg.length > 0 && !Memory.rooms[name].nuke) Game.notify(msg);
+      } else {
+        if (Memory.rooms[name].nukepos) Memory.rooms[name].nukepos = [];
+      }
+      Memory.rooms[name].nuke = nukes.length > 0;
+    }
+  }
+  tower() {
+    for (const name in bot.room) {
+      const room = Game.rooms[name];
+      if (!room || !room.controller || !room.controller.my || !Memory.rooms[name].tower || Memory.rooms[name].tower.length === 0)
+        continue;
+      if (Memory.rooms[name].needDefence) {
+        const hostileCreeps = this.hostileScan.get(room);
+        if (hostileCreeps.length > 0) {
+          hostileCreeps.sort(function(a, b) {
+            const costA = a.body.reduce(function(total, part) {
+              return total + BODYPART_COST[part.type];
+            }, 0);
+            const costB = b.body.reduce(function(total, part) {
+              return total + BODYPART_COST[part.type];
+            }, 0);
+            return costB - costA;
+          });
+          let totalHealPower = 0;
+          for (const healer of hostileCreeps) {
+            const healParts = healer.body.filter((part) => part.type === HEAL).length;
+            totalHealPower += healParts * HEAL_POWER;
           }
-        } else {
-          var allStructures = room.find(FIND_STRUCTURES);
-          if (!Memory.rooms[name].structureHP) {
-            Memory.rooms[name].structureHP = {};
-            for (var structure of allStructures) {
-              Memory.rooms[name].structureHP[structure.id] = structure.hits;
+          let target = null;
+          for (const candidate of hostileCreeps) {
+            let towerDamage = 0;
+            for (const t of this.resolveTowers(name)) {
+              if (t.store.getUsedCapacity(RESOURCE_ENERGY) < TOWER_ENERGY_COST) continue;
+              const range = t.pos.getRangeTo(candidate.pos);
+              if (range <= TOWER_OPTIMAL_RANGE) {
+                towerDamage += TOWER_POWER_ATTACK;
+              } else if (range >= TOWER_FALLOFF_RANGE) {
+                towerDamage += TOWER_POWER_ATTACK * (1 - TOWER_FALLOFF);
+              } else {
+                const fallOffShare = (range - TOWER_OPTIMAL_RANGE) / (TOWER_FALLOFF_RANGE - TOWER_OPTIMAL_RANGE);
+                towerDamage += TOWER_POWER_ATTACK * (1 - TOWER_FALLOFF * fallOffShare);
+              }
             }
-          }
-          var damagedStructure = null;
-          for (var structure of allStructures) {
-            if (Memory.rooms[name].structureHP[structure.id] && structure.hits < Memory.rooms[name].structureHP[structure.id]) {
-              damagedStructure = structure;
+            if (towerDamage > totalHealPower) {
+              target = candidate;
               break;
             }
           }
-          if (damagedStructure) {
-            for (var towerid of Memory.rooms[name].tower) {
-              var tower2 = Game.getObjectById(towerid);
-              if (tower2) {
-                tower2.repair(damagedStructure);
+          if (target) {
+            for (const t of this.resolveTowers(name)) t.attack(target);
+          } else {
+            const allStructures = room.find(FIND_STRUCTURES);
+            if (!Memory.rooms[name].structureHP) {
+              Memory.rooms[name].structureHP = {};
+              for (const structure of allStructures) {
+                Memory.rooms[name].structureHP[structure.id] = structure.hits;
               }
             }
+            let damagedStructure = null;
+            for (const structure of allStructures) {
+              if (Memory.rooms[name].structureHP[structure.id] && structure.hits < Memory.rooms[name].structureHP[structure.id]) {
+                damagedStructure = structure;
+                break;
+              }
+            }
+            if (damagedStructure) {
+              for (const t of this.resolveTowers(name)) t.repair(damagedStructure);
+            }
           }
+        } else {
+          Memory.rooms[name].needDefence = false;
+          delete Memory.rooms[name].structureHP;
         }
-      } else {
-        Memory.rooms[name].needDefence = false;
-        delete Memory.rooms[name].structureHP;
-      }
-    } else if (Game.time % 3 == 2) {
-      var damagedStructures = room.find(FIND_STRUCTURES, {
-        filter: (structure2) => {
-          return structure2.hits < (bot.prio.hits[structure2.structureType] || 0.5) * structure2.hitsMax;
-        }
-      });
-      if (damagedStructures.length > 0) {
-        damagedStructures.sort((a, b) => {
-          const priorityA = bot.prio.repair[a.structureType] || 10;
-          const priorityB = bot.prio.repair[b.structureType] || 10;
-          if (priorityA !== priorityB) return priorityA - priorityB;
-          const damageShareA = 1 - a.hits / a.hitsMax;
-          const damageShareB = 1 - b.hits / b.hitsMax;
-          return damageShareB - damageShareA;
+      } else if (Game.time % 3 === 2) {
+        const damagedStructures = room.find(FIND_STRUCTURES, {
+          filter: (structure) => {
+            return structure.hits < (bot.prio.hits[structure.structureType] || 0.5) * structure.hitsMax;
+          }
         });
-        for (var towerid of Memory.rooms[name].tower) {
-          var tower2 = Game.getObjectById(towerid);
-          if (tower2 && tower2.store.getUsedCapacity([RESOURCE_ENERGY]) * 0.5 > tower2.store.getFreeCapacity([RESOURCE_ENERGY]))
-            tower2.repair(damagedStructures[0]);
+        if (damagedStructures.length > 0) {
+          damagedStructures.sort((a, b) => {
+            const priorityA = bot.prio.repair[a.structureType] || 10;
+            const priorityB = bot.prio.repair[b.structureType] || 10;
+            if (priorityA !== priorityB) return priorityA - priorityB;
+            const damageShareA = 1 - a.hits / a.hitsMax;
+            const damageShareB = 1 - b.hits / b.hitsMax;
+            return damageShareB - damageShareA;
+          });
+          for (const t of this.resolveTowers(name)) {
+            if (t.store.getUsedCapacity([RESOURCE_ENERGY]) * 0.5 > t.store.getFreeCapacity([RESOURCE_ENERGY]))
+              t.repair(damagedStructures[0]);
+          }
         }
       }
     }
   }
-}
+  /**
+   * Löst die im Raum-Memory gemerkten Turm-Ids zu lebenden Objekten auf.
+   *
+   * Eine tote Id (Turm zerstört) wird stillschweigend übersprungen — die
+   * gemerkte Liste bleibt dabei unverändert liegen. Anders als bei
+   * `LinkList`/`ContainerList`, die eine tote Id zum Anlass nehmen, die ganze
+   * Liste zu verwerfen: für Türme gibt es diese Selbstheilung bewusst nicht,
+   * das ist Aufgabe des Tagesjobs (`memoryController.findAndSaveRoomTower`).
+   */
+  resolveTowers(roomName) {
+    const towers = [];
+    for (const towerId of Memory.rooms[roomName].tower) {
+      const tower = Game.getObjectById(towerId);
+      if (tower) towers.push(tower);
+    }
+    return towers;
+  }
+};
+DefenceController = __decorateClass([
+  profile
+], DefenceController);
+var defence_default = new DefenceController();
 
 // src/controller/link-list.ts
 function usesLinks(roomName) {
@@ -2084,521 +2633,6 @@ var BODIES = {
     }
   })
 };
-
-// src/profiler/types.ts
-var WINDOW_TICKS = 100;
-var DEFAULT_DETAIL_TICKS = 50;
-var SECTION = {
-  /** Raum-Visuals und Memory-Init, erste Schleife in `main.ts::loop`. */
-  rooms: "rooms",
-  /** Creep-Schleife gesamt, zweite Schleife in `main.ts::loop`. */
-  creeps: "creeps",
-  /** `controller/timing.ts::controll` gesamt. */
-  timing: "timing",
-  /** Türme, `defence.tower()`. */
-  tower: "timing.tower",
-  /** Terminal und Markt. */
-  terminal: "timing.terminal",
-  /** Pixelgenerierung. */
-  pixel: "timing.pixel",
-  /** Spawncontroller, `spawn.spawn()`. */
-  spawn: "timing.spawn",
-  /** Verteidigungsscan, `defence.check()`. */
-  defence: "timing.defence",
-  /** Statuslog, `memory.writeStatus()`. */
-  status: "timing.status",
-  /** Linknetz, `links.sendAll()`. */
-  links: "timing.links",
-  /** Tagessequenz, `daylie()`. */
-  daily: "timing.daily",
-  /**
-   * Straßenwiederaufbau, `rebuild.rebuildRoads()`. Eigener Abschnitt, obwohl
-   * der Aufruf innerhalb von `daylie()` steht: die Tagessequenz läuft nur alle
-   * 28 800 Ticks, ihr Sammelwert `timing.daily` ist in einem üblichen Messfenster
-   * deshalb null und verrät nichts über die Kosten des Planers.
-   */
-  roads: "timing.roads",
-  /** Linkplaner, `link-planner.planReceiverLinks()`. Eigener Abschnitt aus demselben Grund wie `roads`. */
-  linkplan: "timing.linkplan"
-};
-
-// src/profiler/flag.ts
-var FLAG_NAME = "prof";
-var SWITCH_COLORS = [
-  { color: COLOR_GREY, request: "off", label: "grau", meaning: "aus", css: "#b4b4b4" },
-  { color: COLOR_WHITE, request: "light", label: "wei\xDF", meaning: "light", css: "#ffffff" },
-  { color: COLOR_GREEN, request: "full", label: "gr\xFCn", meaning: "full", css: "#00ff00" },
-  {
-    color: COLOR_RED,
-    request: "detail",
-    label: "rot",
-    meaning: `Detail ${DEFAULT_DETAIL_TICKS}T`,
-    css: "#ff3030"
-  }
-];
-function bySwitchColor(color) {
-  return SWITCH_COLORS.find((entry) => entry.color === color);
-}
-function byRequest(request) {
-  return SWITCH_COLORS.find((entry) => entry.request === request);
-}
-function statusLine(data) {
-  const window = data.ticks === 0 ? "noch keine Messung" : `Fenster ${data.ticks}T | CPU/Tick ${data.cpuPerTick.toFixed(2)}`;
-  return data.detailRemaining > 0 ? `${window} | Detail noch ${data.detailRemaining}T` : window;
-}
-function isActive(entry, data) {
-  if (entry.request === "detail") return data.detailRemaining > 0;
-  return data.detailRemaining === 0 && entry.request === data.mode;
-}
-var FlagSwitch = class {
-  constructor(state2, flagName = FLAG_NAME) {
-    this.state = state2;
-    this.flagName = flagName;
-  }
-  /** Die Schalterflagge, falls gesetzt. */
-  get flag() {
-    return Game.flags[this.flagName];
-  }
-  /**
-   * Liefert die Anforderung der Flagge — **nur** bei einer Farbänderung, danach
-   * `null`, solange die Farbe steht. Eine unbelegte Farbe wird einmal gemeldet
-   * und dann wie „keine Änderung" behandelt.
-   */
-  readRequest() {
-    const flag = this.flag;
-    if (flag === void 0) return null;
-    if (flag.color === this.state.flagColor) return null;
-    this.state.flagColor = flag.color;
-    const entry = bySwitchColor(flag.color);
-    if (entry === void 0) {
-      const belegt = SWITCH_COLORS.map((item) => `${item.label}=${item.meaning}`).join(", ");
-      console.log(
-        `[prof] Flagge "${this.flagName}": diese Farbe ist nicht belegt. Belegt sind ${belegt}.`
-      );
-      return null;
-    }
-    return entry.request;
-  }
-  /**
-   * Färbt die Flagge passend zu `request` und merkt die Farbe als verarbeitet, so
-   * dass daraus keine Flanke wird. Damit lügt die Flagge nie: auch ein Umschalten
-   * über die Konsole färbt sie mit, rot bedeutet „misst gerade", und nach der
-   * Detailmessung fällt sie von allein auf die Farbe des Zustands zurück, in dem
-   * der Profiler weiterläuft.
-   *
-   * Ohne gesetzte Flagge tut die Methode nichts — dann kostet sie auch keinen
-   * Intent.
-   */
-  acknowledge(request) {
-    const flag = this.flag;
-    if (flag === void 0) return;
-    const color = byRequest(request).color;
-    if (flag.color !== color) {
-      flag.setColor(color, flag.secondaryColor);
-    }
-    this.state.flagColor = color;
-  }
-  /** Kurzbeschreibung der Flagge für `prof.status()`, `null` ohne Flagge. */
-  describe() {
-    const flag = this.flag;
-    if (flag === void 0) return null;
-    const entry = bySwitchColor(flag.color);
-    const color = entry !== void 0 ? `${entry.label} = ${entry.meaning}` : "unbelegte Farbe";
-    return `Flagge ${this.flagName} in ${flag.pos.roomName}: ${color}`;
-  }
-  /**
-   * Zeichnet die Legende neben die Flagge. Nur wenn die Flagge steht — sie ist
-   * damit der Ein- und Ausschalter der ganzen Anzeige. Room Visuals leben einen
-   * Tick, das hier läuft deshalb jeden Tick erneut.
-   */
-  draw(data) {
-    const flag = this.flag;
-    if (flag === void 0) return;
-    const visual = new RoomVisual(flag.pos.roomName);
-    const toLeft = flag.pos.x >= 25;
-    const x = toLeft ? flag.pos.x - 0.8 : flag.pos.x + 0.8;
-    const align = toLeft ? "right" : "left";
-    const top = Math.min(Math.max(flag.pos.y - 2, 0.8), 45);
-    const lineHeight = 0.7;
-    const style = {
-      align,
-      font: 0.5,
-      backgroundColor: "#000000",
-      backgroundPadding: 0.12
-    };
-    visual.text(`prof: ${data.mode}`, x, top, { ...style, color: "#ffffff" });
-    SWITCH_COLORS.forEach((entry, index) => {
-      const active = isActive(entry, data);
-      visual.text(
-        `${active ? "\u25B6" : "\xB7"} ${entry.label} = ${entry.meaning}`,
-        x,
-        top + lineHeight * (index + 1),
-        { ...style, color: entry.css, opacity: active ? 1 : 0.4 }
-      );
-    });
-    visual.text(statusLine(data), x, top + lineHeight * (SWITCH_COLORS.length + 1), {
-      ...style,
-      color: "#cccccc",
-      opacity: 0.8
-    });
-  }
-};
-
-// src/profiler/state.ts
-var _ProfilerState = class _ProfilerState {
-  constructor() {
-    /** Gespiegelter Zustand, einmal je Tick aus `Memory.profiler` übernommen. */
-    __publicField(this, "mirroredMode", "off");
-  }
-  /** `Memory.profiler`, bei Bedarf mit Standard `off` angelegt. */
-  get entry() {
-    var _a;
-    const memory = Memory;
-    return (_a = memory.profiler) != null ? _a : memory.profiler = { mode: "off" };
-  }
-  /** Der gespiegelte Zustand. Billig — nur ein Feldzugriff. */
-  get mode() {
-    return this.mirroredMode;
-  }
-  /** Setzt den Zustand in `Memory` und im Spiegel. */
-  set mode(mode) {
-    this.entry.mode = mode;
-    this.mirroredMode = mode;
-  }
-  /** Spiegelt den Zustand aus `Memory`. Einmal je Tick, als erstes. */
-  syncFromMemory() {
-    this.mirroredMode = this.entry.mode;
-    return this.mirroredMode;
-  }
-  /** Startet die Detailmessung für `ticks` Ticks und merkt den Rückkehrzustand. */
-  startDetail(ticks) {
-    const entry = this.entry;
-    if (entry.detailUntil === void 0) {
-      entry.detailReturnTo = this.mirroredMode;
-    }
-    entry.detailUntil = Game.time + ticks;
-    entry.mode = "full";
-    this.mirroredMode = "full";
-  }
-  /**
-   * Bricht eine laufende Detailmessung ab, **ohne** den Rückkehrzustand
-   * anzuwenden. Für einen Zustandswechsel über Konsole oder Flagge: wer
-   * ausdrücklich `off`, `light` oder `full` verlangt, will nicht, dass die
-   * Detailmessung Ticks später ihren alten Zustand zurückholt.
-   */
-  cancelDetail() {
-    const entry = this.entry;
-    delete entry.detailUntil;
-    delete entry.detailReturnTo;
-  }
-  /** Läuft gerade eine Detailmessung? */
-  detailActive() {
-    return this.entry.detailUntil !== void 0;
-  }
-  /** Restticks der Detailmessung, 0 wenn sie nicht läuft. */
-  detailRemaining() {
-    const until = this.entry.detailUntil;
-    if (until === void 0) {
-      return 0;
-    }
-    const remaining = until - Game.time;
-    return remaining > 0 ? remaining : 0;
-  }
-  /**
-   * Liefert `true` genau in dem Tick, in dem die Detailmessung abgelaufen ist,
-   * und stellt dabei den Rückkehrzustand wieder her. Danach `false`.
-   */
-  expireDetail() {
-    var _a;
-    const entry = this.entry;
-    if (entry.detailUntil === void 0 || Game.time < entry.detailUntil) {
-      return false;
-    }
-    const returnTo = (_a = entry.detailReturnTo) != null ? _a : "off";
-    this.cancelDetail();
-    entry.mode = returnTo;
-    this.mirroredMode = returnTo;
-    return true;
-  }
-  /** Hält ein Fenster als benannte Grundlinie fest. */
-  saveBaseline(name, baseline) {
-    var _a, _b;
-    const baselines = (_b = (_a = this.entry).baselines) != null ? _b : _a.baselines = {};
-    baselines[name] = baseline;
-    const names = Object.keys(baselines);
-    if (names.length <= _ProfilerState.MAX_BASELINES) {
-      return;
-    }
-    let oldestName = names[0];
-    for (const candidate of names) {
-      if (baselines[candidate].tick < baselines[oldestName].tick) {
-        oldestName = candidate;
-      }
-    }
-    delete baselines[oldestName];
-  }
-  /** Alle festgehaltenen Grundlinien, leeres Objekt statt `undefined`. */
-  readBaselines() {
-    var _a;
-    return (_a = this.entry.baselines) != null ? _a : {};
-  }
-  /** Zuletzt verarbeitete Farbe der Schalterflagge, `undefined` wenn noch keine. */
-  get flagColor() {
-    return this.entry.flagColor;
-  }
-  /** Merkt eine Flaggenfarbe als verarbeitet, damit sie keine Flanke mehr auslöst. */
-  set flagColor(color) {
-    this.entry.flagColor = color;
-  }
-};
-/** Höchstzahl gespeicherter Grundlinien, damit `Memory.profiler` klein bleibt. */
-__publicField(_ProfilerState, "MAX_BASELINES", 8);
-var ProfilerState = _ProfilerState;
-
-// src/profiler/window.ts
-function createEmptySnapshot() {
-  return {
-    startTick: 0,
-    ticks: 0,
-    mode: "off",
-    cpuTotal: 0,
-    cpuMax: 0,
-    bucketTotal: 0,
-    bucketMin: Infinity,
-    roomTotal: 0,
-    creepTotal: 0,
-    limit: 0,
-    tickLimit: 0,
-    sections: {},
-    roles: {},
-    methods: {},
-    creepDetail: {}
-  };
-}
-function record(map, key, cpu) {
-  const existing = map[key];
-  if (existing === void 0) {
-    map[key] = { total: cpu, max: cpu, calls: 1 };
-    return;
-  }
-  existing.total += cpu;
-  existing.calls += 1;
-  if (cpu > existing.max) existing.max = cpu;
-}
-function safeDiv(numerator, denominator) {
-  return denominator > 0 ? numerator / denominator : 0;
-}
-function rank(map, ticks, cpuTotal) {
-  const entries = [];
-  for (const name in map) {
-    const stat = map[name];
-    entries.push({
-      name,
-      cpuPerTick: safeDiv(stat.total, ticks),
-      cpuPerCall: safeDiv(stat.total, stat.calls),
-      callsPerTick: safeDiv(stat.calls, ticks),
-      max: stat.max,
-      share: safeDiv(stat.total, cpuTotal)
-    });
-  }
-  entries.sort((a, b) => b.cpuPerTick - a.cpuPerTick);
-  return entries;
-}
-var MeasurementWindow = class {
-  constructor(state2) {
-    this.state = state2;
-    /** Startzeitpunkt (`Game.cpu.getUsed()`) je noch offener `begin()`-Messung. */
-    __publicField(this, "openSections", /* @__PURE__ */ new Map());
-    __publicField(this, "window", createEmptySnapshot());
-  }
-  /** Rohzustand des laufenden Fensters. */
-  get snapshot() {
-    return this.window;
-  }
-  /** `true`, wenn das Fenster `WINDOW_TICKS` Ticks voll hat. */
-  get isDue() {
-    return this.window.ticks >= WINDOW_TICKS;
-  }
-  /** Abschnittsmessung starten. Nur im Zustand `full` aktiv. */
-  begin(section) {
-    if (this.state.mode !== "full") return;
-    this.openSections.set(section, Game.cpu.getUsed());
-  }
-  /** Abschnittsmessung beenden und verbuchen. Gleicher Wächter wie `begin`. */
-  end(section) {
-    if (this.state.mode !== "full") return;
-    const start = this.openSections.get(section);
-    if (start === void 0) return;
-    this.openSections.delete(section);
-    record(this.window.sections, section, Game.cpu.getUsed() - start);
-  }
-  /**
-   * Tickgrenze am Anfang von `loop()`. Zählt nur den Tick fürs Fenster — bewusst
-   * **kein** `Game.cpu.getUsed()` hier. Der eine sinnvolle Gesamtwert je Tick
-   * wird zentral in `endTick` gelesen, siehe dortiger Kommentar.
-   */
-  beginTick() {
-    if (this.state.mode === "off") return;
-    if (this.window.ticks === 0) {
-      this.window.startTick = Game.time;
-    }
-    this.window.ticks += 1;
-  }
-  /**
-   * Tickende. Verbucht Gesamttick, Bucket, Räume und Creeps. Läuft in `light`
-   * und `full`, aber nicht in `off`.
-   */
-  endTick(creepCount) {
-    const mode = this.state.mode;
-    if (mode === "off") return;
-    const cpu = Game.cpu.getUsed();
-    const window = this.window;
-    window.mode = mode;
-    window.cpuTotal += cpu;
-    if (cpu > window.cpuMax) window.cpuMax = cpu;
-    const bucket = Game.cpu.bucket;
-    window.bucketTotal += bucket;
-    if (bucket < window.bucketMin) window.bucketMin = bucket;
-    window.roomTotal += Object.keys(bot.room).length;
-    window.creepTotal += creepCount;
-    window.limit = Game.cpu.limit;
-    window.tickLimit = Game.cpu.tickLimit;
-  }
-  /** Rollenzeit verbuchen. Genutzt vom Rollen-Wrapper in `decorator.ts`. */
-  recordRole(role14, cpu) {
-    record(this.window.roles, role14, cpu);
-  }
-  /** Zeit einer Klassenmethode verbuchen. Genutzt vom `@profile`-Dekorator. */
-  recordMethod(key, cpu) {
-    record(this.window.methods, key, cpu);
-  }
-  /**
-   * Zeit eines einzelnen Creeps verbuchen. Der Rollen-Wrapper in `decorator.ts`
-   * ruft das bewusst bei jedem `doJob` im Zustand `full` auf, ohne selbst nach
-   * Detailmessung zu unterscheiden. Der Vertrag in `types.ts` verlangt aber, dass
-   * `creepDetail` nur während der Detailmessung gefüllt wird (sonst landen alle
-   * ~60 Creeps jeden Tick in der sortierten Liste), also sitzt der Wächter hier.
-   * Der Zustand zuerst, damit in `light` gar nicht erst auf `Memory.profiler`
-   * zugegriffen wird.
-   */
-  recordCreep(creepName, cpu) {
-    if (this.state.mode !== "full") return;
-    if (!this.state.detailActive()) return;
-    record(this.window.creepDetail, creepName, cpu);
-  }
-  /**
-   * Leitet die Kennzahlen aus dem laufenden Fenster ab. Die einzige Stelle, die
-   * dividiert — jede Division ist gegen einen Nenner von 0 abgesichert, damit
-   * ein leeres Fenster niemals `NaN`/`Infinity` liefert.
-   */
-  metrics() {
-    const window = this.window;
-    const ticks = window.ticks;
-    const rooms = safeDiv(window.roomTotal, ticks);
-    const creeps = safeDiv(window.creepTotal, ticks);
-    const cpuPerTick = safeDiv(window.cpuTotal, ticks);
-    return {
-      ticks,
-      mode: window.mode,
-      cpuPerTick,
-      cpuMaxTick: window.cpuMax,
-      cpuPerRoom: safeDiv(cpuPerTick, rooms),
-      cpuPerCreep: safeDiv(cpuPerTick, creeps),
-      rooms,
-      creeps,
-      bucketMean: safeDiv(window.bucketTotal, ticks),
-      bucketMin: window.bucketMin === Infinity ? 0 : window.bucketMin,
-      limit: window.limit,
-      tickLimit: window.tickLimit,
-      sections: rank(window.sections, ticks, window.cpuTotal),
-      roles: rank(window.roles, ticks, window.cpuTotal),
-      methods: rank(window.methods, ticks, window.cpuTotal),
-      creepDetail: rank(window.creepDetail, ticks, window.cpuTotal)
-    };
-  }
-  /** Fenster verwerfen und neu beginnen. */
-  reset() {
-    this.openSections.clear();
-    this.window = createEmptySnapshot();
-  }
-};
-
-// src/profiler/runtime.ts
-var state = new ProfilerState();
-var measurement = new MeasurementWindow(state);
-var flagSwitch = new FlagSwitch(state);
-
-// src/profiler/decorator.ts
-function wrapFunction(obj, key, className) {
-  const descriptor = Reflect.getOwnPropertyDescriptor(obj, key);
-  if (!descriptor || descriptor.get || descriptor.set) {
-    return;
-  }
-  if (key === "constructor") {
-    return;
-  }
-  const originalFunction = descriptor.value;
-  if (!originalFunction || typeof originalFunction !== "function") {
-    return;
-  }
-  const resolvedClassName = className != null ? className : obj.constructor ? obj.constructor.name : "";
-  const memKey = `${resolvedClassName}.${String(key)}`;
-  const savedName = `__${String(key)}__`;
-  if (Reflect.has(obj, savedName)) {
-    return;
-  }
-  Reflect.set(obj, savedName, originalFunction);
-  Reflect.set(obj, key, function(...args) {
-    if (state.mode !== "full") {
-      return originalFunction.apply(this, args);
-    }
-    const start = Game.cpu.getUsed();
-    const result = originalFunction.apply(this, args);
-    measurement.recordMethod(memKey, Game.cpu.getUsed() - start);
-    return result;
-  });
-}
-function profile(target, key, _descriptor) {
-  if (key === void 0) {
-    const ctor = target;
-    const prototype = ctor.prototype;
-    for (const propertyKey of Object.getOwnPropertyNames(prototype)) {
-      wrapFunction(prototype, propertyKey, ctor.name);
-    }
-    return;
-  }
-  const className = typeof target === "function" ? target.name : target.constructor.name;
-  wrapFunction(target, key, className);
-}
-function wrapRoles(jobs2) {
-  const wrapped = {};
-  for (const role14 in jobs2) {
-    const original = jobs2[role14];
-    wrapped[role14] = {
-      doJob(creep) {
-        if (state.mode !== "full") {
-          original.doJob(creep);
-          return;
-        }
-        const start = Game.cpu.getUsed();
-        original.doJob(creep);
-        const cpu = Game.cpu.getUsed() - start;
-        measurement.recordRole(role14, cpu);
-        measurement.recordCreep(creep.name, cpu);
-      },
-      spawn(spawn3, workroom) {
-        if (state.mode !== "full") {
-          return original.spawn(spawn3, workroom);
-        }
-        const start = Game.cpu.getUsed();
-        const result = original.spawn(spawn3, workroom);
-        measurement.recordRole(`${role14}.spawn`, Game.cpu.getUsed() - start);
-        return result;
-      }
-    };
-  }
-  return wrapped;
-}
 
 // src/roles/builder.ts
 var role = "builder";
@@ -4865,7 +4899,7 @@ var botMemory3 = Memory;
 function controllCritical() {
   init();
   begin(SECTION.tower);
-  tower();
+  defence_default.tower();
   end(SECTION.tower);
 }
 function controll() {
@@ -4906,7 +4940,7 @@ function controll() {
   }
   if (mayRunNormal()) {
     begin(SECTION.defence);
-    check();
+    defence_default.check();
     end(SECTION.defence);
   }
   if (tick2 % 11 === 0 && mayRunLow()) {

@@ -1,5 +1,5 @@
 import * as cpuBudget from "./cpu-budget";
-import * as defenceController from "./defence";
+import defenceController from "./defence";
 import * as linkPlannerController from "./link-planner";
 import * as linksController from "./links";
 import * as memoryController from "./memory";

@@ -217,7 +217,7 @@ function makeLoggingRoom(name: string, log: FindLogEntry[]): { name: string; fin
 
 test("defenceController.check() prüft über sieben aufeinanderfolgende Ticks jeden Raum genau einmal", async () => {
   installGlobals();
-  const { check } = await import("../src/controller/defence");
+  const { default: defenceController } = await import("../src/controller/defence");
 
   const roomNames = Array.from({ length: 9 }, (_, i) => `D${i}`);
   const findLog: FindLogEntry[] = [];
@@ -235,7 +235,7 @@ test("defenceController.check() prüft über sieben aufeinanderfolgende Ticks je
     game().time = tick;
     findLog.length = 0;
 
-    check();
+    defenceController.check();
 
     for (const touchedRoom of new Set(findLog.map(entry => entry.room))) {
       handledCount.set(touchedRoom, (handledCount.get(touchedRoom) ?? 0) + 1);
@@ -249,7 +249,7 @@ test("defenceController.check() prüft über sieben aufeinanderfolgende Ticks je
 
 test("defenceController.check() bearbeitet in keinem einzelnen Tick alle Räume auf einmal", async () => {
   installGlobals();
-  const { check } = await import("../src/controller/defence");
+  const { default: defenceController } = await import("../src/controller/defence");
 
   const roomNames = Array.from({ length: 9 }, (_, i) => `D${i}`);
   const findLog: FindLogEntry[] = [];
@@ -265,7 +265,7 @@ test("defenceController.check() bearbeitet in keinem einzelnen Tick alle Räume 
     game().time = tick;
     findLog.length = 0;
 
-    check();
+    defenceController.check();
 
     const touchedRooms = new Set(findLog.map(entry => entry.room));
     assert.ok(
