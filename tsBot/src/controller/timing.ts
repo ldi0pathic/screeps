@@ -1,3 +1,4 @@
+import * as cpuBudget from "./cpu-budget";
 import * as defenceController from "./defence";
 import * as linkPlannerController from "./link-planner";
 import * as linksController from "./links";
@@ -49,9 +50,11 @@ export function controllCritical(): void {
 export function controll(): void {
   const tick = Game.time;
 
+  // Terminal und Markt sind die niedrige Stufe: ein ausgelassener Verkauf
+  // kostet einen Tick Handel, ein abgebrochener Tick kostet die Türme.
   begin(SECTION.terminal);
   const terminalIds = botMemory.terminals;
-  if (terminalIds && terminalIds.length > 0) {
+  if (cpuBudget.mayRunLow() && terminalIds && terminalIds.length > 0) {
     const terminalId = terminalIds[Game.time % terminalIds.length];
     if (terminalId) {
       const terminal = Game.getObjectById(terminalId as Id<StructureTerminal>) as TerminalMarket | null;
@@ -88,7 +91,7 @@ export function controll(): void {
     end(SECTION.pixel);
   }
 
-  if (tick % 5 === 0) {
+  if (tick % 5 === 0 && cpuBudget.mayRunNormal()) {
     begin(SECTION.spawn);
     spawnController.spawn();
     end(SECTION.spawn);
@@ -98,19 +101,26 @@ export function controll(): void {
   // je Tick nur die Räume vor, die dran sind. Die Häufigkeit je Raum bleibt bei
   // sieben Ticks, aber die Spitze verteilt sich — und die Spitze entscheidet, ob
   // der Tick durchläuft. Ohne fällige Räume ist der Durchgang eine leere Schleife.
-  begin(SECTION.defence);
-  defenceController.check();
-  end(SECTION.defence);
+  if (cpuBudget.mayRunNormal()) {
+    begin(SECTION.defence);
+    defenceController.check();
+    end(SECTION.defence);
+  }
 
-  if (tick % 11 === 0) {
+  if (tick % 11 === 0 && cpuBudget.mayRunLow()) {
     begin(SECTION.status);
     memoryController.writeStatus();
     end(SECTION.status);
   }
 
-  begin(SECTION.daily);
-  daylie();
-  end(SECTION.daily);
+  // Die Tagesjobs sind die niedrigste Stufe: sie laufen ohnehin nur einen Tick
+  // je Paar aus (Job, Raum) und holen einen ausgelassenen Durchgang am nächsten
+  // Tag nach. Ein Ausfall kostet hier am wenigsten.
+  if (cpuBudget.mayRunLow()) {
+    begin(SECTION.daily);
+    daylie();
+    end(SECTION.daily);
+  }
 }
 
 /** Länge der Tagessequenz in Ticks. */

@@ -1,7 +1,7 @@
 # Plan 05: CPU-Verteilung über den Tick
 
-Status: **Schritte 1 bis 4 gebaut** (2026-08-06, siehe `docs/aenderungen.md`),
-Wirkung noch nicht gemessen. **Schritt 5 offen** (CPU-Stufen). Befund 6
+Status: **Schritte 1 bis 5 gebaut** (2026-08-06, siehe `docs/aenderungen.md`),
+Wirkung noch nicht gemessen. Befund 6
 (`range` an Pfadsuchen) ebenfalls offen — er braucht eine Einzelprüfung je
 Aufrufstelle, ob der Creep ein Feld früher noch in Reichweite seines
 `transfer`/`withdraw` steht.

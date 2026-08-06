@@ -701,3 +701,37 @@ Nachzusehen ist das im Spiel mit einem Blick auf
 `Memory.rooms["E58N6"].roads`. Bis dahin bleibt der Code, wie er ist —
 etwas wieder einzuschalten, das ein Mensch bewusst abgeschaltet hat, wäre keine
 Fehlerbehebung.
+
+## Runde 2026-08-06: CPU-Stufen als Ausfallsicherung (Plan 05, Schritt 5)
+
+Neu: `controller/cpu-budget.ts` mit zwei Fragen — `mayRunLow()` und
+`mayRunNormal()`. Verdrahtet in `timing.ts`.
+
+| Stufe | Inhalt | Fällt aus, wenn |
+| --- | --- | --- |
+| kritisch | Türme, Raum-Memory (`controllCritical`) | **nie** — fragt gar nicht erst nach |
+| normal | Spawncontroller, Verteidigungsscan | Bucket unter 500 |
+| niedrig | Statuslog, Terminal und Markt, Tagesjobs | Bucket unter 2000 **und** der laufende Tick hat `Game.cpu.limit` schon überschritten |
+
+**Es ist eine Ausfallsicherung, kein Effizienzgewinn.** Bei vollem Bucket und
+einem Tick weit unter dem Limit gibt es nichts zu sparen; eine Drossel, die im
+Normalbetrieb etwas abschaltet, wäre eine Verschlechterung ohne Gegenwert. Der
+Nutzen zeigt sich, wenn das CPU-Limit mitten im Tick greift: dann bricht das
+Spiel den Rest **stillschweigend** ab, und ohne Stufen fällt aus, was zufällig
+hinten steht, statt dessen, was am wenigsten wehtut.
+
+**Warum die niedrige Stufe zwei Bedingungen hat.** Der Bucket allein wäre das
+falsche Signal: er wird regelmäßig von der Pixelerzeugung auf 0 gefahren —
+gemessenes Mittel 2043, Minimum 1545 — und das ist gewollt, kein Notstand. Eine
+reine Bucket-Schwelle hätte Terminal und Markt nach jedem Pixel für rund hundert
+Ticks stillgelegt, also gut ein Zehntel der Handelszeit. Erst die zweite
+Bedingung (`getUsed() > limit`) macht daraus eine echte Notlage; bei gemessenen
+9,12 CPU je Tick greift sie im Normalbetrieb nie.
+
+**Warum `Game.cpu.limit` und nicht `tickLimit`.** `tickLimit` enthält den Bucket
+und liegt deshalb fast immer bei 500 — eine Prüfung dagegen spräche nie an.
+`limit` ist das, was ein Tick verbrauchen darf, ohne den Puffer anzugreifen.
+
+Ausfälle werden gemeldet, aber höchstens alle 100 Ticks je Stufe: ein Ausfall
+gehört sichtbar gemacht, ein Dauerzustand darf die Konsole nicht unbrauchbar
+machen — und die Meldung selbst kostet in einem Tick, der ohnehin knapp ist.

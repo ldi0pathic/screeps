@@ -1,4 +1,4 @@
-// Build: 2026-08-06 02:19:09 +02:00
+// Build: 2026-08-06 02:30:04 +02:00
 "use strict";
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
@@ -447,6 +447,32 @@ function findAndSaveTerminals() {
     })[0];
     if (terminal) botMemory.terminals.push(terminal.id);
   }
+}
+
+// src/controller/cpu-budget.ts
+var LOW_TIER_BUCKET = 2e3;
+var NORMAL_TIER_BUCKET = 500;
+var LOG_INTERVAL = 100;
+var lastReport = {};
+function report(tier, reason) {
+  const last = lastReport[tier];
+  if (last !== void 0 && Game.time - last < LOG_INTERVAL) return;
+  lastReport[tier] = Game.time;
+  console.log(`[cpu] Stufe "${tier}" ausgelassen: ${reason}`);
+}
+function mayRunLow() {
+  const bucket = Game.cpu.bucket;
+  if (bucket >= LOW_TIER_BUCKET) return true;
+  const used = Game.cpu.getUsed();
+  if (used <= Game.cpu.limit) return true;
+  report("niedrig", `Bucket ${Math.round(bucket)}, im Tick schon ${used.toFixed(1)} von ${Game.cpu.limit}`);
+  return false;
+}
+function mayRunNormal() {
+  const bucket = Game.cpu.bucket;
+  if (bucket >= NORMAL_TIER_BUCKET) return true;
+  report("normal", `Bucket ${Math.round(bucket)} unter ${NORMAL_TIER_BUCKET}`);
+  return false;
 }
 
 // src/controller/defence.ts
@@ -4651,8 +4677,8 @@ ${formatDetailReport(metrics)}`;
     return formatComparison(name, baseline, metrics);
   }
   mail() {
-    const report = this.report();
-    return mailReport(`[prof] Bericht Tick ${Game.time}`, report);
+    const report2 = this.report();
+    return mailReport(`[prof] Bericht Tick ${Game.time}`, report2);
   }
   history() {
     if (!isAvailable()) {
@@ -4737,7 +4763,7 @@ function controll() {
   const tick2 = Game.time;
   begin(SECTION.terminal);
   const terminalIds = botMemory3.terminals;
-  if (terminalIds && terminalIds.length > 0) {
+  if (mayRunLow() && terminalIds && terminalIds.length > 0) {
     const terminalId = terminalIds[Game.time % terminalIds.length];
     if (terminalId) {
       const terminal = Game.getObjectById(terminalId);
@@ -4764,22 +4790,26 @@ function controll() {
     Game.cpu.generatePixel();
     end(SECTION.pixel);
   }
-  if (tick2 % 5 === 0) {
+  if (tick2 % 5 === 0 && mayRunNormal()) {
     begin(SECTION.spawn);
     spawn2();
     end(SECTION.spawn);
   }
-  begin(SECTION.defence);
-  check();
-  end(SECTION.defence);
-  if (tick2 % 11 === 0) {
+  if (mayRunNormal()) {
+    begin(SECTION.defence);
+    check();
+    end(SECTION.defence);
+  }
+  if (tick2 % 11 === 0 && mayRunLow()) {
     begin(SECTION.status);
     writeStatus();
     end(SECTION.status);
   }
-  begin(SECTION.daily);
-  daylie();
-  end(SECTION.daily);
+  if (mayRunLow()) {
+    begin(SECTION.daily);
+    daylie();
+    end(SECTION.daily);
+  }
 }
 var DAY_TICKS = 86400 / 3;
 var STAGGERED_DAILY_JOBS = [

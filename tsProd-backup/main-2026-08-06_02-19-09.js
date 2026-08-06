@@ -1,4 +1,4 @@
-// Build: 2026-08-04 22:46:23 +02:00
+// Build: 2026-08-06 02:19:09 +02:00
 "use strict";
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
@@ -89,46 +89,14 @@ bot.room = {
     sendDefender: true,
     sendClaimer: true,
     //mining
-    debitorProSource: 1,
     debitorAsFreelancer: 0,
     energySources: ["5bbcb07b9099fc012e63c406"],
     mineralSources: [],
-    useLinks: false,
-    targetLinks: [],
-    spawnLink: null,
-    controllerLink: null,
     //structures
     repairer: 0,
     maxwallRepairer: 0,
     maxbuilder: 1,
     prioBuildings: [],
-    //controller
-    upgrader: 0
-  },
-  E58N4: {
-    room: "E58N4",
-    spawnRoom: "E59N4",
-    sendMiner: true,
-    sendDebitor: true,
-    sendFreeDebitor: false,
-    sendBuilder: false,
-    sendDefender: true,
-    sendClaimer: true,
-    //mining
-    debitorProSource: 1,
-    debitorAsFreelancer: 0,
-    energySources: ["5bbcb08d9099fc012e63c595"],
-    mineralSources: [],
-    useLinks: false,
-    targetLinks: [],
-    spawnLink: null,
-    controllerLink: null,
-    //structures
-    repairer: 0,
-    maxwallRepairer: 0,
-    maxbuilder: 1,
-    prioBuildings: [],
-    destroy: ["63adb4b3aeebaa08e3aa2851"],
     //controller
     upgrader: 0
   },
@@ -142,14 +110,9 @@ bot.room = {
     sendDefender: true,
     sendClaimer: true,
     //mining
-    debitorProSource: 1,
     debitorAsFreelancer: 0,
     energySources: ["5bbcb08d9099fc012e63c593"],
     mineralSources: [],
-    useLinks: false,
-    targetLinks: [],
-    spawnLink: null,
-    controllerLink: null,
     //structures
     repairer: 0,
     maxwallRepairer: 0,
@@ -169,20 +132,15 @@ bot.room = {
     sendBuilder: true,
     sendDefender: true,
     sendClaimer: false,
-    // Muss an sein, solange `useLinks` gilt: seit dem Entfernen von
-    // `harvestSpawnLink` leert niemand sonst den Link in der Basis, und ein
+    // Muss an sein, sobald der Raum Links nutzt (ab RCL5): seit dem Entfernen
+    // von `harvestSpawnLink` leert niemand sonst den Link in der Basis, und ein
     // voller Empfänger-Link blockiert alle Quell-Links, die auf ihn senden.
     sendLinkkeeper: true,
     saveRoads: true,
     //mining
-    debitorProSource: 1,
     debitorAsFreelancer: 1,
     energySources: ["5bbcb08d9099fc012e63c58f", "5bbcb08d9099fc012e63c590"],
     mineralSources: ["5bbcb72cd867df5e54207db1"],
-    useLinks: true,
-    targetLinks: ["653aed0d2fa32d1c887ab4e7", "657f0915dbc7505af702443c"],
-    spawnLink: "657f0915dbc7505af702443c",
-    controllerLink: "653aed0d2fa32d1c887ab4e7",
     //structures
     repairer: 0,
     maxwallRepairer: 1,
@@ -201,21 +159,16 @@ bot.room = {
     sendBuilder: true,
     sendDefender: true,
     sendClaimer: false,
-    // Muss an sein, solange `useLinks` gilt: seit dem Entfernen von
-    // `harvestSpawnLink` leert niemand sonst den Link in der Basis, und ein
+    // Muss an sein, sobald der Raum Links nutzt (ab RCL5): seit dem Entfernen
+    // von `harvestSpawnLink` leert niemand sonst den Link in der Basis, und ein
     // voller Empfänger-Link blockiert alle Quell-Links, die auf ihn senden.
     sendLinkkeeper: true,
     saveRoads: true,
     //mining
-    debitorProSource: 0,
     debitorAsFreelancer: 1,
     energySources: ["5bbcb08d9099fc012e63c58c", "5bbcb08d9099fc012e63c58a"],
     mineralSources: ["5bbcb72cd867df5e54207db0"],
     mineralContainerId: "658f0b73615ae9c2e4995fb6",
-    useLinks: true,
-    targetLinks: ["655269336b163b788bbbaec1", "65380c0c74becf6de75f0370"],
-    spawnLink: "655269336b163b788bbbaec1",
-    controllerLink: "65380c0c74becf6de75f0370",
     //structures
     repairer: 0,
     maxwallRepairer: 1,
@@ -234,20 +187,14 @@ bot.room = {
     sendDefender: true,
     sendClaimer: true,
     //mining
-    debitorProSource: 2,
     debitorAsFreelancer: 0,
     energySources: ["5bbcb08d9099fc012e63c588"],
     mineralSources: [],
-    useLinks: false,
-    targetLinks: [],
-    spawnLink: null,
-    controllerLink: null,
     //structures
     repairer: 0,
     maxwallRepairer: 0,
     maxbuilder: 1,
     prioBuildings: [],
-    walls: [],
     //controller
     upgrader: 0
   },
@@ -261,21 +208,16 @@ bot.room = {
     sendBuilder: true,
     sendDefender: true,
     sendClaimer: false,
-    // Muss an sein, solange `useLinks` gilt: seit dem Entfernen von
-    // `harvestSpawnLink` leert niemand sonst den Link in der Basis, und ein
+    // Muss an sein, sobald der Raum Links nutzt (ab RCL5): seit dem Entfernen
+    // von `harvestSpawnLink` leert niemand sonst den Link in der Basis, und ein
     // voller Empfänger-Link blockiert alle Quell-Links, die auf ihn senden.
     sendLinkkeeper: true,
     saveRoads: true,
     //mining
-    debitorProSource: 1,
     debitorAsFreelancer: 1,
     energySources: ["5bbcb09f9099fc012e63c71f", "5bbcb09f9099fc012e63c71d"],
     mineralSources: ["5bbcb73ad867df5e54207e20"],
     mineralContainerId: null,
-    useLinks: true,
-    targetLinks: ["6666029dda8491c8c7f5b5f8", "65ad15e5e25690e38e742550"],
-    spawnLink: "65ad15e5e25690e38e742550",
-    controllerLink: "6666029dda8491c8c7f5b5f8",
     //structures
     repairer: 0,
     maxwallRepairer: 2,
@@ -294,14 +236,9 @@ bot.room = {
     sendDefender: true,
     sendClaimer: true,
     //mining
-    debitorProSource: 0,
     debitorAsFreelancer: 0,
     energySources: ["5bbcb09e9099fc012e63c711"],
     mineralSources: ["5bbcb739d867df5e54207e1c"],
-    useLinks: false,
-    targetLinks: [],
-    spawnLink: null,
-    controllerLink: null,
     //structures
     repairer: 0,
     maxwallRepairer: 0,
@@ -320,14 +257,9 @@ bot.room = {
     sendDefender: true,
     sendClaimer: true,
     //mining
-    debitorProSource: 2,
     debitorAsFreelancer: 0,
     energySources: ["5bbcb09e9099fc012e63c70e"],
     mineralSources: [],
-    useLinks: false,
-    targetLinks: [],
-    spawnLink: null,
-    controllerLink: null,
     //structures
     repairer: 0,
     maxwallRepairer: 0,
@@ -346,20 +278,15 @@ bot.room = {
     sendBuilder: true,
     sendDefender: true,
     sendClaimer: false,
-    // Muss an sein, solange `useLinks` gilt: seit dem Entfernen von
-    // `harvestSpawnLink` leert niemand sonst den Link in der Basis, und ein
+    // Muss an sein, sobald der Raum Links nutzt (ab RCL5): seit dem Entfernen
+    // von `harvestSpawnLink` leert niemand sonst den Link in der Basis, und ein
     // voller Empfänger-Link blockiert alle Quell-Links, die auf ihn senden.
     sendLinkkeeper: true,
     saveRoads: true,
     //mining
-    debitorProSource: 0,
     debitorAsFreelancer: 1,
     energySources: ["5bbcb09e9099fc012e63c70a", "5bbcb09e9099fc012e63c70b"],
     mineralSources: ["5bbcb739d867df5e54207e1a"],
-    useLinks: true,
-    targetLinks: ["655261fc8c582e53825955a1", "65354f9aade2340fef294995"],
-    spawnLink: "655261fc8c582e53825955a1",
-    controllerLink: "65354f9aade2340fef294995",
     //structures
     repairer: 0,
     maxwallRepairer: 1,
@@ -470,10 +397,11 @@ function writeStatus() {
   }
   if (message) console.log(message);
 }
-function findAndSaveRoomWalls() {
+function findAndSaveRoomWalls(onlyRoom) {
   var _a;
   (_a = botMemory.rooms) != null ? _a : botMemory.rooms = {};
   for (const name in botGlobal.room) {
+    if (onlyRoom && name !== onlyRoom) continue;
     const config = botGlobal.room[name];
     if (!config || config.maxwallRepairer < 1) continue;
     const room = Game.rooms[config.room];
@@ -483,10 +411,11 @@ function findAndSaveRoomWalls() {
     }).map((structure) => structure.id);
   }
 }
-function findAndSaveRoomContainer() {
+function findAndSaveRoomContainer(onlyRoom) {
   var _a;
   (_a = botMemory.rooms) != null ? _a : botMemory.rooms = {};
   for (const name in botGlobal.room) {
+    if (onlyRoom && name !== onlyRoom) continue;
     const config = botGlobal.room[name];
     if (!config) continue;
     const room = Game.rooms[config.room];
@@ -494,10 +423,11 @@ function findAndSaveRoomContainer() {
     ensureRoomMemory(name).container = room.find(FIND_STRUCTURES, { filter: { structureType: STRUCTURE_CONTAINER } }).map((structure) => structure.id);
   }
 }
-function findAndSaveRoomTower() {
+function findAndSaveRoomTower(onlyRoom) {
   var _a;
   (_a = botMemory.rooms) != null ? _a : botMemory.rooms = {};
   for (const name in botGlobal.room) {
+    if (onlyRoom && name !== onlyRoom) continue;
     const config = botGlobal.room[name];
     if (!config) continue;
     const room = Game.rooms[config.room];
@@ -520,8 +450,25 @@ function findAndSaveTerminals() {
 }
 
 // src/controller/defence.ts
+var HostileScanCache = class {
+  constructor() {
+    __publicField(this, "entries", /* @__PURE__ */ new Map());
+  }
+  get(room) {
+    const cached = this.entries.get(room.name);
+    if (cached && cached.tick === Game.time) return cached.hostiles;
+    const hostiles = room.find(FIND_HOSTILE_CREEPS);
+    this.entries.set(room.name, { tick: Game.time, hostiles });
+    return hostiles;
+  }
+};
+var hostileScan = new HostileScanCache();
+var CHECK_INTERVAL = 7;
 function check() {
+  var roomIndex = 0;
   for (var name in bot.room) {
+    var offset = roomIndex++;
+    if ((Game.time + offset) % CHECK_INTERVAL !== 0) continue;
     if (!bot.room[name].sendDefender) continue;
     if (Memory.rooms[name].invaderCoreEndTick && Game.time + 10 > Memory.rooms[name].invaderCoreEndTick) {
       Memory.rooms[name].invaderCore = false;
@@ -531,7 +478,7 @@ function check() {
     }
     var room = Game.rooms[bot.room[name].room];
     if (!room) continue;
-    var hostiles = room.find(FIND_HOSTILE_CREEPS);
+    var hostiles = hostileScan.get(room);
     var core = room.find(FIND_HOSTILE_STRUCTURES, {
       filter: (s) => s.structureType == STRUCTURE_INVADER_CORE
     });
@@ -579,7 +526,7 @@ function tower() {
     if (!room || !room.controller || !room.controller.my || !Memory.rooms[name].tower || Memory.rooms[name].tower.length == 0)
       continue;
     if (Memory.rooms[name].needDefence) {
-      var hostileCreeps = room.find(FIND_HOSTILE_CREEPS);
+      var hostileCreeps = hostileScan.get(room);
       if (hostileCreeps.length > 0) {
         hostileCreeps.sort(function(a, b) {
           var costA = a.body.reduce(function(total, part) {
@@ -622,15 +569,14 @@ function tower() {
             if (tower2) tower2.attack(target);
           }
         } else {
+          var allStructures = room.find(FIND_STRUCTURES);
           if (!Memory.rooms[name].structureHP) {
             Memory.rooms[name].structureHP = {};
-            var allStructures = room.find(FIND_STRUCTURES);
             for (var structure of allStructures) {
               Memory.rooms[name].structureHP[structure.id] = structure.hits;
             }
           }
           var damagedStructure = null;
-          var allStructures = room.find(FIND_STRUCTURES);
           for (var structure of allStructures) {
             if (Memory.rooms[name].structureHP[structure.id] && structure.hits < Memory.rooms[name].structureHP[structure.id]) {
               damagedStructure = structure;
@@ -675,12 +621,474 @@ function tower() {
   }
 }
 
+// src/controller/link-list.ts
+function usesLinks(roomName) {
+  var _a, _b, _c;
+  const controller = (_a = Game.rooms[roomName]) == null ? void 0 : _a.controller;
+  if (!(controller == null ? void 0 : controller.my)) {
+    return false;
+  }
+  return ((_c = (_b = CONTROLLER_STRUCTURES == null ? void 0 : CONTROLLER_STRUCTURES[STRUCTURE_LINK]) == null ? void 0 : _b[controller.level]) != null ? _c : 0) > 0;
+}
+var LinkList = class {
+  constructor(roomName) {
+    this.roomName = roomName;
+  }
+  get roomMemory() {
+    return Memory.rooms[this.roomName];
+  }
+  /** Kennt der Bot den Raum überhaupt? Ohne Raum-Memory gibt es nichts zu tun. */
+  get isRoomKnown() {
+    return this.roomMemory !== void 0;
+  }
+  /** Liegt überhaupt eine Liste vor — auch eine ohne Sender? */
+  get hasList() {
+    var _a;
+    return ((_a = this.roomMemory) == null ? void 0 : _a.links) !== void 0;
+  }
+  /**
+   * Erhebt die Links des Raums, klassifiziert sie und schreibt sie ins Memory.
+   *
+   * Reihenfolge der Zuordnung: erst die Config, dann die Lage, und ein Link
+   * ist nie beides — Controller zuerst, Storage aus dem Rest, alle übrigen
+   * Links sind Sender.
+   */
+  discover(room) {
+    const memory = this.roomMemory;
+    if (!memory) {
+      return;
+    }
+    const links = room.find(FIND_MY_STRUCTURES, {
+      filter: (structure) => structure.structureType === STRUCTURE_LINK
+    });
+    const remaining = new Set(links.map((link) => link.id));
+    const controllerId = this.resolveController(room, links);
+    if (controllerId) {
+      remaining.delete(controllerId);
+    }
+    const spawnId = this.resolveSpawn(room, links, remaining);
+    if (spawnId) {
+      remaining.delete(spawnId);
+    }
+    const previous = memory.links;
+    memory.links = {
+      controller: controllerId,
+      spawn: spawnId,
+      sender: [...remaining]
+    };
+    this.reportChange(room.name, previous, memory.links);
+  }
+  /**
+   * Meldet eine geänderte Zuordnung auf der Konsole — nur bei Änderung, nicht
+   * bei jeder Erhebung.
+   *
+   * Der Grund ist Nachprüfbarkeit: seit die Empfänger nicht mehr in `config.ts`
+   * stehen, entscheidet allein die Lage. Ob sie richtig entscheidet, sieht man
+   * sonst nirgends. Ein Raum, in dem eine Quelle zufällig nah am Controller
+   * liegt, würde deren Quell-Link zum Empfänger machen — das fällt hier auf.
+   */
+  reportChange(roomName, previous, current) {
+    var _a, _b;
+    const unchanged = previous !== void 0 && previous.controller === current.controller && previous.spawn === current.spawn && previous.sender.length === current.sender.length && previous.sender.every((id, index) => id === current.sender[index]);
+    if (unchanged) {
+      return;
+    }
+    console.log(
+      `[${roomName}] Links: Controller=${(_a = current.controller) != null ? _a : "-"} Storage=${(_b = current.spawn) != null ? _b : "-"} Sender=${current.sender.length}`
+    );
+  }
+  /** Der Empfänger am Controller: der nächste Link in Reichweite 3. */
+  resolveController(room, links) {
+    var _a;
+    const controller = room.controller;
+    if (!controller) {
+      return void 0;
+    }
+    return (_a = this.nearestWithinRange(links, controller.pos, 3)) == null ? void 0 : _a.id;
+  }
+  /** Der Empfänger am Storage: der nächste noch freie Link in Reichweite 2. */
+  resolveSpawn(room, links, candidates) {
+    var _a;
+    const storage = room.storage;
+    if (!storage) {
+      return void 0;
+    }
+    const remainingLinks = links.filter((link) => candidates.has(link.id));
+    return (_a = this.nearestWithinRange(remainingLinks, storage.pos, 2)) == null ? void 0 : _a.id;
+  }
+  /** Der nächstgelegene Link zu `pos`, sofern innerhalb von `range`. */
+  nearestWithinRange(links, pos, range) {
+    let nearest;
+    let nearestDistance = Infinity;
+    for (const link of links) {
+      const distance = link.pos.getRangeTo(pos);
+      if (distance <= range && distance < nearestDistance) {
+        nearestDistance = distance;
+        nearest = link;
+      }
+    }
+    return nearest;
+  }
+  /** Verwirft die Liste; sie wird beim nächsten Tagesjob neu erhoben. */
+  forget() {
+    const memory = this.roomMemory;
+    if (memory) {
+      delete memory.links;
+    }
+  }
+  /**
+   * Löst eine gemerkte Id auf. Zeigt sie ins Leere (Link abgerissen), wird die
+   * ganze Liste verworfen — analog zu `forgetListOnStaleId` in `ContainerList`,
+   * hier aber ohne Ausnahme, weil es für Links keine zwei Seiten mit
+   * unterschiedlichem Verhalten gibt.
+   */
+  resolve(id) {
+    if (!id) {
+      return null;
+    }
+    const link = Game.getObjectById(id);
+    if (!link) {
+      this.forget();
+      return null;
+    }
+    return link;
+  }
+  /** Der Empfänger am Controller, oder null. */
+  get controllerLink() {
+    var _a, _b;
+    return this.resolve((_b = (_a = this.roomMemory) == null ? void 0 : _a.links) == null ? void 0 : _b.controller);
+  }
+  /** Der Empfänger am Storage, oder null. */
+  get spawnLink() {
+    var _a, _b;
+    return this.resolve((_b = (_a = this.roomMemory) == null ? void 0 : _a.links) == null ? void 0 : _b.spawn);
+  }
+  /** Alle sendenden Links, aufgelöst. */
+  senders() {
+    var _a, _b;
+    const ids = (_b = (_a = this.roomMemory) == null ? void 0 : _a.links) == null ? void 0 : _b.sender;
+    if (!ids) {
+      return [];
+    }
+    const result = [];
+    for (const id of ids) {
+      const link = this.resolve(id);
+      if (link) {
+        result.push(link);
+      }
+    }
+    return result;
+  }
+};
+function linksDeliver(roomName) {
+  return usesLinks(roomName) && new LinkList(roomName).spawnLink !== null;
+}
+
+// src/controller/link-planner.ts
+var blockingStructureTypes = OBSTACLE_OBJECT_TYPES;
+var MAX_CONSTRUCTION_SITES = 10;
+var LinkPlanner = class {
+  constructor(roomName) {
+    this.roomName = roomName;
+  }
+  /** Legt höchstens eine Linkbaustelle an. `true`, wenn eine entstanden ist. */
+  plan() {
+    if (!usesLinks(this.roomName)) return false;
+    const room = Game.rooms[this.roomName];
+    const controller = room.controller;
+    const freeSlots = this.freeLinkSlots(room, controller.level);
+    if (freeSlots <= 0) return false;
+    const reserve = this.reservedSenderSlots(room, this.allowedLinks(controller.level));
+    if (freeSlots <= reserve) return false;
+    const freeConstructionSlots = MAX_CONSTRUCTION_SITES - room.find(FIND_CONSTRUCTION_SITES).length;
+    if (freeConstructionSlots <= 0) return false;
+    if (this.buildControllerLink(room, controller)) return true;
+    return this.buildStorageLink(room, controller);
+  }
+  /** Wie viele Links dieser RCL insgesamt erlaubt sind. */
+  allowedLinks(level) {
+    var _a, _b;
+    return (_b = (_a = CONTROLLER_STRUCTURES == null ? void 0 : CONTROLLER_STRUCTURES[STRUCTURE_LINK]) == null ? void 0 : _a[level]) != null ? _b : 0;
+  }
+  /** Wie viele Links in diesem Raum noch gebaut werden dürfen, abzüglich vorhandener und geplanter. */
+  freeLinkSlots(room, level) {
+    const allowed = this.allowedLinks(level);
+    const built = room.find(FIND_MY_STRUCTURES, { filter: (s) => s.structureType === STRUCTURE_LINK }).length;
+    const sites = room.find(FIND_CONSTRUCTION_SITES, { filter: (s) => s.structureType === STRUCTURE_LINK }).length;
+    return allowed - built - sites;
+  }
+  /** Anzahl der Quellen des Raums, in deren Reichweite 2 noch kein Link und keine Linkbaustelle steht. */
+  sourcesWithoutLink(room) {
+    return room.find(FIND_SOURCES).filter((source) => !this.hasLinkNear(room, source.pos, 2)).length;
+  }
+  /**
+   * Plätze, die für Quell-Links reserviert bleiben, bevor ein Empfänger
+   * gebaut wird: höchstens so viele wie es Quellen ohne Link gibt, aber
+   * mindestens ein Platz bleibt immer für einen Empfänger übrig (`- 1`) –
+   * auch wenn es mehr Quellen als erlaubte Links gäbe.
+   */
+  reservedSenderSlots(room, allowed) {
+    return Math.min(this.sourcesWithoutLink(room), allowed - 1);
+  }
+  /** Plant den Controller-Link, falls in Reichweite 3 noch keiner steht (auch keine Baustelle). */
+  buildControllerLink(room, controller) {
+    if (this.hasLinkNear(room, controller.pos, 3)) return false;
+    const candidates = this.candidatesNearController(room, controller.pos);
+    const best = this.selectBest(candidates, room, controller, room.storage);
+    if (!best) return false;
+    return this.build(room, best, "Controller");
+  }
+  /** Plant den Storage-Link, falls ein Storage existiert und in Reichweite 2 noch keiner steht. */
+  buildStorageLink(room, controller) {
+    const storage = room.storage;
+    if (!storage) return false;
+    if (this.hasLinkNear(room, storage.pos, 2)) return false;
+    const candidates = this.candidatesNearStorage(room, storage);
+    const best = this.selectBest(candidates, room, controller, storage);
+    if (!best) return false;
+    return this.build(room, best, "Storage");
+  }
+  /** Steht (gebaut oder als Baustelle) bereits ein Link in `range` um `pos`? */
+  hasLinkNear(room, pos, range) {
+    const links = room.find(FIND_MY_STRUCTURES, { filter: (s) => s.structureType === STRUCTURE_LINK });
+    if (links.some((link) => link.pos.getRangeTo(pos) <= range)) return true;
+    const sites = room.find(FIND_CONSTRUCTION_SITES, { filter: (s) => s.structureType === STRUCTURE_LINK });
+    return sites.some((site) => site.pos.getRangeTo(pos) <= range);
+  }
+  /**
+   * Kandidatenfelder für den Controller-Link: bevorzugt Reichweite 2, damit
+   * ein Upgrader (Arbeitsdistanz 3 zum Controller) neben dem Link stehen und
+   * zugleich upgraden kann. Findet sich dort keins, weicht die Suche auf
+   * Reichweite 3, danach auf Reichweite 1 aus.
+   */
+  candidatesNearController(room, controllerPos) {
+    for (const range of [2, 3, 1]) {
+      const positions = this.positionsAtRange(room, controllerPos, range).filter((pos) => this.isBuildable(pos, room));
+      if (positions.length > 0) return positions;
+    }
+    return [];
+  }
+  /**
+   * Kandidatenfelder für den Storage-Link: alle bebaubaren Felder bis
+   * Reichweite 2, für die zusätzlich ein Standplatz für den Linkkeeper
+   * existiert – ein begehbares Feld, das an Link **und** Storage zugleich
+   * angrenzt (siehe roles/linkkeeper.ts::_findPost). Ohne diesen Platz wäre
+   * der Link nicht leerbar.
+   */
+  candidatesNearStorage(room, storage) {
+    const positions = [];
+    for (let dx = -2; dx <= 2; dx++) {
+      for (let dy = -2; dy <= 2; dy++) {
+        const x = storage.pos.x + dx;
+        const y = storage.pos.y + dy;
+        if (x < 1 || x > 48 || y < 1 || y > 48) continue;
+        const pos = new RoomPosition(x, y, room.name);
+        if (!this.isBuildable(pos, room)) continue;
+        if (!this.hasKeeperPost(pos, storage, room)) continue;
+        positions.push(pos);
+      }
+    }
+    return positions;
+  }
+  /** Gibt es ein Feld, das an `linkPos` und `storage` zugleich angrenzt und begehbar ist? */
+  hasKeeperPost(linkPos, storage, room) {
+    for (let dx = -1; dx <= 1; dx++) {
+      for (let dy = -1; dy <= 1; dy++) {
+        if (dx === 0 && dy === 0) continue;
+        const x = linkPos.x + dx;
+        const y = linkPos.y + dy;
+        if (x < 1 || x > 48 || y < 1 || y > 48) continue;
+        const pos = new RoomPosition(x, y, room.name);
+        if (!pos.isNearTo(storage.pos)) continue;
+        if (!this.isBuildable(pos, room)) continue;
+        return true;
+      }
+    }
+    return false;
+  }
+  /** Alle Felder mit Chebyshev-Abstand `range` genau zu `center`, innerhalb der Raumgrenzen. */
+  positionsAtRange(room, center, range) {
+    const positions = [];
+    for (let dx = -range; dx <= range; dx++) {
+      for (let dy = -range; dy <= range; dy++) {
+        if (Math.max(Math.abs(dx), Math.abs(dy)) !== range) continue;
+        const x = center.x + dx;
+        const y = center.y + dy;
+        if (x < 1 || x > 48 || y < 1 || y > 48) continue;
+        positions.push(new RoomPosition(x, y, room.name));
+      }
+    }
+    return positions;
+  }
+  /** Feld begehbar und unverbaut: kein Wall-Terrain, kein blockierendes Bauwerk oder Baustelle. */
+  isBuildable(pos, room) {
+    if (pos.x < 1 || pos.x > 48 || pos.y < 1 || pos.y > 48) return false;
+    const terrain = room.getTerrain();
+    if ((terrain.get(pos.x, pos.y) & TERRAIN_MASK_WALL) !== 0) return false;
+    const blockedByStructure = pos.lookFor(LOOK_STRUCTURES).some((s) => blockingStructureTypes.includes(s.structureType));
+    if (blockedByStructure) return false;
+    const blockedBySite = pos.lookFor(LOOK_CONSTRUCTION_SITES).some((s) => blockingStructureTypes.includes(s.structureType));
+    return !blockedBySite;
+  }
+  /**
+   * Wählt aus `candidates` das beste Feld: kleinste Summe der Entfernungen zu
+   * den Referenzpositionen gewinnt, bei Gleichstand das Feld mit mehr
+   * begehbaren Nachbarfeldern – ein Link soll keinen Engpass zubauen.
+   */
+  selectBest(candidates, room, controller, storage) {
+    if (candidates.length === 0) return null;
+    const referencePositions = this.referencePositions(room, controller, storage);
+    let best = null;
+    let bestScore = Infinity;
+    let bestNeighbors = -1;
+    for (const candidate of candidates) {
+      const score = this.distanceSum(candidate, referencePositions);
+      const neighbors = this.walkableNeighborCount(candidate, room);
+      if (score < bestScore || score === bestScore && neighbors > bestNeighbors) {
+        best = candidate;
+        bestScore = score;
+        bestNeighbors = neighbors;
+      }
+    }
+    return best;
+  }
+  /**
+   * Referenzpositionen für die Entfernungsbewertung: die sendenden Links des
+   * Raums (weder Controller- noch Storage-Empfänger), ersatzweise die
+   * Quellen, solange noch kein sendender Link existiert.
+   */
+  referencePositions(room, controller, storage) {
+    const sendingLinks = this.sendingLinks(room, controller, storage);
+    if (sendingLinks.length > 0) return sendingLinks.map((link) => link.pos);
+    return room.find(FIND_SOURCES).map((source) => source.pos);
+  }
+  /** Alle gebauten Links des Raums, die weder Controller- noch Storage-Empfänger sind. */
+  sendingLinks(room, controller, storage) {
+    const links = room.find(FIND_MY_STRUCTURES, { filter: (s) => s.structureType === STRUCTURE_LINK });
+    return links.filter((link) => {
+      if (link.pos.getRangeTo(controller.pos) <= 3) return false;
+      if (storage && link.pos.getRangeTo(storage.pos) <= 2) return false;
+      return true;
+    });
+  }
+  distanceSum(pos, targets) {
+    let sum = 0;
+    for (const target of targets) sum += pos.getRangeTo(target);
+    return sum;
+  }
+  walkableNeighborCount(pos, room) {
+    const terrain = room.getTerrain();
+    let count = 0;
+    for (let dx = -1; dx <= 1; dx++) {
+      for (let dy = -1; dy <= 1; dy++) {
+        if (dx === 0 && dy === 0) continue;
+        const x = pos.x + dx;
+        const y = pos.y + dy;
+        if (x < 1 || x > 48 || y < 1 || y > 48) continue;
+        if ((terrain.get(x, y) & TERRAIN_MASK_WALL) === 0) count++;
+      }
+    }
+    return count;
+  }
+  /** Legt die Baustelle auf `pos` an und meldet das Ergebnis. */
+  build(room, pos, label) {
+    const result = pos.createConstructionSite(STRUCTURE_LINK);
+    if (result !== OK) return false;
+    console.log("[" + room.name + "] Linkbaustelle (" + label + "-Link) angelegt bei " + pos.x + "," + pos.y);
+    return true;
+  }
+};
+function planReceiverLinks(onlyRoom) {
+  for (const roomName in bot.room) {
+    if (onlyRoom && roomName !== onlyRoom) continue;
+    new LinkPlanner(roomName).plan();
+  }
+}
+
+// src/controller/links.ts
+var SEND_MIN = LINK_CAPACITY / 4;
+var LinkNetwork = class {
+  constructor(roomName) {
+    this.roomName = roomName;
+    __publicField(this, "list");
+    this.list = new LinkList(roomName);
+  }
+  /** Ein Durchgang: wählt Sender und Empfänger und sendet. */
+  send() {
+    var _a;
+    if (!usesLinks(this.roomName)) {
+      return;
+    }
+    const room = Game.rooms[this.roomName];
+    if (!this.list.hasList) {
+      if (this.list.isRoomKnown) {
+        this.list.discover(room);
+      }
+      return;
+    }
+    const senders = this.readySenders();
+    if (senders.length === 0) {
+      return;
+    }
+    const receivers = this.receiversByPriority(room);
+    for (const sender of senders) {
+      const receiver = receivers.shift();
+      if (!receiver) {
+        return;
+      }
+      const amount = Math.min(sender.store[RESOURCE_ENERGY], (_a = receiver.store.getFreeCapacity(RESOURCE_ENERGY)) != null ? _a : 0);
+      if (amount < SEND_MIN) {
+        continue;
+      }
+      sender.transferEnergy(receiver, amount);
+    }
+  }
+  /** Sendende Links mit abgelaufenem Cooldown und ausreichend Ladung. */
+  readySenders() {
+    return this.list.senders().filter((link) => link.cooldown === 0 && link.store[RESOURCE_ENERGY] >= SEND_MIN);
+  }
+  /**
+   * Empfänger nach Vorrang, gefiltert auf ausreichend freien Platz.
+   *
+   * Der Vorrang kippt bei RCL8: darunter bekommt der Controller-Link zuerst
+   * (Upgraden bringt dort noch RCL-Fortschritt), ab RCL8 der Storage-Link
+   * (dort zahlt Upgraden nur noch auf GCL ein). Empfänger dürfen dabei
+   * teilweise befüllt werden — wer nur ganze Ladungen annimmt, bekäme als
+   * halb gefüllter Empfänger nie etwas ab.
+   */
+  receiversByPriority(room) {
+    var _a, _b;
+    const controllerFirst = ((_b = (_a = room.controller) == null ? void 0 : _a.level) != null ? _b : 0) < 8;
+    const ordered = controllerFirst ? [this.list.controllerLink, this.list.spawnLink] : [this.list.spawnLink, this.list.controllerLink];
+    return ordered.filter(
+      (link) => {
+        var _a2;
+        return link !== null && ((_a2 = link.store.getFreeCapacity(RESOURCE_ENERGY)) != null ? _a2 : 0) >= SEND_MIN;
+      }
+    );
+  }
+};
+function sendAll() {
+  for (const roomName in bot.room) {
+    new LinkNetwork(roomName).send();
+  }
+}
+function discoverAll() {
+  for (const roomName in bot.room) {
+    if (!usesLinks(roomName)) {
+      continue;
+    }
+    new LinkList(roomName).discover(Game.rooms[roomName]);
+  }
+}
+
 // src/controller/rebuild.ts
 var botGlobal2 = global;
 var botMemory2 = Memory;
-function rebuildRoads() {
+function rebuildRoads(onlyRoom) {
   var _a, _b;
   for (const name in botGlobal2.room) {
+    if (onlyRoom && name !== onlyRoom) continue;
     const config = botGlobal2.room[name];
     const room = Game.rooms[name];
     if (!(config == null ? void 0 : config.saveRoads) || !room || ((_a = room.controller) == null ? void 0 : _a.level) === void 0 || room.controller.level < 7) {
@@ -702,7 +1110,194 @@ function rebuildRoads() {
   }
 }
 
+// src/creep/containers.ts
+var ContainerList = class {
+  constructor(roomName) {
+    this.roomName = roomName;
+  }
+  get roomMemory() {
+    return Memory.rooms[this.roomName];
+  }
+  /** Kennt der Bot den Raum überhaupt? Ohne Raum-Memory gibt es nichts zu tun. */
+  get isRoomKnown() {
+    return this.roomMemory !== void 0;
+  }
+  /**
+   * Liegt überhaupt eine Liste vor — auch eine leere?
+   *
+   * Der Unterschied zu `hasEntries` ist keine Spitzfindigkeit: die Ablieferseite
+   * behandelt eine **leere** Liste als „keine Container da" und erhebt sie nicht
+   * neu, die Beschaffungsseite erhebt sie neu. Beides war schon so und bleibt so.
+   */
+  get hasList() {
+    var _a;
+    return ((_a = this.roomMemory) == null ? void 0 : _a.container) !== void 0;
+  }
+  /** Liegt eine nicht leere Liste vor? */
+  get hasEntries() {
+    var _a;
+    const ids = (_a = this.roomMemory) == null ? void 0 : _a.container;
+    return ids !== void 0 && ids.length > 0;
+  }
+  /** Verwirft die Liste; sie wird dann neu erhoben. */
+  forget() {
+    const memory = this.roomMemory;
+    if (memory) {
+      delete memory.container;
+    }
+  }
+  /**
+   * Erhebt die Container des Raums und schreibt die Liste ins Memory.
+   * Liefert `true`, wenn es welche gibt — der Aufrufer beendet damit seinen Tick,
+   * denn geholt oder abgeliefert wurde in diesem Durchgang noch nichts.
+   */
+  discover(room) {
+    const memory = this.roomMemory;
+    if (!memory) {
+      return false;
+    }
+    const containers = room.find(FIND_STRUCTURES, {
+      filter: (structure) => structure.structureType === STRUCTURE_CONTAINER
+    });
+    memory.container = containers.map((container) => container.id);
+    return containers.length > 0;
+  }
+  /**
+   * Der nächstgelegene Container, der `accepts` erfüllt — oder `null`.
+   *
+   * Verglichen wird die **quadrierte** Entfernung: für die Reihenfolge ist das
+   * dasselbe wie die Wurzel, spart aber je Kandidat eine Wurzelberechnung.
+   */
+  nearest(creep, accepts, options = {}) {
+    var _a;
+    const ids = (_a = this.roomMemory) == null ? void 0 : _a.container;
+    if (!ids) {
+      return null;
+    }
+    let nearest = null;
+    let nearestDistance = Infinity;
+    for (const id of ids) {
+      const container = Game.getObjectById(id);
+      if (!container) {
+        if (options.forgetListOnStaleId) {
+          this.forget();
+        }
+        continue;
+      }
+      if (!accepts(container)) {
+        continue;
+      }
+      const dx = container.pos.x - creep.pos.x;
+      const dy = container.pos.y - creep.pos.y;
+      const distance = dx * dx + dy * dy;
+      if (distance < nearestDistance) {
+        nearestDistance = distance;
+        nearest = container;
+      }
+    }
+    return nearest;
+  }
+};
+
+// src/creep/path-memory.ts
+var STUCK_TICKS = 3;
+var PathMemory = class {
+  constructor(memory) {
+    __publicField(this, "memory");
+    this.memory = memory;
+  }
+  /** Der gespeicherte Weg, ohne Rücksicht auf sein Ziel. */
+  get path() {
+    return this.memory.path;
+  }
+  /** Ticks ohne Ortswechsel. */
+  get stuckTicks() {
+    var _a;
+    return (_a = this.memory.dontMove) != null ? _a : 0;
+  }
+  /**
+   * Steht der Creep lange genug still, dass ein Weg um andere Creeps herum
+   * gesucht werden sollte?
+   */
+  get isStuck() {
+    return this.stuckTicks > STUCK_TICKS;
+  }
+  /** Verwirft den gespeicherten Weg, **behält** die Stauerkennung. */
+  forgetPath() {
+    delete this.memory.path;
+    delete this.memory.pathTarget;
+  }
+  /** Verwirft Weg **und** Stauerkennung. */
+  clear() {
+    this.forgetPath();
+    delete this.memory.dontMove;
+    delete this.memory.lastPos;
+  }
+  /**
+   * Der gespeicherte Weg, falls er zu `target` gehört — sonst `undefined`.
+   *
+   * Zum Ziel gehört auch der Raumname: derselbe Punkt in einem anderen Raum ist
+   * ein anderes Ziel. Ein `pathTarget` ohne Raumnamen gilt als unbrauchbar.
+   */
+  pathTo(target) {
+    const stored = this.memory.pathTarget;
+    if (!this.memory.path || !stored || !stored.roomName) {
+      return void 0;
+    }
+    const sameTarget = stored.x === target.x && stored.y === target.y && stored.roomName === target.roomName;
+    return sameTarget ? this.memory.path : void 0;
+  }
+  /** Merkt den Weg, ohne ein Ziel zu hinterlegen. */
+  rememberPath(serializedPath) {
+    this.memory.path = serializedPath;
+  }
+  /** Merkt Weg und Ziel — der reguläre Fall. */
+  rememberPathTo(serializedPath, target) {
+    this.memory.path = serializedPath;
+    this.memory.pathTarget = { x: target.x, y: target.y, roomName: target.roomName };
+  }
+  /** Setzt den Stauzähler zurück, ohne die letzte Position zu vergessen. */
+  resetStuck() {
+    this.memory.dontMove = 0;
+  }
+  /**
+   * Führt die Stauerkennung einen Tick weiter: steht der Creep noch auf der
+   * gemerkten Position, steigt der Zähler; sonst wird die neue Position gemerkt
+   * und der Zähler beginnt neu.
+   */
+  trackPosition(pos) {
+    const last = this.memory.lastPos;
+    if (last && last.x === pos.x && last.y === pos.y) {
+      this.memory.dontMove = this.stuckTicks + 1;
+      return;
+    }
+    this.memory.lastPos = { x: pos.x, y: pos.y };
+    this.memory.dontMove = 0;
+  }
+};
+
 // src/creep/goto.ts
+function searchRoute(creep, target, ignoreCreeps) {
+  const steps = creep.pos.findPathTo(target, { ignoreCreeps });
+  return { serialized: Room.serializePath(steps), steps };
+}
+function drawRemainingPath(creep, route) {
+  var _a;
+  const steps = (_a = route.steps) != null ? _a : Room.deserializePath(route.serialized);
+  const currentPos = creep.pos;
+  const index = steps.findIndex((pos) => pos.x === currentPos.x && pos.y === currentPos.y);
+  if (index <= 0) {
+    return;
+  }
+  const visual = new RoomVisual(creep.room.name);
+  for (let i = index + 1; i < steps.length; i++) {
+    visual.circle(
+      steps[i].x,
+      steps[i].y,
+      { fill: "transparent", radius: 0.25, stroke: "red" }
+    );
+  }
+}
 function goToMyHome(creep) {
   if (creep.memory.home && creep.room.name !== creep.memory.home) {
     var room = new RoomPosition(25, 25, creep.memory.home);
@@ -715,7 +1310,6 @@ function goToRoomFlag(creep) {
     const flags = creep.room.find(FIND_FLAGS);
     if (flags.length > 0 && !creep.pos.inRangeTo(flags[0].pos, 2)) {
       return moveByMemory(creep, flags[0].pos);
-      ;
     }
   }
   return false;
@@ -728,73 +1322,40 @@ function goToWorkroom(creep) {
   return false;
 }
 function moveByMemory(creep, target) {
+  const cache = new PathMemory(creep.memory);
   if (creep.pos.isEqualTo(target)) {
-    delete creep.memory.path;
-    delete creep.memory.pathTarget;
-    delete creep.memory.dontMove;
-    delete creep.memory.lastPos;
+    cache.clear();
     return false;
   }
-  var deserializePath;
-  var serializedPath;
-  if (creep.memory.dontMove > 3) {
-    deserializePath = creep.pos.findPathTo(target, { ignoreCreeps: false });
-    serializedPath = Room.serializePath(deserializePath);
-    creep.memory.path = serializedPath;
-    creep.memory.dontMove = 0;
-    creep.moveByPath(serializedPath);
+  if (cache.isStuck) {
+    const route2 = searchRoute(creep, target, false);
+    cache.rememberPath(route2.serialized);
+    cache.resetStuck();
+    creep.moveByPath(route2.serialized);
     return true;
   }
-  var t = creep.memory.pathTarget;
-  var p = creep.memory.path;
-  if (p && t && t.roomName && target.isEqualTo(new RoomPosition(t.x, t.y, t.roomName))) {
-    serializedPath = p;
+  const known = cache.pathTo(target);
+  let route;
+  if (known !== void 0) {
+    route = { serialized: known };
   } else {
-    deserializePath = creep.pos.findPathTo(target, { ignoreCreeps: true });
-    serializedPath = Room.serializePath(deserializePath);
-    creep.memory.path = serializedPath;
-    creep.memory.pathTarget = {};
-    creep.memory.pathTarget.x = target.x;
-    creep.memory.pathTarget.y = target.y;
-    creep.memory.pathTarget.roomName = target.roomName;
+    route = searchRoute(creep, target, true);
+    cache.rememberPathTo(route.serialized, target);
   }
-  var state2 = creep.moveByPath(serializedPath);
+  const state2 = creep.moveByPath(route.serialized);
   if (bot.const.showPaths) {
-    if (!deserializePath)
-      deserializePath = Room.deserializePath(serializedPath);
-    const currentPos = creep.pos;
-    const index = deserializePath.findIndex((pos) => pos.x === currentPos.x && pos.y === currentPos.y);
-    if (index > 0) {
-      const visual = new RoomVisual(creep.room.name);
-      for (let i = index + 1; i < deserializePath.length; i++) {
-        visual.circle(
-          deserializePath[i].x,
-          deserializePath[i].y,
-          { fill: "transparent", radius: 0.25, stroke: "red" }
-        );
-      }
-    }
+    drawRemainingPath(creep, route);
   }
   switch (state2) {
     case OK:
     case ERR_TIRED: {
-      if (creep.memory.lastPos && creep.memory.lastPos.x == creep.pos.x && creep.memory.lastPos.y == creep.pos.y) {
-        creep.memory.dontMove = (creep.memory.dontMove || 0) + 1;
-      } else {
-        creep.memory.lastPos = {};
-        creep.memory.lastPos.x = creep.pos.x;
-        creep.memory.lastPos.y = creep.pos.y;
-        creep.memory.dontMove = 0;
-      }
+      cache.trackPosition(creep.pos);
       return true;
     }
     case ERR_INVALID_ARGS:
     case ERR_NO_BODYPART:
     case ERR_NOT_FOUND: {
-      delete creep.memory.path;
-      delete creep.memory.pathTarget;
-      delete creep.memory.dontMove;
-      delete creep.memory.lastPos;
+      cache.clear();
       return true;
     }
     default:
@@ -802,48 +1363,133 @@ function moveByMemory(creep, target) {
   }
 }
 
-// src/creep/transport.ts
-function _Transfer(creep, target, type) {
-  if (target) {
-    switch (creep.transfer(target, type)) {
-      case ERR_NOT_IN_RANGE:
-        moveByMemory(creep, target.pos);
-        return true;
-      case OK:
-        return true;
-      default:
-        return false;
-    }
+// src/creep/target.ts
+var RememberedTarget = class {
+  constructor(memory, key) {
+    this.key = key;
+    __publicField(this, "memory");
+    this.memory = memory;
   }
-  return false;
+  /**
+   * Ist überhaupt ein Ziel gemerkt?
+   *
+   * Der Unterschied zu `resolve()` ist wichtig: ist ein Ziel gemerkt, das es
+   * nicht mehr gibt, wird **nicht** ersatzweise gesucht. Der Creep vergisst es
+   * und versucht es im nächsten Tick neu — genau so verhielt sich der Code schon
+   * vorher, und es begrenzt die Suchen je Tick.
+   */
+  get isRemembered() {
+    return Boolean(this.memory[this.key]);
+  }
+  /** Das gemerkte Ziel, oder `null` wenn keines gemerkt ist oder es nicht mehr existiert. */
+  resolve() {
+    const id = this.memory[this.key];
+    if (!id) {
+      return null;
+    }
+    return Game.getObjectById(id);
+  }
+  /** Merkt das Ziel für die nächsten Ticks. */
+  remember(target) {
+    this.memory[this.key] = target.id;
+  }
+  /** Vergisst das Ziel. */
+  forget() {
+    delete this.memory[this.key];
+  }
+};
+function collectFrom(creep, target, remembered, state2) {
+  switch (state2) {
+    case ERR_NOT_IN_RANGE:
+      moveByMemory(creep, target.pos);
+      remembered.remember(target);
+      return true;
+    case OK:
+      remembered.remember(target);
+      creep.memory.fromId = target.id;
+      return true;
+    default:
+      remembered.forget();
+      return false;
+  }
+}
+function transferTo(creep, target, type) {
+  if (!target) {
+    return false;
+  }
+  switch (creep.transfer(target, type)) {
+    case ERR_NOT_IN_RANGE:
+      moveByMemory(creep, target.pos);
+      return true;
+    case OK:
+      return true;
+    default:
+      return false;
+  }
+}
+function deliverTo(creep, target, remembered, type) {
+  if (!target) {
+    remembered.forget();
+    return false;
+  }
+  switch (creep.transfer(target, type)) {
+    case ERR_NOT_IN_RANGE:
+      moveByMemory(creep, target.pos);
+      return true;
+    case OK:
+      remembered.forget();
+      return true;
+    default:
+      remembered.forget();
+      return false;
+  }
+}
+function withdrawFrom(creep, target, type) {
+  switch (creep.withdraw(target, type)) {
+    case ERR_NOT_IN_RANGE:
+      moveByMemory(creep, target.pos);
+      return true;
+    case OK:
+      creep.memory.fromId = target.id;
+      return true;
+    default:
+      return false;
+  }
+}
+
+// src/creep/transport.ts
+function findDeliveryTarget(creep, remembered, types, accepts) {
+  if (remembered.isRemembered) {
+    const known = remembered.resolve();
+    if (known && accepts(known) && known.id != creep.memory.fromId) {
+      return known;
+    }
+    remembered.forget();
+  }
+  const found = creep.pos.findClosestByPath(FIND_MY_STRUCTURES, {
+    filter: (structure) => types.includes(structure.structureType) && accepts(structure) && structure.id != creep.memory.fromId
+  });
+  if (found) {
+    remembered.remember(found);
+  }
+  return found;
 }
 function TransportToHomeContainer(creep, type, mul) {
-  var container;
   if (!mul) mul = 0.5;
-  if (creep.memory.useContainer) {
-    container = Game.getObjectById(creep.memory.useContainer);
-  } else if (Memory.rooms[creep.room.name] && Memory.rooms[creep.room.name].container) {
-    var distance = Infinity;
-    var minCap = creep.store.getUsedCapacity() * mul;
-    for (var id of Memory.rooms[creep.room.name].container) {
-      var c = Game.getObjectById(id);
-      if (c && c.store.getFreeCapacity(type) > minCap && c.id != bot.room[creep.room.name].mineralContainerId && c.id != creep.memory.fromId) {
-        var d = Math.sqrt(Math.pow(creep.pos.x - c.pos.x, 2) + Math.pow(creep.pos.y - c.pos.y, 2));
-        if (d < distance) {
-          distance = d;
-          container = c;
-          creep.memory.useContainer = container.id;
-        }
-      }
+  const remembered = new RememberedTarget(creep.memory, "useContainer");
+  const containers = new ContainerList(creep.room.name);
+  const minFree = creep.store.getUsedCapacity() * mul;
+  const mineralContainerId = bot.room[creep.room.name].mineralContainerId;
+  let container = null;
+  if (remembered.isRemembered) {
+    container = remembered.resolve();
+  } else if (containers.hasList) {
+    container = containers.nearest(creep, (candidate) => candidate.store.getFreeCapacity(type) > minFree && candidate.id != mineralContainerId && candidate.id != creep.memory.fromId);
+    if (container) {
+      remembered.remember(container);
     }
-  } else if (Memory.rooms[creep.room.name] && !Memory.rooms[creep.room.name].container) {
-    var containers = creep.room.find(FIND_STRUCTURES, { filter: (structure) => {
-      return structure.structureType === STRUCTURE_CONTAINER;
-    } });
-    Memory.rooms[creep.room.name].container = containers.map((c2) => {
-      return c2.id;
-    });
-    return containers.length > 0;
+  } else if (containers.isRoomKnown) {
+    return containers.discover(creep.room);
   }
   if (container && container.store.getFreeCapacity() > 0) {
     switch (creep.transfer(container, type)) {
@@ -851,23 +1497,24 @@ function TransportToHomeContainer(creep, type, mul) {
         moveByMemory(creep, container.pos);
         return true;
       case OK:
-        delete creep.memory.useContainer;
+        remembered.forget();
         return true;
       default:
         return false;
     }
   }
-  delete creep.memory.useContainer;
+  remembered.forget();
   return false;
 }
 function TransportToHomeTerminal(creep) {
   if (!creep.room.controller.my || creep.room.controller.level < 6)
     return false;
+  const roomMemory = Memory.rooms[creep.memory.workroom];
   var terminal;
-  if (Memory.rooms[creep.memory.workroom].terminalId) {
-    terminal = Game.getObjectById(Memory.rooms[creep.memory.workroom].terminalId);
+  if (roomMemory.terminalId) {
+    terminal = Game.getObjectById(roomMemory.terminalId);
     if (!terminal) {
-      delete Memory.rooms[creep.memory.workroom].terminalId;
+      delete roomMemory.terminalId;
       return false;
     }
   } else {
@@ -880,46 +1527,39 @@ function TransportToHomeTerminal(creep) {
       }
     );
     if (target.length > 0) {
-      Memory.rooms[creep.memory.workroom].terminalId = target[0].id;
+      roomMemory.terminalId = target[0].id;
       terminal = target[0];
     }
   }
   if (terminal && terminal.store.getFreeCapacity() > 0) {
-    var t = false;
+    var delivered = false;
     for (var resourceType in creep.store) {
       if (resourceType == RESOURCE_ENERGY && terminal.store[RESOURCE_ENERGY] > 1e5)
         continue;
-      if (_Transfer(creep, terminal, resourceType) && !t) {
-        t = true;
+      if (transferTo(creep, terminal, resourceType)) {
+        delivered = true;
       }
     }
-    return t;
+    return delivered;
   }
   return false;
 }
 function TransportToHomeLab(creep, type) {
-  var target = creep.pos.findClosestByPath(
-    FIND_MY_STRUCTURES,
-    {
-      filter: (structure) => {
-        return structure.structureType === STRUCTURE_LAB && structure.store.getFreeCapacity([type]) > 0 && structure.id != creep.memory.fromId;
-      }
-    }
-  );
-  return _Transfer(creep, target, type);
+  const remembered = new RememberedTarget(creep.memory, "useLab");
+  const target = findDeliveryTarget(creep, remembered, [STRUCTURE_LAB], (structure) => structure.store.getFreeCapacity([type]) > 0);
+  return deliverTo(creep, target, remembered, type);
 }
 function TransportEnergyToHomeSpawn(creep) {
   if (creep.memory.home != creep.room.name || creep.store[RESOURCE_ENERGY] == 0)
     return false;
-  var target = creep.pos.findClosestByPath(
-    FIND_MY_STRUCTURES,
-    {
-      filter: (structure) => {
-        return (structure.structureType === STRUCTURE_SPAWN || structure.structureType === STRUCTURE_EXTENSION) && structure.store.getFreeCapacity([RESOURCE_ENERGY]) > 0 && structure.id != creep.memory.fromId;
-      }
-    }
+  const remembered = new RememberedTarget(creep.memory, "useSupply");
+  const target = findDeliveryTarget(
+    creep,
+    remembered,
+    [STRUCTURE_SPAWN, STRUCTURE_EXTENSION],
+    (structure) => structure.store.getFreeCapacity([RESOURCE_ENERGY]) > 0
   );
-  return _Transfer(creep, target, RESOURCE_ENERGY);
+  return deliverTo(creep, target, remembered, RESOURCE_ENERGY);
 }
 function TransportEnergyToHomeTower(creep) {
   if (creep.store[RESOURCE_ENERGY] == 0)
@@ -932,11 +1572,11 @@ function TransportEnergyToHomeTower(creep) {
       }
     }
   );
-  if (towers.length > 0) {
-    towers.sort((a, b) => b.store.getFreeCapacity(RESOURCE_ENERGY) - a.store.getFreeCapacity(RESOURCE_ENERGY));
-    return _Transfer(creep, towers[0], RESOURCE_ENERGY);
+  if (towers.length === 0) {
+    return false;
   }
-  return false;
+  towers.sort((a, b) => b.store.getFreeCapacity(RESOURCE_ENERGY) - a.store.getFreeCapacity(RESOURCE_ENERGY));
+  return transferTo(creep, towers[0], RESOURCE_ENERGY);
 }
 function TransportToHomeStorage(creep) {
   var target = creep.room.storage;
@@ -945,7 +1585,7 @@ function TransportToHomeStorage(creep) {
   if (creep.memory.fromId == target.id)
     return false;
   for (var resourceType in creep.store) {
-    _Transfer(creep, target, resourceType);
+    transferTo(creep, target, resourceType);
   }
   return true;
 }
@@ -967,260 +1607,146 @@ function harvest(creep) {
   if (harvestRoomEnergySource(creep))
     return;
 }
+function rememberedOrSearched(remembered, search) {
+  return remembered.isRemembered ? remembered.resolve() : search();
+}
 function harvestRoomDrops(creep, type) {
-  var drop;
-  if (creep.memory.useRoomDrop) {
-    drop = Game.getObjectById(creep.memory.useRoomDrop);
-  } else {
-    drop = creep.pos.findClosestByPath(FIND_DROPPED_RESOURCES, { filter: (d) => d.amount > 100 });
+  const remembered = new RememberedTarget(creep.memory, "useRoomDrop");
+  const drop = rememberedOrSearched(remembered, () => creep.pos.findClosestByPath(FIND_DROPPED_RESOURCES, { filter: (d) => d.amount > 100 }));
+  if (!drop) {
+    remembered.forget();
+    return false;
   }
-  if (drop) {
-    switch (creep.pickup(drop)) {
-      case ERR_NOT_IN_RANGE:
-        moveByMemory(creep, drop.pos);
-        creep.memory.useRoomDrop = drop.id;
-        return true;
-      case OK:
-        creep.memory.useRoomDrop = drop.id;
-        creep.memory.fromId = drop.id;
-        return true;
-      case ERR_INVALID_TARGET:
-      default:
-        delete creep.memory.useRoomDrop;
-        return false;
-    }
-  }
-  delete creep.memory.useRoomDrop;
-  return false;
+  return collectFrom(creep, drop, remembered, creep.pickup(drop));
 }
 function harvestRoomTombstones(creep, type) {
-  var tombstone;
-  if (creep.memory.useTombstone) {
-    tombstone = Game.getObjectById(creep.memory.useTombstone);
-  } else {
-    tombstone = creep.pos.findClosestByPath(FIND_TOMBSTONES, { filter: (d) => d.store.getUsedCapacity(type) > 100 });
+  const remembered = new RememberedTarget(creep.memory, "useTombstone");
+  const tombstone = rememberedOrSearched(remembered, () => creep.pos.findClosestByPath(
+    FIND_TOMBSTONES,
+    { filter: (d) => d.store.getUsedCapacity(type) > 100 }
+  ));
+  if (!tombstone) {
+    remembered.forget();
+    return false;
   }
-  if (tombstone) {
-    switch (creep.withdraw(tombstone, type)) {
-      case ERR_NOT_IN_RANGE:
-        creep.memory.useTombstone = tombstone.id;
-        moveByMemory(creep, tombstone.pos);
-        return true;
-      case OK:
-        creep.memory.useTombstone = tombstone.id;
-        creep.memory.fromId = tombstone.id;
-        return true;
-      case ERR_INVALID_TARGET:
-      default:
-        delete creep.memory.useTombstone;
-        return false;
-    }
-  }
-  delete creep.memory.useTombstone;
-  return false;
+  return collectFrom(creep, tombstone, remembered, creep.withdraw(tombstone, type));
 }
 function harvestCompleteRoomTombstones(creep) {
-  var tombstone;
-  if (creep.memory.useTombstone) {
-    tombstone = Game.getObjectById(creep.memory.useTombstone);
-  } else {
-    tombstone = creep.pos.findClosestByPath(FIND_TOMBSTONES, { filter: (d) => d.store.getUsedCapacity() > 100 });
+  const remembered = new RememberedTarget(creep.memory, "useTombstone");
+  const tombstone = rememberedOrSearched(remembered, () => creep.pos.findClosestByPath(FIND_TOMBSTONES, { filter: (d) => d.store.getUsedCapacity() > 100 }));
+  if (!tombstone) {
+    remembered.forget();
+    return false;
   }
-  if (tombstone) {
-    for (var resourceType in tombstone.store) {
-      switch (creep.withdraw(tombstone, resourceType)) {
-        case ERR_NOT_IN_RANGE:
-          moveByMemory(creep, tombstone.pos);
-          creep.memory.useTombstone = tombstone.id;
-          return true;
-        case OK:
-          creep.memory.useTombstone = tombstone.id;
-          creep.memory.fromId = tombstone.id;
-          return true;
-        case ERR_INVALID_TARGET:
-        default:
-          delete creep.memory.useTombstone;
-          return false;
-      }
-    }
+  const resourceType = Object.keys(tombstone.store)[0];
+  if (resourceType === void 0) {
+    remembered.forget();
+    return false;
   }
-  delete creep.memory.useTombstone;
-  return false;
+  return collectFrom(
+    creep,
+    tombstone,
+    remembered,
+    creep.withdraw(tombstone, resourceType)
+  );
 }
 function harvestRoomRuins(creep, type) {
-  var ruin;
-  if (creep.memory.useRuin) {
-    ruin = Game.getObjectById(creep.memory.useRuin);
-  } else {
-    ruin = creep.pos.findClosestByPath(FIND_RUINS, { filter: (d) => d.store.getUsedCapacity(type) > 50 });
+  const remembered = new RememberedTarget(creep.memory, "useRuin");
+  const ruin = rememberedOrSearched(remembered, () => creep.pos.findClosestByPath(
+    FIND_RUINS,
+    { filter: (d) => d.store.getUsedCapacity(type) > 50 }
+  ));
+  if (!ruin) {
+    remembered.forget();
+    return false;
   }
-  if (ruin) {
-    switch (creep.withdraw(ruin, type)) {
-      case ERR_NOT_IN_RANGE:
-        moveByMemory(creep, ruin.pos);
-        creep.memory.useRuin = ruin.id;
-        return true;
-      case OK:
-        creep.memory.useRuin = ruin.id;
-        creep.memory.fromId = ruin.id;
-        return true;
-      case ERR_INVALID_TARGET:
-      default:
-        delete creep.memory.useRuin;
-        return false;
-    }
-  }
-  delete creep.memory.useRuin;
-  return false;
+  return collectFrom(creep, ruin, remembered, creep.withdraw(ruin, type));
 }
 function harvestRoomStorage(creep, type) {
-  let storage = creep.room.storage;
-  let min = type === "energy" ? creep.store.getCapacity() * 0.5 : 50;
+  const storage = creep.room.storage;
+  const min = type === "energy" ? creep.store.getCapacity() * 0.5 : 50;
   if (storage && storage.store[type] > min) {
-    var state2 = creep.withdraw(storage, type);
-    switch (state2) {
-      case ERR_NOT_IN_RANGE:
-        moveByMemory(creep, storage.pos);
-        return true;
-      case OK:
-        creep.memory.fromId = storage.id;
-        return true;
-      default:
-        return false;
-    }
+    return withdrawFrom(creep, storage, type);
   }
   return false;
 }
 function harvestRoomContainer(creep, type, mul) {
   if (!mul) mul = 0.5;
-  var container;
-  if (creep.memory.useContainer) {
-    container = Game.getObjectById(creep.memory.useContainer);
-  } else if (Memory.rooms[creep.room.name] && Memory.rooms[creep.room.name].container && Memory.rooms[creep.room.name].container.length > 0) {
-    var distance = Infinity;
-    var minCap = creep.store.getFreeCapacity() * mul;
-    for (var id of Memory.rooms[creep.room.name].container) {
-      var c = Game.getObjectById(id);
-      if (!c) {
-        delete Memory.rooms[creep.room.name].container;
-      }
-      if (c && c.store.getUsedCapacity(type) > minCap) {
-        var d = Math.sqrt(Math.pow(c.pos.x - creep.pos.x, 2) + Math.pow(c.pos.y - creep.pos.y, 2));
-        if (d < distance) {
-          distance = d;
-          container = c;
-          creep.memory.useContainer = c.id;
-        }
-      }
+  const remembered = new RememberedTarget(creep.memory, "useContainer");
+  const containers = new ContainerList(creep.room.name);
+  const minAmount = creep.store.getFreeCapacity() * mul;
+  let container = null;
+  if (remembered.isRemembered) {
+    container = remembered.resolve();
+  } else if (containers.hasEntries) {
+    container = containers.nearest(
+      creep,
+      (candidate) => candidate.store.getUsedCapacity(type) > minAmount,
+      { forgetListOnStaleId: true }
+    );
+    if (container) {
+      remembered.remember(container);
     }
-  } else if (Memory.rooms[creep.room.name] && (!Memory.rooms[creep.room.name].container || Memory.rooms[creep.room.name].container && Memory.rooms[creep.room.name].container.length == 0)) {
-    var containers = creep.room.find(FIND_STRUCTURES, { filter: (structure) => {
-      return structure.structureType === STRUCTURE_CONTAINER;
-    } });
-    Memory.rooms[creep.room.name].container = containers.map((c2) => {
-      return c2.id;
-    });
-    return containers.length > 0;
+  } else if (containers.isRoomKnown) {
+    return containers.discover(creep.room);
   }
-  if (container && container.store.getUsedCapacity(type) > creep.store.getFreeCapacity() * mul) {
-    switch (creep.withdraw(container, type)) {
-      case ERR_NOT_IN_RANGE:
-        moveByMemory(creep, container.pos);
-        return true;
-      case OK:
-        creep.memory.fromId = container.id;
-        return true;
-      default:
-        delete creep.memory.useContainer;
-        return false;
+  if (container && container.store.getUsedCapacity(type) > minAmount) {
+    if (withdrawFrom(creep, container, type)) {
+      return true;
     }
   }
-  delete creep.memory.useContainer;
+  remembered.forget();
   return false;
 }
 function harvestControllerLink(creep, type) {
-  if (creep.memory.workroom != creep.room.name || !bot.room[creep.memory.workroom].controllerLink || !creep.room.controller.my || creep.room.controller.level < 5)
+  if (creep.memory.workroom != creep.room.name || !creep.room.controller.my || creep.room.controller.level < 5)
     return false;
-  var link = Game.getObjectById(bot.room[creep.memory.workroom].controllerLink);
+  var link = new LinkList(creep.memory.workroom).controllerLink;
   if (link && link.store[type] > 100) {
-    switch (creep.withdraw(link, type)) {
-      case ERR_NOT_IN_RANGE:
-        moveByMemory(creep, link.pos);
-        return true;
-      case OK:
-        creep.memory.fromId = link.id;
-        return true;
-      default:
-        return false;
-    }
-  } else {
-    creep.memory.noLink = true;
+    return withdrawFrom(creep, link, type);
   }
+  creep.memory.noLink = true;
   return false;
 }
 function harvestMyContainer(creep, type) {
   if (creep.memory.workroom != creep.room.name || creep.memory.container == "")
     return false;
   var container = Game.getObjectById(creep.memory.container);
-  if (container) {
-    if (container.store[type] < 100) {
-      return false;
-    }
-    switch (creep.withdraw(container, type)) {
-      case ERR_NOT_IN_RANGE:
-        moveByMemory(creep, container.pos);
-        return true;
-      case OK:
-        creep.memory.fromId = container.id;
-        return true;
-      default:
-        return false;
-    }
+  if (!container || container.store[type] < 100) {
+    return false;
   }
-  return false;
+  return withdrawFrom(creep, container, type);
 }
 function harvestNotfall(creep) {
   var notfall = creep.room.find(FIND_STRUCTURES, { filter: (structure) => {
     return (structure.structureType === STRUCTURE_LINK || structure.structureType === STRUCTURE_LAB || structure.structureType === STRUCTURE_NUKER || structure.structureType == STRUCTURE_TOWER) && structure.store[RESOURCE_ENERGY] > 0;
   } });
-  if (notfall.length > 0) {
-    notfall.sort(function(a, b) {
-      return b.store[RESOURCE_ENERGY] - a.store[RESOURCE_ENERGY];
-    });
-    switch (creep.withdraw(notfall[0], RESOURCE_ENERGY)) {
-      case ERR_NOT_IN_RANGE:
-        moveByMemory(creep, notfall[0].pos);
-        return true;
-      case OK:
-        creep.memory.fromId = notfall[0].id;
-        return true;
-      default:
-        return false;
-    }
+  if (notfall.length === 0) {
+    return false;
   }
-  return false;
+  notfall.sort(function(a, b) {
+    return b.store[RESOURCE_ENERGY] - a.store[RESOURCE_ENERGY];
+  });
+  return withdrawFrom(creep, notfall[0], RESOURCE_ENERGY);
 }
 function harvestRoomEnergySource(creep) {
-  if (canHarvestEnergy(creep)) {
-    var source;
-    if (creep.memory.useRoomSource) {
-      source = Game.getObjectById(creep.memory.useRoomSource);
-    } else {
-      source = creep.pos.findClosestByRange(FIND_SOURCES_ACTIVE);
-    }
-    if (source && source.energy > 100) {
-      if (creep.harvest(source) === ERR_NOT_IN_RANGE) {
-        if (creep.moveTo(source) == ERR_NO_PATH) {
-          delete creep.memory.useRoomSource;
-          return false;
-        }
-      }
-      creep.memory.useRoomSource = source.id;
-      creep.memory.fromId = source.id;
-      return true;
-    }
-    delete creep.memory.useRoomSource;
+  if (!canHarvestEnergy(creep)) {
+    return false;
   }
+  const remembered = new RememberedTarget(creep.memory, "useRoomSource");
+  const source = rememberedOrSearched(remembered, () => creep.pos.findClosestByRange(FIND_SOURCES_ACTIVE));
+  if (source && source.energy > 100) {
+    if (creep.harvest(source) === ERR_NOT_IN_RANGE) {
+      if (creep.moveTo(source) == ERR_NO_PATH) {
+        remembered.forget();
+        return false;
+      }
+    }
+    remembered.remember(source);
+    creep.memory.fromId = source.id;
+    return true;
+  }
+  remembered.forget();
   return false;
 }
 function canHarvestEnergy(creep) {
@@ -1297,6 +1823,203 @@ function spawn(spawn3, profil, newName, memory) {
   return false;
 }
 
+// src/creep/body.ts
+var BodyProfile = class {
+  constructor(spec) {
+    this.spec = spec;
+  }
+  /** Energiekosten eines Satzes. */
+  get setCost() {
+    return this.spec.sets.reduce((total, entry) => total + BODYPART_COST[entry.part] * entry.perSet, 0);
+  }
+  /** Wie viele Sätze `energy` bezahlt, begrenzt durch `maxSets`. */
+  setsFor(energy) {
+    return Math.min(this.spec.maxSets, Math.floor(energy / this.setCost));
+  }
+  /** Der Rumpf für `energy`. Nie leer. */
+  build(energy) {
+    var _a;
+    const sets = this.setsFor(energy);
+    if (sets <= 0) {
+      const fallback = this.spec.fallback;
+      return typeof fallback === "function" ? fallback(energy) : [...fallback];
+    }
+    const body = [];
+    for (const entry of this.spec.sets) {
+      const count = Math.min(Math.floor(sets * entry.perSet), (_a = entry.max) != null ? _a : Infinity);
+      for (let index = 0; index < count; index += 1) {
+        body.push(entry.part);
+      }
+    }
+    return body;
+  }
+};
+function carryMove(count) {
+  const pairs = Number.isFinite(count) ? Math.max(1, Math.floor(count)) : 1;
+  return [...Array(pairs).fill(CARRY), ...Array(pairs).fill(MOVE)];
+}
+
+// src/creep/bodies.ts
+var LINK_CARRY_PARTS = Math.ceil(LINK_CAPACITY / CARRY_CAPACITY);
+var CLAIMER_BODY = [CLAIM, CLAIM, MOVE, MOVE];
+var BODIES = {
+  /** Miner: 3 WORK je CARRY, damit die Quelle ausgeschöpft wird. */
+  miner: new BodyProfile({
+    sets: [
+      { part: WORK, perSet: 3 },
+      { part: CARRY, perSet: 1 },
+      { part: MOVE, perSet: 2 }
+    ],
+    maxSets: 8,
+    // 2 WORK sättigen die Quelle nicht voll, liefern aber Energie.
+    fallback: [WORK, WORK, CARRY, MOVE]
+  }),
+  builder: new BodyProfile({
+    sets: [
+      { part: WORK, perSet: 3 },
+      { part: CARRY, perSet: 2 },
+      { part: MOVE, perSet: 2 }
+    ],
+    maxSets: 7,
+    fallback: [WORK, CARRY, CARRY, MOVE, MOVE]
+  }),
+  /** Repairer: derselbe Bausatz wie der Builder, aber höchstens drei Sätze. */
+  repairer: new BodyProfile({
+    sets: [
+      { part: WORK, perSet: 3 },
+      { part: CARRY, perSet: 2 },
+      { part: MOVE, perSet: 2 }
+    ],
+    maxSets: 3,
+    fallback: [WORK, CARRY, CARRY, MOVE, MOVE]
+  }),
+  /** Wallrepairer: ein WORK je Satz, dafür viel Ladung für lange Schichten. */
+  wally: new BodyProfile({
+    sets: [
+      { part: WORK, perSet: 1 },
+      { part: CARRY, perSet: 2 },
+      { part: MOVE, perSet: 1 }
+    ],
+    maxSets: 9,
+    fallback: [WORK, CARRY, CARRY, MOVE, MOVE]
+  }),
+  /** Upgrader bis RCL7: zwei WORK je Satz. */
+  upgrader: new BodyProfile({
+    sets: [
+      { part: WORK, perSet: 2 },
+      { part: CARRY, perSet: 2 },
+      { part: MOVE, perSet: 2 }
+    ],
+    maxSets: 8,
+    fallback: [WORK, CARRY, MOVE, MOVE]
+  }),
+  /**
+   * Upgrader ab RCL8: **genau** die erlaubte Rate ausschöpfen.
+   *
+   * Der Controller nimmt dort 15 Energie je Tick an, und `UPGRADE_CONTROLLER_POWER`
+   * ist 1 je WORK — also fünf Sätze zu drei WORK. Mehr wäre bezahlte Untätigkeit,
+   * weniger verschenkt GCL, und GCL ist die Erlaubnis für den nächsten Raum.
+   *
+   * Wenige CARRY, weil der Controller-Link in Reichweite 1 steht: 250
+   * Tragfähigkeit reichen für rund siebzehn Ticks Arbeit. Wenige MOVE, weil der
+   * Creep nach der Anreise steht — das Vorgängerprofil trug 18 CARRY und 18 MOVE
+   * für eine Aufgabe, die 15 Energie je Tick verbraucht.
+   *
+   * Kosten 2000 Energie bei 25 Teilen; die Energiekapazität eines RCL8-Raums
+   * liegt bei 12 900, der Rückfall greift dort also nie.
+   */
+  upgraderRcl8: new BodyProfile({
+    sets: [
+      { part: WORK, perSet: 3 },
+      { part: CARRY, perSet: 1 },
+      { part: MOVE, perSet: 1 }
+    ],
+    maxSets: 5,
+    fallback: [WORK, CARRY, MOVE]
+  }),
+  /** Extupgrader in einem Raum ohne Sicht oder unter RCL6. */
+  extupgrader: new BodyProfile({
+    sets: [
+      { part: WORK, perSet: 2 },
+      { part: CARRY, perSet: 2, max: 16 },
+      { part: MOVE, perSet: 1 }
+    ],
+    maxSets: 9,
+    fallback: [WORK, CARRY, MOVE, MOVE]
+  }),
+  /** Extupgrader ab RCL6 des Arbeitsraums: ein WORK je Satz reicht. */
+  extupgraderRcl6: new BodyProfile({
+    sets: [
+      { part: WORK, perSet: 1 },
+      { part: CARRY, perSet: 2, max: 16 },
+      { part: MOVE, perSet: 1 }
+    ],
+    maxSets: 9,
+    fallback: [WORK, CARRY, MOVE, MOVE]
+  }),
+  /**
+   * Defender. Rechnet mit `energyAvailable` statt `energyCapacityAvailable` —
+   * er soll sofort losgehen, nicht auf gefüllte Extensions warten.
+   */
+  defender: new BodyProfile({
+    sets: [
+      { part: TOUGH, perSet: 1 },
+      { part: MOVE, perSet: 2 },
+      { part: ATTACK, perSet: 1 },
+      { part: RANGED_ATTACK, perSet: 1 }
+    ],
+    maxSets: 5,
+    fallback: [MOVE, MOVE, ATTACK, RANGED_ATTACK]
+  }),
+  /** Transfer: reiner Träger zwischen zwei Räumen, ein MOVE je CARRY. */
+  transfer: new BodyProfile({
+    sets: [
+      { part: CARRY, perSet: 1 },
+      { part: MOVE, perSet: 1 }
+    ],
+    maxSets: 25,
+    fallback: [CARRY, MOVE]
+  }),
+  /** Debitor im Heimatraum. */
+  debitor: new BodyProfile({
+    sets: [
+      { part: CARRY, perSet: 1 },
+      { part: MOVE, perSet: 1 }
+    ],
+    maxSets: 25,
+    fallback: [CARRY, MOVE]
+  }),
+  /** Debitor ohne zugeordneten Container — kleiner, weil er mehr läuft. */
+  debitorWithoutContainer: new BodyProfile({
+    sets: [
+      { part: CARRY, perSet: 1 },
+      { part: MOVE, perSet: 1 }
+    ],
+    maxSets: 20,
+    fallback: [CARRY, MOVE]
+  }),
+  /**
+   * Linkkeeper: genau ein Satz — der ganze Link in einem Zug, dazu ein einziges
+   * MOVE, weil der Creep nach der Anreise dauerhaft still steht. Links gibt es
+   * erst ab RCL5, das Vollprofil passt dort praktisch immer.
+   */
+  linkkeeper: new BodyProfile({
+    sets: [
+      { part: CARRY, perSet: LINK_CARRY_PARTS },
+      { part: MOVE, perSet: 1 }
+    ],
+    maxSets: 1,
+    // Rückfall: so viele CARRY wie neben dem MOVE hineinpassen, mindestens eines.
+    fallback: (energy) => {
+      const affordable = Math.max(
+        1,
+        Math.floor((energy - BODYPART_COST[MOVE]) / BODYPART_COST[CARRY])
+      );
+      return [...Array(affordable).fill(CARRY), MOVE];
+    }
+  })
+};
+
 // src/profiler/types.ts
 var WINDOW_TICKS = 100;
 var DEFAULT_DETAIL_TICKS = 50;
@@ -1319,8 +2042,19 @@ var SECTION = {
   defence: "timing.defence",
   /** Statuslog, `memory.writeStatus()`. */
   status: "timing.status",
+  /** Linknetz, `links.sendAll()`. */
+  links: "timing.links",
   /** Tagessequenz, `daylie()`. */
-  daily: "timing.daily"
+  daily: "timing.daily",
+  /**
+   * Straßenwiederaufbau, `rebuild.rebuildRoads()`. Eigener Abschnitt, obwohl
+   * der Aufruf innerhalb von `daylie()` steht: die Tagessequenz läuft nur alle
+   * 28 800 Ticks, ihr Sammelwert `timing.daily` ist in einem üblichen Messfenster
+   * deshalb null und verrät nichts über die Kosten des Planers.
+   */
+  roads: "timing.roads",
+  /** Linkplaner, `link-planner.planReceiverLinks()`. Eigener Abschnitt aus demselben Grund wie `roads`. */
+  linkplan: "timing.linkplan"
 };
 
 // src/profiler/flag.ts
@@ -1666,8 +2400,8 @@ var MeasurementWindow = class {
     window.tickLimit = Game.cpu.tickLimit;
   }
   /** Rollenzeit verbuchen. Genutzt vom Rollen-Wrapper in `decorator.ts`. */
-  recordRole(role12, cpu) {
-    record(this.window.roles, role12, cpu);
+  recordRole(role14, cpu) {
+    record(this.window.roles, role14, cpu);
   }
   /** Zeit einer Klassenmethode verbuchen. Genutzt vom `@profile`-Dekorator. */
   recordMethod(key, cpu) {
@@ -1773,9 +2507,9 @@ function profile(target, key, _descriptor) {
 }
 function wrapRoles(jobs2) {
   const wrapped = {};
-  for (const role12 in jobs2) {
-    const original = jobs2[role12];
-    wrapped[role12] = {
+  for (const role14 in jobs2) {
+    const original = jobs2[role14];
+    wrapped[role14] = {
       doJob(creep) {
         if (state.mode !== "full") {
           original.doJob(creep);
@@ -1784,7 +2518,7 @@ function wrapRoles(jobs2) {
         const start = Game.cpu.getUsed();
         original.doJob(creep);
         const cpu = Game.cpu.getUsed() - start;
-        measurement.recordRole(role12, cpu);
+        measurement.recordRole(role14, cpu);
         measurement.recordCreep(creep.name, cpu);
       },
       spawn(spawn3, workroom) {
@@ -1793,7 +2527,7 @@ function wrapRoles(jobs2) {
         }
         const start = Game.cpu.getUsed();
         const result = original.spawn(spawn3, workroom);
-        measurement.recordRole(`${role12}.spawn`, Game.cpu.getUsed() - start);
+        measurement.recordRole(`${role14}.spawn`, Game.cpu.getUsed() - start);
         return result;
       }
     };
@@ -1856,15 +2590,6 @@ var Builder = class {
     }
     return false;
   }
-  _getProfil(spawn3) {
-    const totalCost = 3 * BODYPART_COST[WORK] + 2 * BODYPART_COST[CARRY] + 2 * BODYPART_COST[MOVE];
-    var maxEnergy = spawn3.room.energyCapacityAvailable;
-    var numberOfSets = Math.min(7, Math.floor(maxEnergy / totalCost));
-    if (numberOfSets == 0) {
-      return [WORK, CARRY, CARRY, MOVE, MOVE];
-    }
-    return Array(numberOfSets * 3).fill(WORK).concat(Array(numberOfSets * 2).fill(CARRY).concat(Array(numberOfSets * 2).fill(MOVE)));
-  }
   /** Spawnt einen Builder für `workroom`, falls Bedarf, Baustellen und freie Kapazität es erlauben. */
   spawn(spawn3, workroom) {
     var maxbuilder = bot.room[workroom].maxbuilder;
@@ -1883,7 +2608,7 @@ var Builder = class {
       sites = room.find(FIND_CONSTRUCTION_SITES).length;
     if (sites == 0 || Math.max(sites / 5, 1) <= count)
       return false;
-    return spawn(spawn3, this._getProfil(spawn3), role + "_" + Game.time, { role, workroom, home: spawn3.room.name });
+    return spawn(spawn3, BODIES.builder.build(spawn3.room.energyCapacityAvailable), role + "_" + Game.time, { role, workroom, home: spawn3.room.name });
   }
 };
 Builder = __decorateClass([
@@ -1928,9 +2653,6 @@ var Claimer = class {
       }
     }
   }
-  _getProfil() {
-    return [CLAIM, CLAIM, MOVE, MOVE];
-  }
   /** Spawnt einen Claimer für `workroom`, falls Bedarf besteht und keiner unterwegs ist. */
   spawn(spawn3, workroom) {
     if (!bot.room[workroom].sendClaimer)
@@ -1941,7 +2663,7 @@ var Claimer = class {
       return false;
     if (1 <= count)
       return false;
-    return spawn(spawn3, this._getProfil(), role2 + "_" + Game.time, { role: role2, workroom, home: spawn3.room.name });
+    return spawn(spawn3, CLAIMER_BODY, role2 + "_" + Game.time, { role: role2, workroom, home: spawn3.room.name });
   }
 };
 Claimer = __decorateClass([
@@ -2089,48 +2811,46 @@ var Debitor = class {
    *
    * @param {StructureSpawn} spawn
    */
-  getProfil(spawn3, workroom, mineraltype, containerId) {
-    if (mineraltype == RESOURCE_ENERGY) {
-      if (spawn3.room.name != workroom) {
-        var carry = Memory.rooms[workroom].needDebitorSize;
-        var distances = Memory.rooms[workroom].distances;
-        var c = 1;
-        if (!carry && distances) {
-          var length = Math.ceil(distances.length * 0.5);
-          var meridian = distances.sort(function(a, b) {
-            return a - b;
-          })[length];
-          carry = Math.ceil(2 * meridian / 5);
-          var max = Math.min(25, parseInt(spawn3.room.energyCapacityAvailable / 100));
-          if (max >= carry) {
-            Memory.rooms[workroom].needDebitors = 1;
-          } else {
-            c = Memory.rooms[workroom].needDebitors = Math.ceil(carry / max);
-            carry = Math.ceil(carry / c);
-          }
-          if (length > 30) {
-            Memory.rooms[workroom].needDebitorSize = carry;
-            delete Memory.rooms[workroom].distances;
-          }
-        }
-        return Array(carry).fill(CARRY).concat(Array(carry).fill(MOVE));
-      }
-      if (containerId == "" || spawn3.room.name != workroom) {
-        var max = Math.min(Math.max(parseInt(spawn3.room.energyCapacityAvailable / 100), 1), 20);
-        return Array(max).fill(CARRY).concat(Array(max).fill(MOVE));
-      }
-      var max = Math.min(25, parseInt(spawn3.room.energyCapacityAvailable / 100));
-      return Array(max).fill(CARRY).concat(Array(max).fill(MOVE));
-    } else {
-      var mineral = 2;
-      return Array(mineral).fill(CARRY).concat(Array(mineral).fill(MOVE));
+  bodyFor(spawn3, workroom, mineraltype, containerId) {
+    if (mineraltype != RESOURCE_ENERGY) {
+      return carryMove(2);
     }
+    if (spawn3.room.name != workroom) {
+      var carry = Memory.rooms[workroom].needDebitorSize;
+      var distances = Memory.rooms[workroom].distances;
+      var c = 1;
+      if (!carry && distances) {
+        var length = Math.ceil(distances.length * 0.5);
+        var meridian = distances.sort(function(a, b) {
+          return a - b;
+        })[length];
+        carry = Math.ceil(2 * meridian / 5);
+        var max = BODIES.debitor.setsFor(spawn3.room.energyCapacityAvailable);
+        if (max >= carry) {
+          Memory.rooms[workroom].needDebitors = 1;
+        } else {
+          c = Memory.rooms[workroom].needDebitors = Math.ceil(carry / max);
+          carry = Math.ceil(carry / c);
+        }
+        if (length > 30) {
+          Memory.rooms[workroom].needDebitorSize = carry;
+          delete Memory.rooms[workroom].distances;
+        }
+      }
+      return carryMove(carry);
+    }
+    if (containerId == "") {
+      return BODIES.debitorWithoutContainer.build(spawn3.room.energyCapacityAvailable);
+    }
+    return BODIES.debitor.build(spawn3.room.energyCapacityAvailable);
   }
   /** Spawnt einen Debitor für `workroom`, falls Bedarf besteht (inklusive Freelancer- und Notfallmodus). */
   spawn(spawn3, workroom) {
     if (bot.room[workroom].transferEnergie && spawn3.room.name != workroom || spawn3.room.name != workroom && !Memory.rooms[workroom].claimed)
       return false;
-    if (bot.room[workroom].sendDebitor && bot.room[workroom].sendMiner && (!Memory.rooms[workroom].hasLinks || !bot.room[workroom].useLinks)) {
+    if (spawn3.room.name == workroom && spawn3.room.storage)
+      return false;
+    if (bot.room[workroom].sendDebitor && bot.room[workroom].sendMiner && (!Memory.rooms[workroom].hasLinks || !linksDeliver(workroom))) {
       for (var id in bot.room[workroom].energySources) {
         if (!Game.getObjectById(bot.room[workroom].energySources[id]))
           continue;
@@ -2174,7 +2894,7 @@ var Debitor = class {
       });
       if (link.length > 0) {
         Memory.rooms[workroom].hasLinks = true;
-        if (Memory.rooms[workroom].useLinks)
+        if (linksDeliver(workroom))
           return false;
       }
     } else {
@@ -2188,7 +2908,7 @@ var Debitor = class {
       bot.logWorkroom(workroom, "3");
       containerId = "";
     }
-    var profil = this.getProfil(spawn3, workroom, mineraltype, containerId);
+    var profil = this.bodyFor(spawn3, workroom, mineraltype, containerId);
     bot.logWorkroom(workroom, "4");
     if (!spawn(spawn3, profil, role3 + "_" + Game.time, { role: role3, harvest: true, workroom, home: spawn3.room.name, mineral: mineraltype, container: containerId, notfall: false })) {
       if (_.filter(Game.creeps, (creep) => creep.memory.role == role3 && creep.memory.workroom == workroom).length == 0 && spawn3.room.name == workroom) {
@@ -2287,14 +3007,6 @@ var Defender = class {
       creep.suicide();
     }
   }
-  _getProfil(spawn3) {
-    const totalCost = BODYPART_COST[TOUGH] + 2 * BODYPART_COST[MOVE] + BODYPART_COST[ATTACK] + BODYPART_COST[RANGED_ATTACK];
-    var max = Math.min(5, parseInt(spawn3.room.energyAvailable / totalCost));
-    if (max == 0 || max == null) {
-      return [MOVE, MOVE, ATTACK, RANGED_ATTACK];
-    }
-    return Array(max).fill(TOUGH).concat(Array(max * 2).fill(MOVE).concat(Array(max).fill(ATTACK)).concat(Array(max).fill(RANGED_ATTACK)));
-  }
   /** Spawnt einen Defender für `workroom`, falls Verteidigungsbedarf besteht und das Limit nicht erreicht ist. */
   spawn(spawn3, workroom) {
     if (!Memory.rooms[workroom].needDefence && !Memory.rooms[workroom].invaderCore || !bot.room[workroom].sendDefender)
@@ -2302,7 +3014,7 @@ var Defender = class {
     var count = _.filter(Game.creeps, (creep) => creep.memory.role == role4 && creep.memory.workroom == workroom).length;
     if (Memory.rooms[workroom].needDefence && 2 <= count || Memory.rooms[workroom].invaderCore && 4 <= count)
       return false;
-    if (spawn(spawn3, this._getProfil(spawn3), role4 + "_" + Game.time, { role: role4, workroom, home: spawn3.room.name })) {
+    if (spawn(spawn3, BODIES.defender.build(spawn3.room.energyAvailable), role4 + "_" + Game.time, { role: role4, workroom, home: spawn3.room.name })) {
       Memory.cOfDefender += 1;
       return true;
     }
@@ -2329,17 +3041,14 @@ var ExtUpgrader = class {
     }
     upgradeController(creep);
   }
-  _getProfil(spawn3, workroom) {
-    var numberOfSets = 0;
-    var multi = Game.rooms[workroom] && Game.rooms[workroom].controller.level >= 6 ? 1 : 2;
-    const totalCost = multi * BODYPART_COST[WORK] + 2 * BODYPART_COST[CARRY] + BODYPART_COST[MOVE];
-    var maxEnergy = spawn3.room.energyCapacityAvailable;
-    numberOfSets = Math.min(9, Math.floor(maxEnergy / totalCost));
-    if (numberOfSets == 0) {
-      return [WORK, CARRY, MOVE, MOVE];
-    }
-    var carry = Math.min(numberOfSets * 2, 16);
-    return Array(numberOfSets * multi).fill(WORK).concat(Array(carry).fill(CARRY).concat(Array(numberOfSets).fill(MOVE)));
+  /**
+   * Ab RCL6 des Arbeitsraums reicht ein WORK je Satz. Ohne Sicht dort gilt das
+   * größere Profil — dann ist der Ausbaustand unbekannt.
+   */
+  bodyFor(spawn3, workroom) {
+    const rcl6 = Game.rooms[workroom] && Game.rooms[workroom].controller.level >= 6;
+    const profil = rcl6 ? BODIES.extupgraderRcl6 : BODIES.extupgrader;
+    return profil.build(spawn3.room.energyCapacityAvailable);
   }
   /** Spawnt einen Extupgrader für `workroom`, falls Bedarf besteht und noch nicht genug unterwegs sind. */
   spawn(spawn3, workroom) {
@@ -2354,7 +3063,7 @@ var ExtUpgrader = class {
     ).length;
     if (uppis <= count)
       return false;
-    var profil = this._getProfil(spawn3, workroom);
+    var profil = this.bodyFor(spawn3, workroom);
     return spawn(spawn3, profil, role5 + "_" + Game.time, { role: role5, workroom, home: spawn3.room.name, repairs: 0 });
   }
 };
@@ -2363,16 +3072,130 @@ ExtUpgrader = __decorateClass([
 ], ExtUpgrader);
 var extupgrader_default = new ExtUpgrader();
 
+// src/roles/filler.ts
+var role6 = "filler";
+var Filler = class {
+  /** Holt Energie aus dem Storage (Rückfall: Quellcontainer) und verteilt sie an Spawn und Türme. */
+  doJob(creep) {
+    creep.checkHarvest();
+    if (creep.memory.harvest) {
+      if (harvestRoomStorage(creep, RESOURCE_ENERGY)) return;
+      if (harvestRoomContainer(creep, RESOURCE_ENERGY, 0.25)) return;
+      return;
+    }
+    if (TransportEnergyToHomeSpawn2(creep)) return;
+    if (TransportEnergyToHomeTower2(creep)) return;
+  }
+  /** Spawnt Filler für `workroom`, solange dort ein Storage steht und Logistik gewünscht ist. */
+  spawn(spawn3, workroom) {
+    var _a;
+    if (spawn3.room.name != workroom)
+      return false;
+    if (!bot.room[workroom].sendDebitor)
+      return false;
+    if (!spawn3.room.storage)
+      return false;
+    const wanted = Math.max(1, (_a = bot.room[workroom].debitorAsFreelancer) != null ? _a : 0);
+    const count = _.filter(
+      Game.creeps,
+      (creep) => creep.memory.role == role6 && creep.memory.workroom == workroom && (creep.ticksToLive > 100 || creep.spawning)
+    ).length;
+    if (count >= wanted)
+      return false;
+    const profil = BODIES.debitorWithoutContainer.build(spawn3.room.energyCapacityAvailable);
+    if (spawn(spawn3, profil, role6 + "_" + Game.time, { role: role6, harvest: true, workroom, home: spawn3.room.name, mineral: RESOURCE_ENERGY, container: "", notfall: false }))
+      return true;
+    if (_.filter(Game.creeps, (creep) => creep.memory.role == role6 && creep.memory.workroom == workroom).length == 0) {
+      console.log("[" + spawn3.room.name + "|" + workroom + "]Notfallspawn Filler");
+      const min = Math.min(Math.max(parseInt(spawn3.room.energyAvailable / 100), 1), 16);
+      const notfallProfil = Array(min).fill(CARRY).concat(Array(min).fill(MOVE));
+      return spawn(spawn3, notfallProfil, role6 + "_" + Game.time, { role: role6, harvest: true, workroom, home: spawn3.room.name, mineral: RESOURCE_ENERGY, container: "", notfall: false });
+    }
+    return false;
+  }
+};
+Filler = __decorateClass([
+  profile
+], Filler);
+var filler_default = new Filler();
+
+// src/roles/hauler.ts
+var role7 = "hauler";
+var Hauler = class {
+  /** Holt Energie aus dem Quellcontainer und bringt sie ins Storage des Heimatraums. */
+  doJob(creep) {
+    creep.checkHarvest();
+    if (creep.memory.harvest) {
+      if (harvestMyContainer(creep, RESOURCE_ENERGY)) return;
+      return;
+    }
+    if (checkWorkroomPrioSpawn(creep)) return;
+    if (TransportToHomeStorage2(creep)) return;
+  }
+  /** Spawnt einen Hauler für einen Quellcontainer des eigenen Raums, falls Bedarf besteht. */
+  spawn(spawn3, workroom) {
+    if (spawn3.room.name != workroom)
+      return false;
+    if (!bot.room[workroom].sendDebitor || !bot.room[workroom].sendMiner)
+      return false;
+    if (!spawn3.room.storage)
+      return false;
+    for (var id in bot.room[workroom].energySources) {
+      const source = Game.getObjectById(bot.room[workroom].energySources[id]);
+      if (!source)
+        continue;
+      if (this._spawn(spawn3, workroom, source))
+        return true;
+    }
+    return false;
+  }
+  _spawn(spawn3, workroom, source) {
+    const container = source.pos.findInRange(FIND_STRUCTURES, 1, {
+      filter: { structureType: STRUCTURE_CONTAINER }
+    });
+    if (container.length == 0)
+      return false;
+    const containerId = container[0].id;
+    const count = _.filter(
+      Game.creeps,
+      (creep) => creep.memory.role == role7 && creep.memory.workroom == workroom && creep.memory.container == containerId && (creep.ticksToLive > 100 || creep.spawning)
+    ).length;
+    if (1 <= count)
+      return false;
+    const link = container[0].pos.findInRange(FIND_STRUCTURES, 1, {
+      filter: { structureType: STRUCTURE_LINK }
+    });
+    if (link.length > 0) {
+      Memory.rooms[workroom].hasLinks = true;
+      if (linksDeliver(workroom))
+        return false;
+    }
+    return spawn(spawn3, BODIES.debitor.build(spawn3.room.energyCapacityAvailable), role7 + "_" + Game.time, {
+      role: role7,
+      harvest: true,
+      workroom,
+      home: spawn3.room.name,
+      mineral: RESOURCE_ENERGY,
+      container: containerId,
+      notfall: false
+    });
+  }
+};
+Hauler = __decorateClass([
+  profile
+], Hauler);
+var hauler_default = new Hauler();
+
 // src/roles/linkkeeper.ts
-var role6 = "linkkeeper";
-var blockingStructureTypes = OBSTACLE_OBJECT_TYPES;
+var role8 = "linkkeeper";
+var blockingStructureTypes2 = OBSTACLE_OBJECT_TYPES;
 var LinkKeeper = class {
   /** Bewegt den Creep auf seinen Standplatz zwischen Link und Storage und pendelt dort Energie um. */
   doJob(creep) {
     if (goToWorkroom2(creep)) return;
     if (!creep.memory.post) {
       const storage2 = creep.room.storage;
-      const link2 = storage2 ? Game.getObjectById(bot.room[creep.memory.workroom].spawnLink) : null;
+      const link2 = storage2 ? new LinkList(creep.memory.workroom).spawnLink : null;
       const post2 = link2 && storage2 ? this._findPost(link2, storage2, creep.memory.workroom) : null;
       if (!post2) {
         creep.say("\u2753");
@@ -2387,7 +3210,7 @@ var LinkKeeper = class {
     }
     const storage = creep.room.storage;
     if (!storage) return;
-    const link = Game.getObjectById(bot.room[creep.memory.workroom].spawnLink);
+    const link = new LinkList(creep.memory.workroom).spawnLink;
     if (!link) return;
     const carrying = creep.store.getUsedCapacity(RESOURCE_ENERGY);
     const inLink = link.store.getUsedCapacity(RESOURCE_ENERGY);
@@ -2411,36 +3234,26 @@ var LinkKeeper = class {
         const pos = new RoomPosition(x, y, roomName);
         if (!pos.isNearTo(storage.pos)) continue;
         if ((terrain.get(x, y) & TERRAIN_MASK_WALL) !== 0) continue;
-        const blocked = pos.lookFor(LOOK_STRUCTURES).some((s) => blockingStructureTypes.includes(s.structureType)) || pos.lookFor(LOOK_CONSTRUCTION_SITES).some((s) => blockingStructureTypes.includes(s.structureType));
+        const blocked = pos.lookFor(LOOK_STRUCTURES).some((s) => blockingStructureTypes2.includes(s.structureType)) || pos.lookFor(LOOK_CONSTRUCTION_SITES).some((s) => blockingStructureTypes2.includes(s.structureType));
         if (blocked) continue;
         return pos;
       }
     }
     return null;
   }
-  _getProfil(spawn3) {
-    const maxCarryParts = Math.ceil(LINK_CAPACITY / CARRY_CAPACITY);
-    const fullProfil = Array(maxCarryParts).fill(CARRY).concat([MOVE]);
-    const fullCost = maxCarryParts * BODYPART_COST[CARRY] + BODYPART_COST[MOVE];
-    if (spawn3.room.energyCapacityAvailable >= fullCost) {
-      return fullProfil;
-    }
-    const affordableCarryParts = Math.max(1, Math.floor((spawn3.room.energyCapacityAvailable - BODYPART_COST[MOVE]) / BODYPART_COST[CARRY]));
-    return Array(affordableCarryParts).fill(CARRY).concat([MOVE]);
-  }
   /** Spawnt den einzigen Linkkeeper für `workroom`, falls Links dort genutzt werden und noch keiner lebt. */
   spawn(spawn3, workroom) {
     if (!bot.room[workroom].sendLinkkeeper)
       return false;
-    if (!bot.room[workroom].useLinks || !bot.room[workroom].spawnLink)
+    if (!usesLinks(workroom) || !new LinkList(workroom).spawnLink)
       return false;
     if (spawn3.room.name != workroom)
       return false;
     if (!spawn3.room.storage)
       return false;
-    if (_.filter(Game.creeps, (creep) => creep.memory.role == role6 && creep.memory.workroom == workroom).length >= 1)
+    if (_.filter(Game.creeps, (creep) => creep.memory.role == role8 && creep.memory.workroom == workroom).length >= 1)
       return false;
-    return spawn(spawn3, this._getProfil(spawn3), role6 + "_" + Game.time, { role: role6, workroom, home: spawn3.room.name });
+    return spawn(spawn3, BODIES.linkkeeper.build(spawn3.room.energyCapacityAvailable), role8 + "_" + Game.time, { role: role8, workroom, home: spawn3.room.name });
   }
 };
 LinkKeeper = __decorateClass([
@@ -2449,20 +3262,18 @@ LinkKeeper = __decorateClass([
 var linkkeeper_default = new LinkKeeper();
 
 // src/roles/miner.ts
-var role7 = "miner";
+var role9 = "miner";
 var Miner = class {
   _clearMemory(creep) {
     delete creep.memory.pos;
     delete creep.memory._move;
-    delete creep.memory.path;
-    delete creep.memory.pathTarget;
-    delete creep.memory.lastPos;
-    delete creep.memory.dontMove;
+    new PathMemory(creep.memory).clear();
   }
   /** Bewegt den Miner zur Quelle, baut/repariert dort Container bzw. Link und erntet. */
   doJob(creep) {
+    var _a;
     if (creep.memory.notfall) {
-      var replacement = _.find(Game.creeps, (c) => c.name != creep.name && c.memory.role == role7 && c.memory.workroom == creep.memory.workroom && c.memory.source == creep.memory.source && !c.memory.notfall && !c.spawning);
+      var replacement = _.find(Game.creeps, (c) => c.name != creep.name && c.memory.role == role9 && c.memory.workroom == creep.memory.workroom && c.memory.source == creep.memory.source && !c.memory.notfall && !c.spawning);
       if (replacement) {
         bot.logWorkroom(creep.memory.workroom, "Notfallminer " + creep.name + " durch " + replacement.name + " ersetzt, beende mich.");
         creep.suicide();
@@ -2509,14 +3320,13 @@ var Miner = class {
                 return;
               }
               if (state2 === ERR_FULL) {
-                finalLocation = adjacentSpots.find(
-                  (p) => p.lookFor(LOOK_TERRAIN)[0] !== "wall"
-                );
-                creep.memory.pos = finalLocation;
-                return;
+                break;
               }
               creep.say(state2);
             }
+            creep.memory.pos = adjacentSpots.find(
+              (p) => p.lookFor(LOOK_TERRAIN)[0] !== "wall"
+            );
             return;
           }
         }
@@ -2524,7 +3334,7 @@ var Miner = class {
         finalLocation = creep.memory.pos;
       }
       if (creep.pos.x == creep.memory.pos.x && creep.pos.y == creep.memory.pos.y) {
-        var source = creep.pos.findClosestByPath(creep.memory.mineEnergy ? FIND_SOURCES : FIND_MINERALS);
+        var source = (_a = Game.getObjectById(creep.memory.source)) != null ? _a : creep.pos.findClosestByRange(creep.memory.mineEnergy ? FIND_SOURCES : FIND_MINERALS);
         var state2 = creep.harvest(source);
         if (state2 === ERR_NOT_IN_RANGE) {
           creep.say("\u2049");
@@ -2576,6 +3386,9 @@ var Miner = class {
                   return;
                 }
               }
+              creep.memory.onPosition = true;
+              this._clearMemory(creep);
+              return;
             } else {
               creep.memory.onPosition = true;
               this._clearMemory(creep);
@@ -2588,6 +3401,16 @@ var Miner = class {
     } else {
       let source2 = Game.getObjectById(creep.memory.source);
       var container = Game.getObjectById(creep.memory.container);
+      if (creep.memory.container && !container) {
+        container = creep.pos.lookFor(LOOK_STRUCTURES).find((s) => s.structureType === STRUCTURE_CONTAINER);
+        if (container) {
+          creep.memory.container = container.id;
+        } else {
+          delete creep.memory.container;
+          creep.memory.onPosition = false;
+          return;
+        }
+      }
       if (creep.memory.mineEnergy) {
         if (container) {
           if (container.progressTotal == void 0 && container.store.getUsedCapacity() == 0 && source2.energy <= 1 || container.progressTotal != void 0 && source2.energy <= 1) {
@@ -2625,21 +3448,8 @@ var Miner = class {
         }
         if (creep.memory.link && creep.store.getFreeCapacity() == 0) {
           var link = Game.getObjectById(creep.memory.link);
-          if (link != null && link.cooldown < 1 && creep.transfer(link, RESOURCE_ENERGY) == ERR_FULL) {
-            var target;
-            if (creep.room.storage && creep.room.storage.store.getUsedCapacity() * 0.5 > creep.room.storage.store.getFreeCapacity()) {
-              target = Game.getObjectById(bot.room[creep.room.name].controllerLink);
-            } else {
-              target = Game.getObjectById(bot.room[creep.room.name].targetLinks[[Math.floor(Math.random() * bot.room[creep.room.name].targetLinks.length)]]);
-            }
-            if (target && target.store.getFreeCapacity(RESOURCE_ENERGY) > 50) {
-              link.transferEnergy(target);
-            } else {
-              if (container && container.store.getFreeCapacity() == 0 && creep.store.getFreeCapacity() == 0) {
-                creep.say("\u{1F6AF}");
-                return;
-              }
-            }
+          if (link) {
+            creep.transfer(link, RESOURCE_ENERGY);
           }
         }
       } else {
@@ -2694,15 +3504,6 @@ var Miner = class {
       }
     }
   }
-  _getProfil(spawn3, workroom) {
-    const totalCost = 3 * BODYPART_COST[WORK] + BODYPART_COST[CARRY] + 2 * BODYPART_COST[MOVE];
-    var maxEnergy = spawn3.room.energyCapacityAvailable;
-    var numberOfSets = Math.min(8, Math.floor(maxEnergy / totalCost));
-    if (numberOfSets == 0) {
-      return [WORK, WORK, CARRY, MOVE];
-    }
-    return Array(numberOfSets * 3).fill(WORK).concat(Array(numberOfSets).fill(CARRY).concat(Array(numberOfSets * 2).fill(MOVE)));
-  }
   /** Spawnt einen Miner für die nächste fällige Energie- oder Mineralquelle in `workroom`. */
   spawn(spawn3, workroom) {
     bot.logWorkroom(workroom, "Miner Spawn start");
@@ -2735,20 +3536,20 @@ var Miner = class {
     }
     var count = _.filter(
       Game.creeps,
-      (creep) => creep.memory.role == role7 && creep.memory.workroom == workroom && creep.memory.source == source && !creep.memory.notfall && (creep.ticksToLive > time || creep.spawning)
+      (creep) => creep.memory.role == role9 && creep.memory.workroom == workroom && creep.memory.source == source && !creep.memory.notfall && (creep.ticksToLive > time || creep.spawning)
     ).length;
     if (1 <= count) {
       Memory.rooms[spawn3.room.name].aktivPrioSpawn = false;
       return false;
     }
-    if (!spawn(spawn3, this._getProfil(spawn3, workroom), role7 + "_" + Game.time, { role: role7, workroom, home: spawn3.room.name, source, mineEnergy, notfall: false })) {
+    if (!spawn(spawn3, BODIES.miner.build(spawn3.room.energyCapacityAvailable), role9 + "_" + Game.time, { role: role9, workroom, home: spawn3.room.name, source, mineEnergy, notfall: false })) {
       Memory.rooms[spawn3.room.name].aktivPrioSpawn = true;
       Memory.rooms[spawn3.room.name].aktivPrioSpawnCount = (Memory.rooms[spawn3.room.name].aktivPrioSpawnCount || 0) + 1;
       if (Memory.rooms[spawn3.room.name].aktivPrioSpawnCount > 25) {
-        if (_.filter(Game.creeps, (creep) => creep.memory.role == role7 && creep.memory.workroom == workroom && creep.memory.source == source).length > 0)
+        if (_.filter(Game.creeps, (creep) => creep.memory.role == role9 && creep.memory.workroom == workroom && creep.memory.source == source).length > 0)
           return false;
         console.log("[" + spawn3.room.name + "|" + workroom + "] Spawn NotfallMiner!!!");
-        spawn(spawn3, [WORK, CARRY, MOVE], role7 + "_" + Game.time, { role: role7, workroom, home: spawn3.room.name, source, mineEnergy, notfall: true });
+        spawn(spawn3, [WORK, CARRY, MOVE], role9 + "_" + Game.time, { role: role9, workroom, home: spawn3.room.name, source, mineEnergy, notfall: true });
         Memory.rooms[spawn3.room.name].aktivPrioSpawnCount = 0;
         return true;
       }
@@ -2764,7 +3565,7 @@ Miner = __decorateClass([
 var miner_default = new Miner();
 
 // src/roles/repairer.ts
-var role8 = "repairer";
+var role10 = "repairer";
 var Repairer = class {
   /** Repariert priorisierte und beschädigte Strukturen im Arbeitsraum, sonst wird der Controller aufgewertet. */
   doJob(creep) {
@@ -2852,15 +3653,6 @@ var Repairer = class {
     }
     return false;
   }
-  _getProfil(spawn3) {
-    const totalCost = 3 * BODYPART_COST[WORK] + 2 * BODYPART_COST[CARRY] + 2 * BODYPART_COST[MOVE];
-    var maxEnergy = spawn3.room.energyCapacityAvailable;
-    const numberOfSets = Math.min(3, Math.floor(maxEnergy / totalCost));
-    if (numberOfSets == 0) {
-      return [WORK, CARRY, CARRY, MOVE, MOVE];
-    }
-    return Array(numberOfSets * 3).fill(WORK).concat(Array(numberOfSets * 2).fill(CARRY).concat(Array(numberOfSets * 2).fill(MOVE)));
-  }
   /** Spawnt einen Repairer für `workroom`, falls Bedarf besteht und noch nicht genug unterwegs sind. */
   spawn(spawn3, workroom) {
     var minRepairer = bot.room[workroom].repairer;
@@ -2868,7 +3660,7 @@ var Repairer = class {
       return false;
     if (spawn3.room.name != workroom && !Memory.rooms[workroom].claimed)
       return false;
-    var count = _.filter(Game.creeps, (creep) => creep.memory.role == role8 && creep.memory.workroom == workroom).length;
+    var count = _.filter(Game.creeps, (creep) => creep.memory.role == role10 && creep.memory.workroom == workroom).length;
     if (count == void 0)
       count = 0;
     if (minRepairer <= count)
@@ -2883,7 +3675,7 @@ var Repairer = class {
     });
     if (structuresToRepair.length <= 1)
       return false;
-    return spawn(spawn3, this._getProfil(spawn3), role8 + "_" + Game.time, { role: role8, workroom, home: spawn3.room.name, repairs: 0 });
+    return spawn(spawn3, BODIES.repairer.build(spawn3.room.energyCapacityAvailable), role10 + "_" + Game.time, { role: role10, workroom, home: spawn3.room.name, repairs: 0 });
   }
 };
 Repairer = __decorateClass([
@@ -2892,7 +3684,7 @@ Repairer = __decorateClass([
 var repairer_default = new Repairer();
 
 // src/roles/transfer.ts
-var role9 = "transfer";
+var role11 = "transfer";
 var Transfer = class {
   /** Sammelt Energie/Mineralien aus dem Arbeitsraum und bringt sie zum Heimatraum bzw. an bedürftige Builder. */
   doJob(creep) {
@@ -2938,10 +3730,6 @@ var Transfer = class {
    *
    * @param {StructureSpawn} spawn
    */
-  getProfil(spawn3) {
-    var max = Math.min(25, parseInt(spawn3.room.energyCapacityAvailable / 100));
-    return Array(max).fill(CARRY).concat(Array(max).fill(MOVE));
-  }
   /** Spawnt einen Transfer für `workroom`, falls Bedarf besteht und im Heimatraum genug Energie im Storage liegt. */
   spawn(spawn3, workroom) {
     if (!bot.room[workroom].transferEnergie || spawn3.room.name == workroom || !Memory.rooms[workroom].claimed)
@@ -2960,7 +3748,7 @@ var Transfer = class {
   _spawn(spawn3, workroom, mineraltype) {
     var count = _.filter(
       Game.creeps,
-      (creep) => creep.memory.role == role9 && creep.memory.workroom == workroom && creep.memory.home == spawn3.room.name && //hier wichtig, da mehere spawns infrage kommem
+      (creep) => creep.memory.role == role11 && creep.memory.workroom == workroom && creep.memory.home == spawn3.room.name && //hier wichtig, da mehere spawns infrage kommem
       (creep.ticksToLive > 100 || creep.spawning)
     ).length;
     if (1 <= count)
@@ -2968,8 +3756,8 @@ var Transfer = class {
     var storage = Game.rooms[spawn3.room.name].storage;
     if (storage && storage.store[RESOURCE_ENERGY] < 1e4 || !storage)
       return false;
-    var profil = this.getProfil(spawn3);
-    return spawn(spawn3, profil, role9 + "_" + Game.time, { role: role9, harvest: true, workroom, home: spawn3.room.name, mineral: mineraltype });
+    var profil = BODIES.transfer.build(spawn3.room.energyCapacityAvailable);
+    return spawn(spawn3, profil, role11 + "_" + Game.time, { role: role11, harvest: true, workroom, home: spawn3.room.name, mineral: mineraltype });
   }
 };
 Transfer = __decorateClass([
@@ -2978,14 +3766,16 @@ Transfer = __decorateClass([
 var transfer_default = new Transfer();
 
 // src/roles/upgrader.ts
-var role10 = "upgrader";
+var role12 = "upgrader";
+var RCL8_WORK_RESERVE = 1e5;
+var DOWNGRADE_ALARM = 1e5;
 var Upgrader = class {
   /** Beschafft Energie und upgradet den Controller des Arbeitsraums, inklusive Sparmodus bei hohem Level. */
   doJob(creep) {
-    if (creep.memory.sparmodus && Game.time % creep.room.controller.level != 0) return;
+    if (!this._mayWork(creep)) return;
     creep.checkHarvest();
     if (creep.memory.harvest) {
-      if (!creep.memory.noLink && bot.room[creep.memory.workroom].controllerLink && (creep.room.controller.my && creep.room.controller.level >= 5)) {
+      if (!creep.memory.noLink && new LinkList(creep.memory.workroom).controllerLink && (creep.room.controller.my && creep.room.controller.level >= 5)) {
         if (harvestControllerLink(creep, RESOURCE_ENERGY)) return;
       } else {
         if (harvestRoomStorage(creep, RESOURCE_ENERGY))
@@ -3013,16 +3803,40 @@ var Upgrader = class {
       creep.memory.sparmodus = creep.room.controller.level > 5;
     }
   }
-  _getProfil(spawn3, workroom) {
-    var numberOfSets = 0;
-    var multi = Game.rooms[workroom].controller.level > 7 ? 0.5 : 2;
-    const totalCost = multi * BODYPART_COST[WORK] + 2 * BODYPART_COST[CARRY] + 2 * BODYPART_COST[MOVE];
-    var maxEnergy = spawn3.room.energyCapacityAvailable;
-    numberOfSets = Math.min(Game.rooms[workroom].controller.level > 7 ? 9 : 8, Math.floor(maxEnergy / totalCost));
-    if (numberOfSets == 0) {
-      return [WORK, CARRY, MOVE, MOVE];
+  /**
+   * Darf der Upgrader in diesem Tick überhaupt arbeiten?
+   *
+   * Zwei verschiedene Drosseln, und der Unterschied ist der Punkt von Plan 04:
+   *
+   * - **Bis RCL7** die alte Tickdrossel (`sparmodus`, gesetzt ab Stufe 6): der
+   *   Creep arbeitet in einem von `level` Ticks. Grob, aber dort ist RCL-Fortschritt
+   *   das Ziel und Energie knapp.
+   * - **Ab RCL8** der Vorrat statt der Tickzahl. Der Controller nimmt dort nur
+   *   noch 15 Energie je Tick an, und der Raum hat typischerweise Überschuss.
+   *   Die Tickdrossel achtelte hier die Leistung unabhängig davon, ob Energie
+   *   da ist — zusammen mit dem alten Rumpf kam der Raum auf 0,5 von 15
+   *   erlaubten Energie je Tick, also 3 %. GCL wächst ausschließlich aus
+   *   Controller-Upgrades und ist die Erlaubnis für den nächsten Raum.
+   */
+  _mayWork(creep) {
+    const controller = creep.room.controller;
+    if (!controller)
+      return true;
+    if (!controller.my || controller.level < 8) {
+      return !creep.memory.sparmodus || Game.time % controller.level == 0;
     }
-    return Array(Math.floor(numberOfSets * multi)).fill(WORK).concat(Array(numberOfSets * 2).fill(CARRY).concat(Array(numberOfSets * 2).fill(MOVE)));
+    if (controller.ticksToDowngrade < DOWNGRADE_ALARM)
+      return true;
+    const storage = creep.room.storage;
+    return Boolean(storage && storage.store[RESOURCE_ENERGY] > RCL8_WORK_RESERVE);
+  }
+  /**
+   * Ab RCL8 nimmt der Controller nur noch 15 Energie je Tick an; dort gilt das
+   * Profil, das genau diese Rate ausschöpft (15 WORK).
+   */
+  bodyFor(spawn3, workroom) {
+    const profil = Game.rooms[workroom].controller.level > 7 ? BODIES.upgraderRcl8 : BODIES.upgrader;
+    return profil.build(spawn3.room.energyCapacityAvailable);
   }
   /** Spawnt einen Upgrader für `workroom`, falls die konfigurierte Anzahl noch nicht erreicht ist. */
   spawn(spawn3, workroom) {
@@ -3035,12 +3849,12 @@ var Upgrader = class {
       return false;
     var count = _.filter(
       Game.creeps,
-      (creep) => creep.memory.role == role10 && creep.memory.workroom == workroom && (creep.ticksToLive > 160 || creep.spawning)
+      (creep) => creep.memory.role == role12 && creep.memory.workroom == workroom && (creep.ticksToLive > 160 || creep.spawning)
     ).length;
     if (uppis <= count)
       return false;
-    var profil = this._getProfil(spawn3, workroom);
-    return spawn(spawn3, profil, role10 + "_" + Game.time, { role: role10, workroom, home: spawn3.room.name, repairs: 0, noLink: false });
+    var profil = this.bodyFor(spawn3, workroom);
+    return spawn(spawn3, profil, role12 + "_" + Game.time, { role: role12, workroom, home: spawn3.room.name, repairs: 0, noLink: false });
   }
 };
 Upgrader = __decorateClass([
@@ -3049,7 +3863,7 @@ Upgrader = __decorateClass([
 var upgrader_default = new Upgrader();
 
 // src/roles/wally.ts
-var role11 = "wally";
+var role13 = "wally";
 var Wally = class {
   /** Erntet, weicht bei Invasion aus, repariert Walls/Ramparts oder upgradet sonst den Controller. */
   doJob(creep) {
@@ -3109,20 +3923,11 @@ var Wally = class {
       return false;
     }
   }
-  _getProfil(spawn3) {
-    const totalCost = BODYPART_COST[WORK] + 2 * BODYPART_COST[CARRY] + BODYPART_COST[MOVE];
-    var maxEnergy = spawn3.room.energyCapacityAvailable;
-    const numberOfSets = Math.min(9, Math.floor(maxEnergy / totalCost));
-    if (numberOfSets == 0) {
-      return [WORK, CARRY, CARRY, MOVE, MOVE];
-    }
-    return Array(numberOfSets).fill(WORK).concat(Array(2 * numberOfSets).fill(CARRY).concat(Array(numberOfSets).fill(MOVE)));
-  }
   /** Spawnt einen Wallrepairer für `workroom`, falls Bedarf, Rumpfbudget und Energiereserve passen. */
   spawn(spawn3, workroom) {
     if (spawn3.room.name != workroom && !Memory.rooms[workroom].claimed)
       return false;
-    var count = _.filter(Game.creeps, (creep) => creep.memory.role == role11 && creep.memory.workroom == workroom).length;
+    var count = _.filter(Game.creeps, (creep) => creep.memory.role == role13 && creep.memory.workroom == workroom).length;
     if (bot.room[workroom].maxwallRepairer <= count)
       return false;
     var room = Game.rooms[workroom];
@@ -3136,8 +3941,8 @@ var Wally = class {
     var storage = Game.rooms[workroom].storage;
     if (storage && storage.store[RESOURCE_ENERGY] < 5e4 || !storage)
       return false;
-    var p = this._getProfil(spawn3);
-    return spawn(spawn3, p, role11 + "_" + Game.time, { role: role11, workroom, home: spawn3.room.name });
+    var p = BODIES.wally.build(spawn3.room.energyCapacityAvailable);
+    return spawn(spawn3, p, role13 + "_" + Game.time, { role: role13, workroom, home: spawn3.room.name });
   }
 };
 Wally = __decorateClass([
@@ -3147,10 +3952,17 @@ var wally_default = new Wally();
 
 // src/roles/index.ts
 var jobs = {
+  // Ganz vorn mit Absicht: sind Spawn und Extensions leer, spawnt der Raum
+  // überhaupt nichts mehr — auch keinen Ersatzfiller. Wer den Spawn füttert,
+  // muss vor allen stehen, die daraus bezahlt werden.
+  filler: filler_default,
   debitor: debitor_default,
   // Weit vorn mit Absicht: ein voller Empfänger-Link nimmt nichts mehr an und
   // blockiert damit den Durchsatz aller Quell-Links, die auf ihn senden.
   linkkeeper: linkkeeper_default,
+  // Direkt hinter dem Linkkeeper: ohne Träger läuft der Quellcontainer über
+  // und der Miner fördert ins Leere. Beides sind Durchsatzsperren.
+  hauler: hauler_default,
   transfer: transfer_default,
   miner: miner_default,
   claimer: claimer_default,
@@ -3202,8 +4014,235 @@ function spawn2() {
   }
 }
 
-// src/profiler/report.ts
+// src/profiler/history.ts
+var HISTORY_SEGMENT = 99;
+var HISTORY_MAX_ENTRIES = 1e3;
+var MAX_SEGMENT_CHARS = 100 * 1024;
+var FIELD_COUNT = 11;
+function hasRawMemory() {
+  return typeof RawMemory !== "undefined";
+}
+function requestSegment() {
+  if (!hasRawMemory()) return;
+  RawMemory.setActiveSegments([HISTORY_SEGMENT]);
+}
+function isAvailable() {
+  if (!hasRawMemory()) return false;
+  return RawMemory.segments[HISTORY_SEGMENT] !== void 0;
+}
+function buildEntry(metrics) {
+  return {
+    tick: Game.time,
+    ticks: metrics.ticks,
+    mode: metrics.mode,
+    cpuPerTick: metrics.cpuPerTick,
+    cpuMaxTick: metrics.cpuMaxTick,
+    cpuPerRoom: metrics.cpuPerRoom,
+    cpuPerCreep: metrics.cpuPerCreep,
+    bucketMean: metrics.bucketMean,
+    bucketMin: metrics.bucketMin,
+    rooms: metrics.rooms,
+    creeps: metrics.creeps
+  };
+}
+function serializeEntry(entry) {
+  return [
+    entry.tick.toFixed(2),
+    entry.ticks.toFixed(2),
+    entry.mode,
+    entry.cpuPerTick.toFixed(2),
+    entry.cpuMaxTick.toFixed(2),
+    entry.cpuPerRoom.toFixed(2),
+    entry.cpuPerCreep.toFixed(2),
+    entry.bucketMean.toFixed(2),
+    entry.bucketMin.toFixed(2),
+    entry.rooms.toFixed(2),
+    entry.creeps.toFixed(2)
+  ].join(";");
+}
+function parseEntry(line) {
+  const fields = line.split(";");
+  if (fields.length !== FIELD_COUNT) return void 0;
+  const mode = fields[2];
+  const numberFields = [
+    fields[0],
+    fields[1],
+    fields[3],
+    fields[4],
+    fields[5],
+    fields[6],
+    fields[7],
+    fields[8],
+    fields[9],
+    fields[10]
+  ].map(Number);
+  if (numberFields.some((value) => !Number.isFinite(value))) return void 0;
+  if (mode.length === 0) return void 0;
+  const [tick2, ticks, cpuPerTick, cpuMaxTick, cpuPerRoom, cpuPerCreep, bucketMean, bucketMin, rooms, creeps] = numberFields;
+  return {
+    tick: tick2,
+    ticks,
+    mode,
+    cpuPerTick,
+    cpuMaxTick,
+    cpuPerRoom,
+    cpuPerCreep,
+    bucketMean,
+    bucketMin,
+    rooms,
+    creeps
+  };
+}
+function read() {
+  if (!isAvailable()) return [];
+  const raw = RawMemory.segments[HISTORY_SEGMENT];
+  if (raw === void 0 || raw.length === 0) return [];
+  const entries = [];
+  for (const line of raw.split("\n")) {
+    if (line.length === 0) continue;
+    const entry = parseEntry(line);
+    if (entry !== void 0) entries.push(entry);
+  }
+  return entries;
+}
+function append(metrics) {
+  if (!isAvailable()) return false;
+  const entries = read();
+  entries.push(buildEntry(metrics));
+  while (entries.length > HISTORY_MAX_ENTRIES) entries.shift();
+  let serialized = entries.map(serializeEntry).join("\n");
+  while (serialized.length > MAX_SEGMENT_CHARS && entries.length > 0) {
+    entries.shift();
+    serialized = entries.map(serializeEntry).join("\n");
+  }
+  RawMemory.segments[HISTORY_SEGMENT] = serialized;
+  return true;
+}
 function fmt(value, decimals = 2) {
+  if (!Number.isFinite(value)) return "-";
+  return value.toFixed(decimals);
+}
+var COLUMN_WIDTHS = {
+  tick: 8,
+  ticks: 6,
+  mode: 6,
+  cpuPerTick: 9,
+  cpuMaxTick: 8,
+  cpuPerRoom: 9,
+  cpuPerCreep: 10,
+  bucketMean: 10,
+  bucketMin: 11,
+  rooms: 6,
+  creeps: 7
+};
+function formatRow(entry) {
+  return [
+    fmt(entry.tick, 0).padStart(COLUMN_WIDTHS.tick),
+    fmt(entry.ticks, 0).padStart(COLUMN_WIDTHS.ticks),
+    entry.mode.padStart(COLUMN_WIDTHS.mode),
+    fmt(entry.cpuPerTick).padStart(COLUMN_WIDTHS.cpuPerTick),
+    fmt(entry.cpuMaxTick).padStart(COLUMN_WIDTHS.cpuMaxTick),
+    fmt(entry.cpuPerRoom).padStart(COLUMN_WIDTHS.cpuPerRoom),
+    fmt(entry.cpuPerCreep).padStart(COLUMN_WIDTHS.cpuPerCreep),
+    fmt(entry.bucketMean, 0).padStart(COLUMN_WIDTHS.bucketMean),
+    fmt(entry.bucketMin, 0).padStart(COLUMN_WIDTHS.bucketMin),
+    fmt(entry.rooms).padStart(COLUMN_WIDTHS.rooms),
+    fmt(entry.creeps).padStart(COLUMN_WIDTHS.creeps)
+  ].join("  ");
+}
+function format(entries) {
+  if (entries.length === 0) {
+    return "Kein Verlauf vorhanden. Mit prof.light() oder prof.on() messen \u2014 je volles Fenster (100 Ticks) kommt eine Zeile dazu.";
+  }
+  const header = [
+    "Tick".padStart(COLUMN_WIDTHS.tick),
+    "Ticks".padStart(COLUMN_WIDTHS.ticks),
+    "Modus".padStart(COLUMN_WIDTHS.mode),
+    "CPU/Tick".padStart(COLUMN_WIDTHS.cpuPerTick),
+    "CPU/Max".padStart(COLUMN_WIDTHS.cpuMaxTick),
+    "CPU/Raum".padStart(COLUMN_WIDTHS.cpuPerRoom),
+    "CPU/Creep".padStart(COLUMN_WIDTHS.cpuPerCreep),
+    "Bucket-\xD8".padStart(COLUMN_WIDTHS.bucketMean),
+    "Bucket-Min".padStart(COLUMN_WIDTHS.bucketMin),
+    "R\xE4ume".padStart(COLUMN_WIDTHS.rooms),
+    "Creeps".padStart(COLUMN_WIDTHS.creeps)
+  ].join("  ");
+  const separator = "-".repeat(header.length);
+  const rows = entries.map(formatRow);
+  return [header, separator, ...rows].join("\n");
+}
+
+// src/profiler/mail.ts
+var NOTIFY_MAX_CHARS = 1e3;
+var NOTIFY_MAX_PER_TICK = 20;
+function prefixLength(digitWidth) {
+  return 4 + 2 * digitWidth;
+}
+function greedySplitLines(lines, maxContentChars) {
+  const blocks = [];
+  let current = "";
+  for (const line of lines) {
+    if (line.length > maxContentChars) {
+      if (current.length > 0) {
+        blocks.push(current);
+        current = "";
+      }
+      let rest = line;
+      while (rest.length > 0) {
+        blocks.push(rest.slice(0, maxContentChars));
+        rest = rest.slice(maxContentChars);
+      }
+      continue;
+    }
+    const candidate = current.length === 0 ? line : `${current}
+${line}`;
+    if (candidate.length <= maxContentChars) {
+      current = candidate;
+    } else {
+      blocks.push(current);
+      current = line;
+    }
+  }
+  if (current.length > 0) blocks.push(current);
+  return blocks;
+}
+function splitForNotify(text, maxChars = NOTIFY_MAX_CHARS) {
+  if (text.trim().length === 0) return [];
+  const lines = text.split("\n");
+  let digitWidth = 1;
+  let blocks = [];
+  for (let iteration = 0; iteration < 5; iteration += 1) {
+    const maxContentChars = Math.max(1, maxChars - prefixLength(digitWidth));
+    blocks = greedySplitLines(lines, maxContentChars);
+    const neededWidth = String(blocks.length).length;
+    if (neededWidth === digitWidth) break;
+    digitWidth = neededWidth;
+  }
+  const total = blocks.length;
+  return blocks.map((block, index) => `[${index + 1}/${total}] ${block}`);
+}
+function mailReport(title, text) {
+  if (text.trim().length === 0) {
+    return "Leerer Bericht, nichts verschickt.";
+  }
+  const blocks = splitForNotify(`${title}
+${text}`);
+  if (blocks.length === 0) {
+    return "Leerer Bericht, nichts verschickt.";
+  }
+  const toSend = blocks.slice(0, NOTIFY_MAX_PER_TICK);
+  for (const block of toSend) {
+    Game.notify(block, 0);
+  }
+  const omitted = blocks.length - toSend.length;
+  if (omitted > 0) {
+    return `Bericht als ${toSend.length} E-Mail(s) verschickt, ${omitted} Block(e) weggelassen (Limit ${NOTIFY_MAX_PER_TICK} je Tick).`;
+  }
+  return `Bericht als ${toSend.length} E-Mail(s) verschickt.`;
+}
+
+// src/profiler/report.ts
+function fmt2(value, decimals = 2) {
   if (!Number.isFinite(value)) return "-";
   return value.toFixed(decimals);
 }
@@ -3217,7 +4256,7 @@ function topEntries(entries, count) {
 }
 function formatWindowLine(metrics) {
   const top = topEntries(metrics.roles, 3);
-  return `[prof] Fenster=${fmt(metrics.ticks, 0)}T | CPU/Tick=${fmt(metrics.cpuPerTick)} | CPU/Raum=${fmt(metrics.cpuPerRoom)} | CPU/Creep=${fmt(metrics.cpuPerCreep)} | Bucket~${fmt(metrics.bucketMean, 0)} (min ${fmt(metrics.bucketMin, 0)}) | Limit=${fmt(metrics.limit, 0)} | Top: ${top}`;
+  return `[prof] Fenster=${fmt2(metrics.ticks, 0)}T | CPU/Tick=${fmt2(metrics.cpuPerTick)} | CPU/Raum=${fmt2(metrics.cpuPerRoom)} | CPU/Creep=${fmt2(metrics.cpuPerCreep)} | Bucket~${fmt2(metrics.bucketMean, 0)} (min ${fmt2(metrics.bucketMin, 0)}) | Limit=${fmt2(metrics.limit, 0)} | Top: ${top}`;
 }
 var NUMBER_COLUMN_WIDTHS = {
   cpuPerTick: 9,
@@ -3229,10 +4268,10 @@ var NUMBER_COLUMN_WIDTHS = {
 function formatRankedRow(entry, widths) {
   return [
     entry.name.padEnd(widths.name),
-    fmt(entry.cpuPerTick).padStart(widths.cpuPerTick),
-    fmt(entry.cpuPerCall).padStart(widths.cpuPerCall),
-    fmt(entry.callsPerTick).padStart(widths.callsPerTick),
-    fmt(entry.max).padStart(widths.max),
+    fmt2(entry.cpuPerTick).padStart(widths.cpuPerTick),
+    fmt2(entry.cpuPerCall).padStart(widths.cpuPerCall),
+    fmt2(entry.callsPerTick).padStart(widths.callsPerTick),
+    fmt2(entry.max).padStart(widths.max),
     fmtPercent(entry.share).padStart(widths.share)
   ].join("  ");
 }
@@ -3276,12 +4315,12 @@ var BASELINE_NUMBER_WIDTHS = {
 function formatBaselineRow(row, widths) {
   return [
     row.name.padEnd(widths.name),
-    fmt(row.tick, 0).padStart(widths.tick),
-    fmt(row.ticks, 0).padStart(widths.ticks),
-    fmt(row.cpuPerTick).padStart(widths.cpuPerTick),
-    fmt(row.cpuPerRoom).padStart(widths.cpuPerRoom),
-    fmt(row.cpuPerCreep).padStart(widths.cpuPerCreep),
-    fmt(row.bucketMean).padStart(widths.bucketMean)
+    fmt2(row.tick, 0).padStart(widths.tick),
+    fmt2(row.ticks, 0).padStart(widths.ticks),
+    fmt2(row.cpuPerTick).padStart(widths.cpuPerTick),
+    fmt2(row.cpuPerRoom).padStart(widths.cpuPerRoom),
+    fmt2(row.cpuPerCreep).padStart(widths.cpuPerCreep),
+    fmt2(row.bucketMean).padStart(widths.bucketMean)
   ].join("  ");
 }
 function formatBaselines(baselines, current) {
@@ -3327,6 +4366,100 @@ function formatBaselines(baselines, current) {
   const dataRows = rows.map((row) => formatBaselineRow(row, widths));
   return [header, separator, ...dataRows].join("\n");
 }
+function fmtSigned(value, decimals = 2) {
+  if (!Number.isFinite(value)) return "-";
+  const sign = value >= 0 ? "+" : "";
+  return `${sign}${value.toFixed(decimals)}`;
+}
+function buildOverallRows(baseline, current) {
+  const metrics = [
+    ["cpuPerTick", baseline.cpuPerTick, current.cpuPerTick],
+    ["cpuPerRoom", baseline.cpuPerRoom, current.cpuPerRoom],
+    ["cpuPerCreep", baseline.cpuPerCreep, current.cpuPerCreep],
+    ["bucketMean", baseline.bucketMean, current.bucketMean]
+  ];
+  return metrics.map(([entryName, before, after]) => ({ name: entryName, before, after, diff: after - before })).sort((a, b) => Math.abs(b.diff) - Math.abs(a.diff));
+}
+function buildComparisonRows(before, after) {
+  const afterByName = new Map(after.map((entry) => [entry.name, entry.cpuPerTick]));
+  const names = /* @__PURE__ */ new Set([...Object.keys(before != null ? before : {}), ...afterByName.keys()]);
+  const rows = [...names].map((entryName) => {
+    const beforeValue = before == null ? void 0 : before[entryName];
+    const afterValue = afterByName.get(entryName);
+    const hasBefore = beforeValue !== void 0;
+    const hasAfter = afterValue !== void 0;
+    const beforeNumber = beforeValue != null ? beforeValue : 0;
+    const afterNumber = afterValue != null ? afterValue : 0;
+    const row = {
+      name: entryName,
+      before: beforeNumber,
+      after: afterNumber,
+      diff: afterNumber - beforeNumber
+    };
+    if (hasBefore && !hasAfter) row.status = "weggefallen";
+    if (!hasBefore && hasAfter) row.status = "neu";
+    return row;
+  });
+  return rows.sort((a, b) => Math.abs(b.diff) - Math.abs(a.diff));
+}
+function formatComparisonRow(row, widths) {
+  var _a;
+  const note = (_a = row.status) != null ? _a : "";
+  return [
+    row.name.padEnd(widths.name),
+    fmt2(row.before).padStart(widths.before),
+    fmt2(row.after).padStart(widths.after),
+    fmtSigned(row.diff).padStart(widths.diff),
+    note.padEnd(widths.note)
+  ].join("  ").trimEnd();
+}
+function formatComparisonBlock(title, rows) {
+  if (rows.length === 0) return "";
+  const nameWidth = Math.max("Name".length, ...rows.map((row) => row.name.length));
+  const beforeWidth = Math.max("Vorher".length, ...rows.map((row) => fmt2(row.before).length));
+  const afterWidth = Math.max("Jetzt".length, ...rows.map((row) => fmt2(row.after).length));
+  const diffWidth = Math.max("Diff".length, ...rows.map((row) => fmtSigned(row.diff).length));
+  const noteWidth = Math.max("Hinweis".length, ...rows.map((row) => {
+    var _a;
+    return ((_a = row.status) != null ? _a : "").length;
+  }));
+  const widths = {
+    name: nameWidth,
+    before: beforeWidth,
+    after: afterWidth,
+    diff: diffWidth,
+    note: noteWidth
+  };
+  const header = [
+    "Name".padEnd(widths.name),
+    "Vorher".padStart(widths.before),
+    "Jetzt".padStart(widths.after),
+    "Diff".padStart(widths.diff),
+    "Hinweis".padEnd(widths.note)
+  ].join("  ").trimEnd();
+  const separator = "-".repeat(header.length);
+  const dataRows = rows.map((row) => formatComparisonRow(row, widths));
+  return [`== ${title} ==`, header, separator, ...dataRows].join("\n");
+}
+function formatComparison(name, baseline, current) {
+  const header = `Vergleich "${name}" (Grundlinie Tick ${fmt2(baseline.tick, 0)}, ${fmt2(baseline.ticks, 0)} Ticks) vs. jetzt (${fmt2(current.ticks, 0)} Ticks)`;
+  const blocks = [header, formatComparisonBlock("Gesamt", buildOverallRows(baseline, current))];
+  const baselineHasDetail = baseline.sections !== void 0 || baseline.roles !== void 0;
+  const currentHasDetail = current.mode === "full";
+  if (!baselineHasDetail) {
+    blocks.push(
+      "Die Grundlinie kennt nur Gesamtzahlen (Zustand light bei ihrer Aufnahme). F\xFCr einen Vergleich je Abschnitt und Rolle ist eine neue Grundlinie im Zustand full n\xF6tig."
+    );
+  } else if (!currentHasDetail) {
+    blocks.push(
+      "Das laufende Fenster kennt keine Abschnitte und Rollen (Zustand light). F\xFCr den Vergleich mit prof.on() messen."
+    );
+  } else {
+    blocks.push(formatComparisonBlock("Abschnitte", buildComparisonRows(baseline.sections, current.sections)));
+    blocks.push(formatComparisonBlock("Rollen", buildComparisonRows(baseline.roles, current.roles)));
+  }
+  return blocks.filter((block) => block.length > 0).join("\n\n");
+}
 
 // src/profiler/stats.ts
 var statsMemory = Memory;
@@ -3354,8 +4487,8 @@ function writeStats(metrics) {
   for (const section of metrics.sections) {
     set(stats, `profiler.section.${section.name}.cpuPerTick`, section.cpuPerTick);
   }
-  for (const role12 of metrics.roles) {
-    set(stats, `profiler.role.${role12.name}.cpuPerTick`, role12.cpuPerTick);
+  for (const role14 of metrics.roles) {
+    set(stats, `profiler.role.${role14.name}.cpuPerTick`, role14.cpuPerTick);
   }
   statsMemory.stats = stats;
 }
@@ -3364,8 +4497,15 @@ function clearStats() {
 }
 
 // src/profiler/index.ts
+function toCpuMap(entries) {
+  const map = {};
+  for (const entry of entries) {
+    map[entry.name] = Math.round(entry.cpuPerTick * 100) / 100;
+  }
+  return map;
+}
 function toBaseline(metrics) {
-  return {
+  const baseline = {
     tick: Game.time,
     ticks: metrics.ticks,
     mode: metrics.mode,
@@ -3376,6 +4516,11 @@ function toBaseline(metrics) {
     rooms: metrics.rooms,
     creeps: metrics.creeps
   };
+  if (metrics.mode === "full") {
+    baseline.sections = toCpuMap(metrics.sections);
+    baseline.roles = toCpuMap(metrics.roles);
+  }
+  return baseline;
 }
 var Profiler = class {
   constructor(state2, measurement2, flagSwitch2) {
@@ -3395,6 +4540,9 @@ var Profiler = class {
    */
   tick() {
     this.state.syncFromMemory();
+    if (this.state.mode !== "off") {
+      requestSegment();
+    }
     this.applyFlagRequest();
     this.drawFlagLegend();
     if (this.state.expireDetail()) {
@@ -3421,6 +4569,7 @@ ${formatDetailReport(this.measurement.metrics())}`
     const metrics = this.measurement.metrics();
     console.log(formatWindowLine(metrics));
     writeStats(metrics);
+    append(metrics);
     this.measurement.reset();
   }
   on() {
@@ -3486,6 +4635,31 @@ ${formatDetailReport(metrics)}`;
   baselines() {
     const metrics = this.measurement.metrics();
     return formatBaselines(this.state.readBaselines(), metrics.ticks > 0 ? metrics : null);
+  }
+  compare(name) {
+    if (!name) {
+      return 'Name fehlt. Beispiel: prof.compare("vor-linknetz")';
+    }
+    const baseline = this.state.readBaselines()[name];
+    if (!baseline) {
+      return `Keine Grundlinie "${name}". Vorhandene zeigt prof.baselines().`;
+    }
+    const metrics = this.measurement.metrics();
+    if (metrics.ticks === 0) {
+      return "Kein gemessener Tick im Fenster \u2014 es gibt nichts zu vergleichen.";
+    }
+    return formatComparison(name, baseline, metrics);
+  }
+  mail() {
+    const report = this.report();
+    return mailReport(`[prof] Bericht Tick ${Game.time}`, report);
+  }
+  history() {
+    if (!isAvailable()) {
+      requestSegment();
+      return "Verlaufssegment angefordert. prof.history() im n\xE4chsten Tick noch einmal aufrufen.";
+    }
+    return format(read());
   }
   /**
    * Wechselt den Zustand und beginnt ein frisches Fenster.
@@ -3553,12 +4727,14 @@ function end(section) {
 
 // src/controller/timing.ts
 var botMemory3 = Memory;
-function controll() {
-  const tick2 = Game.time;
+function controllCritical() {
   init();
   begin(SECTION.tower);
   tower();
   end(SECTION.tower);
+}
+function controll() {
+  const tick2 = Game.time;
   begin(SECTION.terminal);
   const terminalIds = botMemory3.terminals;
   if (terminalIds && terminalIds.length > 0) {
@@ -3577,6 +4753,12 @@ function controll() {
     }
   }
   end(SECTION.terminal);
+  begin(SECTION.links);
+  if (tick2 % 1e3 === 0) {
+    discoverAll();
+  }
+  sendAll();
+  end(SECTION.links);
   if (tick2 % 3 === 0 && Game.cpu.bucket === 1e4) {
     begin(SECTION.pixel);
     Game.cpu.generatePixel();
@@ -3587,11 +4769,9 @@ function controll() {
     spawn2();
     end(SECTION.spawn);
   }
-  if (tick2 % 7 === 0) {
-    begin(SECTION.defence);
-    check();
-    end(SECTION.defence);
-  }
+  begin(SECTION.defence);
+  check();
+  end(SECTION.defence);
   if (tick2 % 11 === 0) {
     begin(SECTION.status);
     writeStatus();
@@ -3601,56 +4781,64 @@ function controll() {
   daylie();
   end(SECTION.daily);
 }
+var DAY_TICKS = 86400 / 3;
+var STAGGERED_DAILY_JOBS = [
+  { run: findAndSaveRoomWalls },
+  { run: findAndSaveRoomContainer },
+  { run: findAndSaveRoomTower },
+  { section: SECTION.roads, run: rebuildRoads },
+  { section: SECTION.linkplan, run: planReceiverLinks }
+];
+var STAGGER_START = 2;
 function daylie() {
-  const dayTicks = 86400 / 3;
-  switch (Game.time % dayTicks) {
-    case 0:
-      clear();
-      return;
-    case 1:
-      findAndSaveRoomWalls();
-      return;
-    case 2:
-      findAndSaveRoomContainer();
-      return;
-    case 3:
-      findAndSaveRoomTower();
-      return;
-    case 4:
-      findAndSaveTerminals();
-      return;
-    case 5:
-      rebuildRoads();
-      return;
+  const slot = Game.time % DAY_TICKS;
+  if (slot === 0) {
+    clear();
+    return;
   }
+  if (slot === 1) {
+    findAndSaveTerminals();
+    return;
+  }
+  const roomNames = Object.keys(bot.room);
+  if (roomNames.length === 0) return;
+  const index = slot - STAGGER_START;
+  if (index < 0 || index >= STAGGERED_DAILY_JOBS.length * roomNames.length) return;
+  const job = STAGGERED_DAILY_JOBS[Math.floor(index / roomNames.length)];
+  const roomName = roomNames[index % roomNames.length];
+  if (!job.section) {
+    job.run(roomName);
+    return;
+  }
+  begin(job.section);
+  job.run(roomName);
+  end(job.section);
 }
 
 // src/prototypes/creep-checks.ts
 function installCreepChecks() {
   Creep.prototype.checkHarvest = function(action, action2) {
+    const pathCache = new PathMemory(this.memory);
     if (!this.memory.harvest && this.store.getUsedCapacity() === 0) {
       if (typeof action == "function")
         action.call(this);
       this.memory.harvest = true;
       this.memory.fromId = null;
       this.say("\u{1F6D2}");
-      delete this.memory.path;
-      delete this.memory.pathTarget;
+      pathCache.forgetPath();
     }
     if (this.memory.harvest && this.store.getFreeCapacity() === 0) {
       if (typeof action2 == "function")
         action2.call(this);
       this.memory.harvest = false;
       delete this.memory.useRoomSource;
-      delete this.memory.path;
-      delete this.memory.pathTarget;
+      pathCache.forgetPath();
       delete this.memory.useContainer;
     }
     if (this.memory.harvest && this.store.getUsedCapacity() > 0 && this.memory.mineral !== "energy") {
       this.memory.harvest = false;
       delete this.memory.useRoomSource;
-      delete this.memory.path;
-      delete this.memory.pathTarget;
+      pathCache.forgetPath();
       delete this.memory.useContainer;
     }
   };
@@ -3882,8 +5070,19 @@ installCreepChecks();
 installTerminalMarket();
 var measuredJobs = wrapRoles(jobs);
 function loop() {
-  var _a, _b, _c;
+  var _a, _b, _c, _d;
   tick();
+  begin(SECTION.timing);
+  try {
+    controllCritical();
+  } catch (error) {
+    reportError(
+      "timing.kritisch",
+      `controller/timing (kritischer Teil)
+${(_a = error == null ? void 0 : error.stack) != null ? _a : String(error)}`
+    );
+  }
+  end(SECTION.timing);
   begin(SECTION.rooms);
   for (const name in bot.room) {
     const room = Game.rooms[name];
@@ -3902,7 +5101,7 @@ function loop() {
       botMemory4.init = false;
       init();
     }
-    if ((_a = room == null ? void 0 : room.controller) == null ? void 0 : _a.my) {
+    if ((_b = room == null ? void 0 : room.controller) == null ? void 0 : _b.my) {
       new RoomVisual(name).text(
         `${room.energyAvailable}/${room.energyCapacityAvailable}`,
         2,
@@ -3945,7 +5144,7 @@ function loop() {
       reportError(
         `rolle:${creepMemory.role}`,
         `Job: ${creepMemory.role} (${name})
-${(_b = error == null ? void 0 : error.stack) != null ? _b : String(error)}`
+${(_c = error == null ? void 0 : error.stack) != null ? _c : String(error)}`
       );
     }
   }
@@ -3957,7 +5156,7 @@ ${(_b = error == null ? void 0 : error.stack) != null ? _b : String(error)}`
     reportError(
       "timing",
       `controller/timing
-${(_c = error == null ? void 0 : error.stack) != null ? _c : String(error)}`
+${(_d = error == null ? void 0 : error.stack) != null ? _d : String(error)}`
     );
   }
   end(SECTION.timing);

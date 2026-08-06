@@ -25,7 +25,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { captureConsole, game, installGlobals, memory, stubRooms } from "./support/screeps-stubs";
+import { captureConsole, cpu, game, installGlobals, memory, stubRooms } from "./support/screeps-stubs";
 
 const anyGlobal = globalThis as any;
 const ROOM = "E58N6";
@@ -467,4 +467,100 @@ test("daylie() wirft ohne konfigurierte Räume nicht", async () => {
   game().time = 28_800 * 7 + 5; // irgendein Slot ab STAGGER_START
 
   assert.doesNotThrow(() => daylie());
+});
+
+/* --------------------------------------------------------------------------
+ * Plan 05, Befund 4: CPU-Stufen (`controller/cpu-budget.ts`) als
+ * Ausfallsicherung. Die Einzelheiten der Schwellen prüft
+ * `controller-cpu-budget.test.ts`; hier geht es nur um die Verdrahtung in
+ * `timing.ts`: `controllCritical()` fragt gar nicht erst nach CPU-Budget
+ * (Türme laufen immer), `controll()` hängt Statuslog, Terminal/Markt und
+ * Tagesjobs an `mayRunLow()`, Spawncontroller und Verteidigungsscan an
+ * `mayRunNormal()`.
+ * -------------------------------------------------------------------------- */
+
+test("controllCritical() lässt die Türme auch bei leerem Bucket feuern", async () => {
+  setupThreatenedRoom();
+  cpu.bucket = 0;
+  cpu.used = 100; // weit über jedem Limit — die kritische Stufe fragt trotzdem nicht nach
+  const { controllCritical } = await import("../src/controller/timing");
+
+  controllCritical();
+
+  assert.equal(
+    tower().attackCalls.length,
+    1,
+    "Türme feuern auch bei erschöpftem Bucket — controllCritical() prüft das CPU-Budget nicht",
+  );
+});
+
+test("controll() lässt bei erschöpftem Budget das Statuslog aus, bei vollem Bucket läuft es", async () => {
+  installGlobals();
+  stubRooms(ROOM);
+  game().time = QUIET_TICK; // % 11 — siehe Kopfkommentar der Datei
+  memory().rooms = {
+    [ROOM]: { aktivPrioSpawn: true },
+  };
+  const { controll } = await import("../src/controller/timing");
+
+  // Bucket dünn und der Tick schon über dem Limit: mayRunLow() verweigert.
+  cpu.bucket = 1500;
+  cpu.used = 25;
+  cpu.limit = 20;
+  const erschoepft = captureConsole();
+  try {
+    controll();
+  } finally {
+    erschoepft.restore();
+  }
+  assert.ok(
+    !erschoepft.lines.some(line => line.includes(`PrioSpawn im Raum ${ROOM}`)),
+    "erschöpftes Budget: kein Statuslog",
+  );
+
+  // Voller Bucket, derselbe Tick und dasselbe Memory: das Statuslog läuft wieder.
+  cpu.bucket = 10_000;
+  cpu.used = 0;
+  const voll = captureConsole();
+  try {
+    controll();
+  } finally {
+    voll.restore();
+  }
+  assert.ok(
+    voll.lines.some(line => line.includes(`PrioSpawn im Raum ${ROOM}`)),
+    "voller Bucket: das Statuslog läuft wieder",
+  );
+});
+
+test("controll() lässt den Verteidigungsscan bei Bucket unter 500 aus, bei vollem Bucket läuft er", async () => {
+  installGlobals();
+  // Tick 35: teilbar durch 5 (Spawncontroller-Zweig) und durch 7 (der einzige
+  // konfigurierte Raum hat Versatz 0, check() greift also bei % 7 === 0), aber
+  // nicht durch 3 — sonst bräuchte es zusätzlich den Pixel-Zweig als
+  // Nebenbedingung (Game.cpu.bucket === 10_000). Game.spawns bleibt in diesem
+  // Test leer, spawnController.spawn() ist dadurch ein sicherer Leerlauf und
+  // ohne eigene Sicht beobachtbar — der Nachweis läuft über den
+  // Verteidigungsscan, der über dieselbe mayRunNormal()-Prüfung hängt.
+  game().time = 35;
+  anyGlobal.room[ROOM] = { room: ROOM, spawnRoom: ROOM, sendDefender: true };
+  memory().rooms = { [ROOM]: {} };
+
+  const findLog: FindLogEntry[] = [];
+  game().rooms[ROOM] = makeLoggingRoom(ROOM, findLog);
+
+  const { controll } = await import("../src/controller/timing");
+
+  cpu.bucket = 100; // unter der 500er-Schwelle: mayRunNormal() verweigert
+  findLog.length = 0;
+  controll();
+  assert.equal(findLog.length, 0, "Bucket unter 500: defenceController.check() darf den Raum nicht anfassen");
+
+  cpu.bucket = 10_000; // voller Bucket: mayRunNormal() erlaubt wieder
+  findLog.length = 0;
+  controll();
+  assert.ok(
+    findLog.some(entry => entry.room === ROOM),
+    "voller Bucket: defenceController.check() prüft den Raum wieder",
+  );
 });
