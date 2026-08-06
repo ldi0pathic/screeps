@@ -15,6 +15,10 @@ tsBot/.screeps.json
 # Gebündelte Unittests aus `pnpm test` (Quelle ist tsBot/tests/)
 tsBot/.test-build/
 
+# Arbeitsverzeichnis der Subagenten-Abwicklung (Ledger, Auftraege, Reviewpakete).
+# Reine Notizen zum Ablauf einer Aenderung; das Ergebnis steht im Commit.
+.superpowers/
+
 # Hinweis: tsProd-backup/ ist bewusst NICHT ignoriert. Die Sicherungen, die
 # build-common.ts::backupMainJs() vor jedem Build anlegt, gehören mit ins Repo.
 # Sie liegen als Schwesterordner und nicht in tsProd/ selbst, weil uploader.ts
