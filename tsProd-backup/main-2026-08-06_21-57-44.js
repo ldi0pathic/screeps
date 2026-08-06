@@ -1,4 +1,4 @@
-// Build: 2026-08-06 22:36:52 +02:00
+// Build: 2026-08-06 21:57:44 +02:00
 "use strict";
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
@@ -515,12 +515,7 @@ function reportUnknownColor() {
 }
 function check() {
   const flag = Game.flags[FLAG_NAME];
-  if (!flag) {
-    if (rememberedColor() !== void 0) {
-      remember(void 0);
-    }
-    return;
-  }
+  if (!flag) return;
   const previous = rememberedColor();
   if (flag.color === previous) return;
   if (flag.color === COLOR_YELLOW) {
@@ -530,13 +525,8 @@ function check() {
   }
   if (flag.color === COLOR_RED) {
     execute();
-    const removed = flag.remove();
-    if (removed === OK) {
-      remember(void 0);
-    } else {
-      remember(flag.color);
-      console.log(`[cleanup] Flagge "${FLAG_NAME}" konnte nicht entfernt werden: ${removed}`);
-    }
+    remember(void 0);
+    flag.remove();
     return;
   }
   remember(flag.color);
