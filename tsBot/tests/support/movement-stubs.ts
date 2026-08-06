@@ -27,6 +27,7 @@ export interface PathSearch {
   from: { x: number; y: number; roomName: string };
   to: { x: number; y: number; roomName: string };
   ignoreCreeps: boolean | undefined;
+  range: number | undefined;
 }
 
 /** Alle Pfadsuchen seit dem letzten `resetMovement()`. */
@@ -82,12 +83,13 @@ export function installMovement(): void {
 
       findPathTo(
         target: { x: number; y: number; roomName: string },
-        options?: { ignoreCreeps?: boolean },
+        options?: { ignoreCreeps?: boolean; range?: number },
       ): PathStepStub[] {
         pathSearches.push({
           from: { x: this.x, y: this.y, roomName: this.roomName },
           to: { x: target.x, y: target.y, roomName: target.roomName },
           ignoreCreeps: options?.ignoreCreeps,
+          range: options?.range,
         });
         return movement.path;
       }
