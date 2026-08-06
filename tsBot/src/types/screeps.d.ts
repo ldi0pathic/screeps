@@ -25,10 +25,6 @@ declare global {
     checkHarvest(action?: () => void, action2?: () => void): void;
     checkInvasion(): boolean;
     checkWorkroomPrioSpawn(): boolean;
-    checkTombstones(min?: number): boolean;
-    checkDrops(min?: number): boolean;
-    checkRuins(min?: number): boolean;
-    checkAllContainer(min?: number): boolean;
   }
 
   interface StructureTerminal {

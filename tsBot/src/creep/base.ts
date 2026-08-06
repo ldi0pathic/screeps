@@ -35,8 +35,6 @@ export function harvest(creep: Creep): void {
 
     if (harvestRoomEnergySource(creep))
         return;
-
-    //this.goToMyHome(creep);
 }
 
 /**
