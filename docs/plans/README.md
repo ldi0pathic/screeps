@@ -52,7 +52,7 @@ Räume besitzen, fünf davon gerade ausbauen".
 | --- | --- | --- | --- | --- |
 | 01 | [Profiler und Kennzahlen](01-profiler.md) | Grundlinie messen, Engpässe finden. Ohne das ist alles Weitere Raten. | nein | Stufe 1+2 umgesetzt, Stufe 3 zurückgestellt |
 | 02 | [Strukturerkennung statt Hand-IDs](02-strukturerkennung.md) | Quellen, Links, Container automatisch finden. Größter Hebel gegen Handarbeit pro Raum. | ja | Schritt 1+2 gebaut, `mineralContainerId`/`prioBuildings` offen |
-| 03 | [Durchsatz und Körperprofile](03-durchsatz-und-bodies.md) | Bodies und Creepzahlen aus Durchsatz statt fester Zahlen. Enthält einen gefundenen Bug. | ja | Bug behoben, Profile zentralisiert; Durchsatzlogik offen |
+| 03 | [Durchsatz und Körperprofile](03-durchsatz-und-bodies.md) | Bodies und Creepzahlen aus Durchsatz statt fester Zahlen. Enthält einen gefundenen Bug. | ja | Punkte 1–3 gebaut; Bedarf statt Kopfzahl (4) und Ersatzzeitpunkt (5) offen |
 | 04 | [RCL8-Upgrader und GCL](04-rcl8-upgrader-und-gcl.md) | Ungenutzte Upgrade-Kapazität heben — das GCL-Nadelöhr. | ja | Rumpf und RCL8-Drossel gebaut, RCL6/7 offen |
 | 05 | [CPU-Verteilung](05-cpu-verteilung.md) | Scans staffeln, CPU-Stufen als Ausfallsicherung. | ja | Schritte 1–5 gebaut, Befund 6 (`range`) offen |
 | 06 | [Sparmodus und Rotationsbetrieb](06-raum-sparmodus.md) | Besitz von Betrieb entkoppeln: zehn Räume besitzen, sechs betreiben. | ja | offen |

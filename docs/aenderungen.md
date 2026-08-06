@@ -823,3 +823,42 @@ identisch.
 **Noch offen:** `transfer.ts` benutzt die Klasse noch nicht. Das ist der
 eigentliche Punkt 3 des Plans und kommt als eigener Commit mit
 Verhaltensänderung.
+
+## Runde 2026-08-06: Transfer misst seine Strecke (Plan 03, Punkt 3)
+
+**Verhaltensänderung, lokal.** `transfer` dimensionierte seinen Rumpf bisher aus
+der Raumenergie: `min(25, energieKapazität / 100)` Paare aus CARRY und MOVE. Bei
+RCL8 sind das **25 CARRY und 25 MOVE — 2500 Energie und 150 Spawnticks**,
+unabhängig davon, ob der Weg fünf oder fünfzig Felder lang ist. Der Durchsatz
+hängt aber an der Strecke und an der Quelle, nicht an der Tragfähigkeit; ein zu
+großer Träger kostet nur Spawnzeit ohne Mehrertrag.
+
+Jetzt misst die Rolle ihren Umlauf wie der Debitor und benutzt `RoundTrip` mit
+**eigenen** Memory-Schlüsseln (`transferDistances`, `transferSize`,
+`transferCount`), damit die Messreihe des Debitors für denselben Arbeitsraum
+unangetastet bleibt.
+
+Was das an Zahlen bedeutet, bei 12 900 Energiekapazität:
+
+| Gemessener Umlauf | Rumpf vorher | Rumpf jetzt |
+| --- | --- | --- |
+| 10 Ticks | 25 CARRY + 25 MOVE, 2500 Energie, 150 Spawnticks | 4 CARRY + 4 MOVE, 400 Energie, 24 Spawnticks |
+| 100 Ticks | 25 CARRY + 25 MOVE, 2500 Energie, 150 Spawnticks | 20 CARRY + 20 MOVE, 2000 Energie, 120 Spawnticks |
+
+Solange **noch keine** Messung vorliegt, bleibt es beim alten Profil — der erste
+Transfer eines Raumpaars muss überhaupt erst fahren, damit es etwas zu messen
+gibt.
+
+**Die Anzahl bleibt bei einem Transfer je Spawn und Zielraum.** `RoundTrip`
+leitet zwar auch eine Creepzahl ab und schreibt sie ins Memory, aber sie hier zu
+benutzen wäre eine zweite, größere Verhaltensänderung: mehrere Transfer-Creeps
+können den Heimat-Storage schneller leeren, als er sich füllt. Ob das gewollt
+ist, entscheidet eine Messung im Spiel und nicht diese Runde. Der Grund steht als
+Kommentar an der Stelle.
+
+**Nebenbei behoben:** `creep.memory.distance` wurde beim Spawnen nie auf `0`
+gesetzt, der erste Tick rechnete also `undefined + 1` und der Zähler stand auf
+`NaN`. Im Spiel heilt das über die JSON-Serialisierung von `Memory` — aus `NaN`
+wird `null`, und `null + 1` ist 1 —, im Testgeschirr ohne diesen Umweg aber
+nicht: dort bliebe der Zähler dauerhaft `NaN`, und `RoundTrip.record` verwirft
+solche Werte. Jetzt bei Debitor **und** Transfer mit `distance: 0` initialisiert.

@@ -1,4 +1,4 @@
-// Build: 2026-08-06 02:49:00 +02:00
+// Build: 2026-08-06 03:00:08 +02:00
 "use strict";
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
@@ -3019,7 +3019,7 @@ var Debitor = class {
     }
     var profil = this.bodyFor(spawn3, workroom, mineraltype, containerId);
     bot.logWorkroom(workroom, "4");
-    if (!spawn(spawn3, profil, role3 + "_" + Game.time, { role: role3, harvest: true, workroom, home: spawn3.room.name, mineral: mineraltype, container: containerId, notfall: false })) {
+    if (!spawn(spawn3, profil, role3 + "_" + Game.time, { role: role3, harvest: true, workroom, home: spawn3.room.name, mineral: mineraltype, container: containerId, notfall: false, distance: 0 })) {
       if (_.filter(Game.creeps, (creep) => creep.memory.role == role3 && creep.memory.workroom == workroom).length == 0 && spawn3.room.name == workroom) {
         console.log("[" + spawn3.room.name + "|" + workroom + "]Notfallspawn Debitor");
         var min = Math.min(Math.max(parseInt(spawn3.room.energyAvailable / 100), 1), 16);
@@ -3794,12 +3794,18 @@ var repairer_default = new Repairer();
 
 // src/roles/transfer.ts
 var role11 = "transfer";
+var ROUND_TRIP_KEYS2 = { samples: "transferDistances", size: "transferSize", count: "transferCount" };
 var Transfer = class {
   /** Sammelt Energie/Mineralien aus dem Arbeitsraum und bringt sie zum Heimatraum bzw. an bedürftige Builder. */
   doJob(creep) {
     if (!creep.memory.mineral)
       creep.memory.mineral = RESOURCE_ENERGY;
-    creep.checkHarvest();
+    creep.checkHarvest(
+      () => this.recordRoundTrip(creep),
+      () => this.recordRoundTrip(creep)
+    );
+    if (creep.memory.home != creep.memory.workroom)
+      creep.memory.distance = creep.memory.distance + 1;
     if (creep.memory.harvest) {
       if (creep.room.name == creep.memory.workroom) {
         if (harvestRoomRuins(creep, RESOURCE_ENERGY)) return;
@@ -3836,6 +3842,19 @@ var Transfer = class {
     return;
   }
   /**
+   * Nimmt für `checkHarvest` eine Streckenmessung auf, solange die
+   * Umlaufgröße für den Arbeitsraum noch nicht feststeht. Kein Effekt, wenn
+   * Arbeits- und Heimatraum identisch sind (kein Remote-Umlauf).
+   */
+  recordRoundTrip(creep) {
+    if (creep.memory.home == creep.memory.workroom)
+      return;
+    const roundTrip = new RoundTrip(creep.memory.workroom, ROUND_TRIP_KEYS2);
+    if (roundTrip.record(creep.memory.distance)) {
+      creep.memory.distance = 0;
+    }
+  }
+  /**
    *
    * @param {StructureSpawn} spawn
    */
@@ -3865,8 +3884,11 @@ var Transfer = class {
     var storage = Game.rooms[spawn3.room.name].storage;
     if (storage && storage.store[RESOURCE_ENERGY] < 1e4 || !storage)
       return false;
-    var profil = BODIES.transfer.build(spawn3.room.energyCapacityAvailable);
-    return spawn(spawn3, profil, role11 + "_" + Game.time, { role: role11, harvest: true, workroom, home: spawn3.room.name, mineral: mineraltype });
+    const roundTrip = new RoundTrip(workroom, ROUND_TRIP_KEYS2);
+    const maxSetsForEnergy = BODIES.transfer.setsFor(spawn3.room.energyCapacityAvailable);
+    const carry = roundTrip.carryFor(maxSetsForEnergy);
+    var profil = Number.isFinite(carry) ? carryMove(carry) : BODIES.transfer.build(spawn3.room.energyCapacityAvailable);
+    return spawn(spawn3, profil, role11 + "_" + Game.time, { role: role11, harvest: true, workroom, home: spawn3.room.name, mineral: mineraltype, distance: 0 });
   }
 };
 Transfer = __decorateClass([

@@ -320,7 +320,10 @@ export class Debitor implements CreepRole {
         bot.logWorkroom(workroom, '4');
         //wenn im aktuellen raum kein Debitor ist
 
-        if (!creepBase.spawn(spawn, profil, role + '_' + Game.time, { role: role, harvest: true, workroom: workroom, home: spawn.room.name, mineral: mineraltype, container: containerId, notfall: false })) {
+        // `distance: 0` wie beim Transfer: ohne Startwert rechnet der erste Tick
+        // `undefined + 1`, und der Streckenzähler steht auf `NaN`. Im Spiel heilt
+        // das über die JSON-Serialisierung von `Memory`, im Testgeschirr nicht.
+        if (!creepBase.spawn(spawn, profil, role + '_' + Game.time, { role: role, harvest: true, workroom: workroom, home: spawn.room.name, mineral: mineraltype, container: containerId, notfall: false, distance: 0 })) {
             if (_.filter(Game.creeps, (creep: Creep) => creep.memory.role == role && creep.memory.workroom == workroom).length == 0 && spawn.room.name == workroom) {
                 console.log("[" + spawn.room.name + "|" + workroom + "]Notfallspawn Debitor");
                 var min = Math.min(Math.max(parseInt((spawn.room.energyAvailable / 100) as any), 1), 16);
