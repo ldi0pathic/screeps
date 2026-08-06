@@ -1,7 +1,23 @@
 # Plan 05: CPU-Verteilung über den Tick
 
-Status: **Vorschlag.** Verhaltensänderung: **ja**, außer beim ersten Punkt.
-Voraussetzung: **Plan 01**, sonst werden Schwellen geraten.
+Status: **Schritte 1 bis 5 gebaut** (2026-08-06, siehe `docs/aenderungen.md`),
+Wirkung noch nicht gemessen. Befund 6
+(`range` an Pfadsuchen) ebenfalls offen — er braucht eine Einzelprüfung je
+Aufrufstelle, ob der Creep ein Feld früher noch in Reichweite seines
+`transfer`/`withdraw` steht.
+
+Nachtrag zu Schritt 3: Plan nennt „Türme **und Notfall-Spawn**". Umgesetzt sind
+nur die Türme. Einen eigenen Einstieg für den Notfallspawn gibt es nicht, und
+den Spawncontroller ganz nach vorn zu ziehen wäre kontraproduktiv — er läuft nur
+alle fünf Ticks und kostet je Aufruf ein Vielfaches der Türme (5,47 gegen 0,40
+gemessen), würde die Spitze also vergrößern statt verkleinern.
+
+Beim Staffeln der Tagesjobs gefunden: **der Straßenwiederaufbau arbeitet auf
+einem Datenstand, den niemand mehr auffrischt.** `findAndSaveRoads()` ist die
+einzige Stelle, die `Memory.rooms[<raum>].roads` füllt, und wird nirgends
+gerufen — im alten Bot steht der Aufruf auskommentiert
+(`prod/controller.timing.js:79`). Das ist eine Entscheidung des Betreibers, kein
+Fehler; Einzelheiten in `docs/aenderungen.md`.
 
 Bei 20 CPU ist das hier die Voraussetzung dafür, dass mehr Räume überhaupt
 hineinpassen.
@@ -127,13 +143,23 @@ geprüft werden. Gehört gemessen (Plan 01) und dann gezielt geändert.
 - Nach Schritt 5: bei niedrigem Bucket fällt nur die niedrige Stufe aus,
   belegbar über das Log.
 
-## Offene Frage an den Betreiber
+## Pixelfrage: nach der Messung entschieden — bleibt unverändert
 
-Pixel weiter automatisch erzeugen? Drei Möglichkeiten:
+Die Messung liegt vor (`docs/profiler/`) und zeigt, dass der Puffer heute nicht
+gebraucht wird:
 
-- unverändert lassen (Bucket wird regelmäßig auf 0 gefahren),
-- nur erzeugen, wenn der Bucket eine Weile stabil voll war,
-- Pixelerzeugung abschalten und Pixel weiter nur kaufen.
+- **CPU je Tick 9,12** bei einem Limit von 20. Der teuerste gemessene Abschnitt
+  war `creeps` mit 10,01, der zweitteuerste `timing` mit 7,23 — selbst wenn
+  beide Spitzen in denselben Tick fielen, bliebe man unter dem Limit.
+- **Bucket im Mittel 2043, Minimum 1545.** Das ist die Nebenwirkung der
+  Pixelerzeugung, aber 1545 Bucket sind immer noch rund 150 Ticks Reserve bei
+  10 CPU Überziehung.
 
-Ohne die Messung aus Plan 01 lässt sich nicht sagen, wie oft der Bot den Puffer
-wirklich braucht. Vorschlag: Frage nach dem ersten Messfenster entscheiden.
+Damit bleibt die Pixelerzeugung, wie sie ist. Sie kostet Reserve, die der Bot
+derzeit nicht braucht, und Pixel sind echter Gegenwert.
+
+**Was die Entscheidung umdrehen würde**, nachprüfbar mit `prof.history()`:
+steigt `cpuMaxTick` in die Nähe von 20 oder fällt `bucketMin` unter etwa 500,
+ist der Puffer keine Rücklage mehr, sondern knapp — dann greift die mittlere
+Variante (nur erzeugen, wenn der Bucket eine Weile stabil voll war). Beide Werte
+stehen in jeder Verlaufszeile, es braucht dafür keine neue Messung.

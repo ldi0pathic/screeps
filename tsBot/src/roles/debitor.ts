@@ -9,13 +9,19 @@
  */
 
 import { bot } from "../globals";
+import { energySources } from "../controller/room-inventory";
+import { linksDeliver } from "../controller/link-list";
 import * as creepBase from "../creep/base";
 import { BODIES } from "../creep/bodies";
 import { carryMove } from "../creep/body";
+import { RoundTrip, type RoundTripKeys } from "../creep/round-trip";
 import type { CreepRole } from "../roles";
 import { profile } from "../profiler/decorator";
 
 const role = "debitor";
+
+/** Raum-Memory-Schlüssel der gemessenen Umlaufdimensionierung, siehe `RoundTrip`. */
+const ROUND_TRIP_KEYS: RoundTripKeys = { samples: "distances", size: "needDebitorSize", count: "needDebitors" };
 const NEVER_SELL = {
     "energy": true,
     "power": true,
@@ -42,34 +48,10 @@ export class Debitor implements CreepRole {
             creep.memory.mineral = RESOURCE_ENERGY;
 
         creep.checkHarvest(
-            function (this: any) {
-                if (this.memory.home == this.memory.workroom)
-                    return;
-
-                if (!Memory.rooms[this.memory.workroom]!.needDebitorSize) {
-                    if (this.memory.distance > 0) {
-                        if (!Memory.rooms[this.memory.workroom]!.distances)
-                            Memory.rooms[this.memory.workroom]!.distances = [];
-
-                        Memory.rooms[this.memory.workroom]!.distances.push(this.memory.distance)
-                        this.memory.distance = 0
-                    }
-                }
-            },
-            function (this: any) {
+            () => this.recordRoundTrip(creep),
+            () => {
                 creep.memory.mineral = RESOURCE_ENERGY;
-                if (this.memory.home == this.memory.workroom)
-                    return;
-
-                if (!Memory.rooms[this.memory.workroom]!.needDebitorSize) {
-                    if (this.memory.distance > 0) {
-                        if (!Memory.rooms[this.memory.workroom]!.distances)
-                            Memory.rooms[this.memory.workroom]!.distances = [];
-
-                        Memory.rooms[this.memory.workroom]!.distances.push(this.memory.distance)
-                        this.memory.distance = 0
-                    }
-                }
+                this.recordRoundTrip(creep);
             }
         );
 
@@ -193,6 +175,21 @@ export class Debitor implements CreepRole {
     }
 
     /**
+     * Nimmt für `checkHarvest` eine Streckenmessung auf, solange die
+     * Umlaufgröße für den Arbeitsraum noch nicht feststeht. Kein Effekt, wenn
+     * Arbeits- und Heimatraum identisch sind (kein Remote-Umlauf).
+     */
+    private recordRoundTrip(creep: Creep): void {
+        if (creep.memory.home == creep.memory.workroom)
+            return;
+
+        const roundTrip = new RoundTrip(creep.memory.workroom, ROUND_TRIP_KEYS);
+        if (roundTrip.record(creep.memory.distance)) {
+            creep.memory.distance = 0;
+        }
+    }
+
+    /**
      *
      * @param {StructureSpawn} spawn
      */
@@ -206,29 +203,9 @@ export class Debitor implements CreepRole {
         // Spawnraums. Reicht ein Creep für die Strecke nicht, werden mehrere
         // kleinere geschickt (`needDebitors`).
         if (spawn.room.name != workroom) {
-            var carry = Memory.rooms[workroom]!.needDebitorSize;
-            var distances = Memory.rooms[workroom]!.distances;
-            var c = 1;
-            if (!carry && distances) {
-                var length = Math.ceil(distances.length * 0.5)
-                var meridian = distances.sort(function (a: any, b: any) {
-                    return a - b;
-                })[length];
-                carry = Math.ceil((2 * meridian) / 5)
-                var max = BODIES.debitor.setsFor(spawn.room.energyCapacityAvailable);
-
-                if (max >= carry) {
-                    Memory.rooms[workroom]!.needDebitors = 1;
-                }
-                else {
-                    c = Memory.rooms[workroom]!.needDebitors = Math.ceil(carry / max);
-                    carry = Math.ceil(carry / c);
-                }
-                if (length > 30) {
-                    Memory.rooms[workroom]!.needDebitorSize = carry;
-                    delete Memory.rooms[workroom]!.distances;
-                }
-            }
+            const roundTrip = new RoundTrip(workroom, ROUND_TRIP_KEYS);
+            const maxSetsForEnergy = BODIES.debitor.setsFor(spawn.room.energyCapacityAvailable);
+            const carry = roundTrip.carryFor(maxSetsForEnergy);
             return carryMove(carry as number);
         }
 
@@ -245,12 +222,26 @@ export class Debitor implements CreepRole {
         if (bot.room[workroom]!.transferEnergie && spawn.room.name != workroom || spawn.room.name != workroom && !Memory.rooms[workroom]!.claimed)
             return false;
 
-        if (bot.room[workroom]!.sendDebitor && bot.room[workroom]!.sendMiner && (!Memory.rooms[workroom]!.hasLinks || !bot.room[workroom]!.useLinks)) {
-            for (var id in bot.room[workroom]!.energySources) {
-                if (!Game.getObjectById((bot.room[workroom]!.energySources as any)[id]))
+        // Heimatraum mit Storage: dort übernehmen `filler` (Storage → Spawn,
+        // Extensions, Türme) und `hauler` (Quellcontainer → Storage). Der
+        // Debitor bleibt der Remote-Hauler und der Allrounder für Räume **ohne**
+        // Storage — die drei Bedingungen schließen sich damit gegenseitig aus,
+        // es kann keinen Raum geben, der von beiden oder von keinem bedient wird.
+        //
+        // Bewusst am Bauwerk festgemacht und nicht am RCL: ein Raum kann RCL 4
+        // erreicht haben, ohne das Storage gebaut zu haben.
+        if (spawn.room.name == workroom && spawn.room.storage)
+            return false;
+
+        // Ein Quellcontainer mit Link braucht keinen Debitor — aber nur, wenn das
+        // Linknetz die Energie auch wirklich abliefert. Ohne Empfänger am Storage
+        // bliebe sie im Quell-Link liegen und der Raum verhungerte.
+        if (bot.room[workroom]!.sendDebitor && bot.room[workroom]!.sendMiner && (!Memory.rooms[workroom]!.hasLinks || !linksDeliver(workroom))) {
+            for (const sourceId of energySources(workroom)) {
+                if (!Game.getObjectById(sourceId))
                     continue;
 
-                if (this._spawn(spawn, workroom, (bot.room[workroom]!.energySources as any)[id], RESOURCE_ENERGY))
+                if (this._spawn(spawn, workroom, sourceId, RESOURCE_ENERGY))
                     return true;
             }
         }
@@ -303,7 +294,10 @@ export class Debitor implements CreepRole {
             if (link.length > 0) {
                 Memory.rooms[workroom]!.hasLinks = true;
 
-                if (Memory.rooms[workroom]!.useLinks)
+                // Vorher stand hier `Memory.rooms[workroom].useLinks` — einen
+                // solchen Memory-Schlüssel setzt niemand, die Prüfung war also
+                // immer falsch und der Zweig tot.
+                if (linksDeliver(workroom))
                     return false;
             }
         }
@@ -326,7 +320,10 @@ export class Debitor implements CreepRole {
         bot.logWorkroom(workroom, '4');
         //wenn im aktuellen raum kein Debitor ist
 
-        if (!creepBase.spawn(spawn, profil, role + '_' + Game.time, { role: role, harvest: true, workroom: workroom, home: spawn.room.name, mineral: mineraltype, container: containerId, notfall: false })) {
+        // `distance: 0` wie beim Transfer: ohne Startwert rechnet der erste Tick
+        // `undefined + 1`, und der Streckenzähler steht auf `NaN`. Im Spiel heilt
+        // das über die JSON-Serialisierung von `Memory`, im Testgeschirr nicht.
+        if (!creepBase.spawn(spawn, profil, role + '_' + Game.time, { role: role, harvest: true, workroom: workroom, home: spawn.room.name, mineral: mineraltype, container: containerId, notfall: false, distance: 0 })) {
             if (_.filter(Game.creeps, (creep: Creep) => creep.memory.role == role && creep.memory.workroom == workroom).length == 0 && spawn.room.name == workroom) {
                 console.log("[" + spawn.room.name + "|" + workroom + "]Notfallspawn Debitor");
                 var min = Math.min(Math.max(parseInt((spawn.room.energyAvailable / 100) as any), 1), 16);

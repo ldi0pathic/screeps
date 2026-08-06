@@ -63,8 +63,19 @@ export const SECTION = {
   defence: "timing.defence",
   /** Statuslog, `memory.writeStatus()`. */
   status: "timing.status",
+  /** Linknetz, `links.sendAll()`. */
+  links: "timing.links",
   /** Tagessequenz, `daylie()`. */
   daily: "timing.daily",
+  /**
+   * Straßenwiederaufbau, `rebuild.rebuildRoads()`. Eigener Abschnitt, obwohl
+   * der Aufruf innerhalb von `daylie()` steht: die Tagessequenz läuft nur alle
+   * 28 800 Ticks, ihr Sammelwert `timing.daily` ist in einem üblichen Messfenster
+   * deshalb null und verrät nichts über die Kosten des Planers.
+   */
+  roads: "timing.roads",
+  /** Linkplaner, `link-planner.planReceiverLinks()`. Eigener Abschnitt aus demselben Grund wie `roads`. */
+  linkplan: "timing.linkplan",
 } as const;
 
 /** Kennzahlen eines Abschnitts, einer Rolle oder eines Creeps im Fenster. */
@@ -189,8 +200,17 @@ export interface WindowMetrics {
 }
 
 /**
- * Benannte Grundlinie. Bewusst nur Skalare: das Ding liegt in `Memory` und
- * muss klein bleiben (Abnahmekriterium: `Memory.profiler` unter 1 KB).
+ * Benannte Grundlinie.
+ *
+ * Neben den Skalaren stehen hier die CPU je Abschnitt und je Rolle — ohne sie
+ * kann ein Vorher-Nachher-Vergleich zwar sagen, dass es teurer wurde, aber nicht
+ * **wo**, und genau das ist die Frage, für die man Grundlinien anlegt.
+ * Methoden und einzelne Creeps bleiben bewusst draußen: sie sind der Großteil
+ * der Datenmenge, und Creep-Schlüssel verwaisen mit dem Creep.
+ *
+ * Das Ding liegt in `Memory` und wird deshalb in **jedem** Tick mitgeparst.
+ * Budget: `Memory.profiler` bleibt unter 8 KB (acht Grundlinien mal rund
+ * zwanzig Einträge, auf zwei Nachkommastellen gerundet).
  */
 export interface Baseline {
   /** Tick, an dem die Grundlinie festgehalten wurde. */
@@ -203,6 +223,10 @@ export interface Baseline {
   bucketMean: number;
   rooms: number;
   creeps: number;
+  /** CPU je Tick je Abschnitt. Leer, wenn die Grundlinie im Zustand `light` entstand. */
+  sections?: Record<string, number>;
+  /** CPU je Tick je Rolle. Leer, wenn die Grundlinie im Zustand `light` entstand. */
+  roles?: Record<string, number>;
 }
 
 /**
@@ -251,4 +275,19 @@ export interface ProfilerHandle {
   baseline(name: string): string;
   /** Alle festgehaltenen Grundlinien nebeneinander ausgeben. */
   baselines(): string;
+  /**
+   * Vergleicht das laufende Fenster mit einer Grundlinie, Abschnitt für
+   * Abschnitt und Rolle für Rolle.
+   */
+  compare(name: string): string;
+  /**
+   * Schickt den Bericht des laufenden Fensters per `Game.notify` an die im
+   * Profil hinterlegte Adresse. Ausdrücklich ein Befehl und kein Automatismus.
+   */
+  mail(): string;
+  /**
+   * Gibt den Verlauf aus dem Speichersegment aus. Beim ersten Aufruf wird das
+   * Segment nur angefordert — die Ausgabe kommt einen Tick später.
+   */
+  history(): string;
 }

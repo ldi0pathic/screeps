@@ -11,6 +11,11 @@
  * (`[RESOURCE_ENERGY]`) statt der Ressourcenkonstante. Das wirkt nur, weil der
  * Wert bei der Schlüsselsuche zu `"energy"` wird. Der Store-Stub verhält sich
  * genauso — so bleibt sichtbar, dass der Umbau daran nichts geändert hat.
+ *
+ * Seit dem Zielgedächtnis in `findDeliveryTarget` (Memory-Schlüssel `useSupply`
+ * für Spawn/Extensions, `useLab` für Labore) prüfen die Tests unten zusätzlich,
+ * dass ein gemerktes Ziel die Suche tatsächlich spart — dafür zählt
+ * `countClosestSearches` die Aufrufe von `findClosestByPath` mit.
  */
 
 import assert from "node:assert/strict";
@@ -38,6 +43,23 @@ async function transport(): Promise<typeof import("../src/creep/transport")> {
 async function loadTarget(): Promise<typeof import("../src/creep/target")> {
   installCreepWorld();
   return await import("../src/creep/target");
+}
+
+/**
+ * Zählt die Aufrufe von `findClosestByPath` auf der Position eines
+ * `stubActor`-Creeps, ohne den Stub selbst zu ändern — die Zählung ist der
+ * eigentliche Gegenstand der Tests zum Zielgedächtnis.
+ */
+function countClosestSearches(creep: { pos: { findClosestByPath: (...args: any[]) => unknown } }): {
+  calls: number;
+} {
+  const counter = { calls: 0 };
+  const original = creep.pos.findClosestByPath;
+  creep.pos.findClosestByPath = (...args: any[]) => {
+    counter.calls += 1;
+    return original(...args);
+  };
+  return counter;
 }
 
 test("abliefern: zu weit weg heißt hinlaufen, erledigt heißt fertig", async () => {
@@ -305,4 +327,167 @@ test("Container: ohne Liste im Memory wird sie angelegt", async () => {
   });
   assert.equal(TransportToHomeContainer(creepWithEmptyList, RESOURCE_ENERGY), false);
   assert.deepEqual(emptyList.container, [], "die leere Liste bleibt leer");
+});
+
+test("Spawn: das gemerkte Ziel spart die Suche im nächsten Aufruf", async () => {
+  const { TransportEnergyToHomeSpawn } = await transport();
+
+  const spawn = stubStructure("spawn", "spawn", 20, 20, "E58N6", stubStore(300, { energy: 0 }));
+  const extension = stubStructure("ext", "extension", 21, 20, "E58N6", stubStore(200, { energy: 0 }));
+  const creep = stubActor(10, 10, "E58N6", {
+    store: stubStore(500, { energy: 500 }),
+    memory: { home: "E58N6" },
+    closest: { [FIND_MY_STRUCTURES]: [spawn, extension] },
+  });
+  const searches = countClosestSearches(creep);
+
+  // Erster Aufruf: der Creep ist noch nicht am Ziel, also bleibt es gemerkt.
+  actionResults.transfer = ERR_NOT_IN_RANGE;
+  assert.equal(TransportEnergyToHomeSpawn(creep), true);
+  assert.equal(creep.memory.useSupply, "spawn", "das gefundene Ziel wird unter useSupply gemerkt");
+  assert.equal(searches.calls, 1, "die erste Ablieferung sucht einmal");
+
+  // Zweiter Aufruf im selben Zustand: keine erneute Suche, dasselbe Ziel.
+  assert.equal(TransportEnergyToHomeSpawn(creep), true);
+  assert.equal(creep.memory.useSupply, "spawn", "es bleibt dasselbe Ziel");
+  assert.equal(searches.calls, 1, "der zweite Aufruf sucht nicht noch einmal");
+});
+
+test("Spawn: nach erfolgreicher Ablieferung ist das Ziel vergessen", async () => {
+  const { TransportEnergyToHomeSpawn } = await transport();
+
+  const spawn = stubStructure("spawn", "spawn", 20, 20, "E58N6", stubStore(300, { energy: 0 }));
+  const creep = stubActor(10, 10, "E58N6", {
+    store: stubStore(500, { energy: 500 }),
+    memory: { home: "E58N6" },
+    closest: { [FIND_MY_STRUCTURES]: [spawn] },
+  });
+
+  actionResults.transfer = OK;
+  assert.equal(TransportEnergyToHomeSpawn(creep), true);
+  assert.equal(
+    creep.memory.useSupply,
+    undefined,
+    "nach OK ist die Extension voll oder der Creep leer — die Wahl ist verbraucht",
+  );
+});
+
+test("Spawn: unterwegs zum Ziel bleibt es gemerkt", async () => {
+  const { TransportEnergyToHomeSpawn } = await transport();
+
+  const spawn = stubStructure("spawn", "spawn", 20, 20, "E58N6", stubStore(300, { energy: 0 }));
+  const creep = stubActor(10, 10, "E58N6", {
+    store: stubStore(500, { energy: 500 }),
+    memory: { home: "E58N6" },
+    closest: { [FIND_MY_STRUCTURES]: [spawn] },
+  });
+
+  actionResults.transfer = ERR_NOT_IN_RANGE;
+  assert.equal(TransportEnergyToHomeSpawn(creep), true);
+  assert.equal(moveCalls.length, 1, "der Creep läuft zum gemerkten Ziel hin");
+  assert.equal(creep.memory.useSupply, "spawn", "das Ziel bleibt gemerkt, solange der Creep unterwegs ist");
+});
+
+test("Spawn: ein volles gemerktes Ziel löst im selben Tick eine neue Suche aus", async () => {
+  const { TransportEnergyToHomeSpawn } = await transport();
+
+  const fullExt = stubStructure("voll", "extension", 20, 20, "E58N6", stubStore(200, { energy: 200 }));
+  const freeExt = stubStructure("frei", "extension", 21, 20, "E58N6", stubStore(200, { energy: 0 }));
+  const creep = stubActor(10, 10, "E58N6", {
+    store: stubStore(500, { energy: 500 }),
+    memory: { home: "E58N6", useSupply: fullExt.id },
+    closest: { [FIND_MY_STRUCTURES]: [freeExt] },
+  });
+  const searches = countClosestSearches(creep);
+
+  actionResults.transfer = ERR_NOT_IN_RANGE;
+  assert.equal(TransportEnergyToHomeSpawn(creep), true);
+  assert.equal(actionCalls[0]!.targetId, "frei", "die volle Extension nimmt nichts mehr an");
+  assert.equal(searches.calls, 1, "genau eine Ersatzsuche im selben Tick");
+  assert.equal(creep.memory.useSupply, "frei", "die neue Wahl wird gemerkt");
+});
+
+test("Spawn: ein verschwundenes gemerktes Ziel löst ebenfalls eine neue Suche aus", async () => {
+  const { TransportEnergyToHomeSpawn } = await transport();
+
+  const extension = stubStructure("ext", "extension", 21, 20, "E58N6", stubStore(200, { energy: 0 }));
+  const creep = stubActor(10, 10, "E58N6", {
+    store: stubStore(500, { energy: 500 }),
+    memory: { home: "E58N6", useSupply: "verschwunden" },
+    closest: { [FIND_MY_STRUCTURES]: [extension] },
+  });
+  const searches = countClosestSearches(creep);
+
+  actionResults.transfer = ERR_NOT_IN_RANGE;
+  assert.equal(TransportEnergyToHomeSpawn(creep), true);
+  assert.equal(actionCalls[0]!.targetId, "ext");
+  assert.equal(searches.calls, 1, "die Ersatzsuche findet im selben Tick statt");
+  assert.equal(creep.memory.useSupply, "ext");
+});
+
+test("Spawn: die eben geleerte Quelle bleibt ausgeschlossen, auch wenn sie gemerkt ist", async () => {
+  const { TransportEnergyToHomeSpawn } = await transport();
+
+  const spawn = stubStructure("spawn", "spawn", 20, 20, "E58N6", stubStore(300, { energy: 0 }));
+  const extension = stubStructure("ext", "extension", 21, 20, "E58N6", stubStore(200, { energy: 0 }));
+  const creep = stubActor(10, 10, "E58N6", {
+    store: stubStore(500, { energy: 500 }),
+    memory: { home: "E58N6", useSupply: spawn.id, fromId: spawn.id },
+    closest: { [FIND_MY_STRUCTURES]: [spawn, extension] },
+  });
+  const searches = countClosestSearches(creep);
+
+  actionResults.transfer = ERR_NOT_IN_RANGE;
+  assert.equal(TransportEnergyToHomeSpawn(creep), true);
+  assert.equal(actionCalls[0]!.targetId, "ext", "der Spawn war die eben geleerte Quelle");
+  assert.equal(searches.calls, 1, "das gemerkte, aber ausgeschlossene Ziel löst eine Ersatzsuche aus");
+  assert.equal(creep.memory.useSupply, "ext");
+});
+
+test("useSupply und useLab stören sich nicht, wenn ein Creep beides probiert", async () => {
+  const { TransportEnergyToHomeSpawn, TransportToHomeLab } = await transport();
+
+  const spawn = stubStructure("spawn", "spawn", 20, 20, "E58N6", stubStore(300, { energy: 0 }));
+  const lab = stubStructure("lab", "lab", 22, 20, "E58N6", stubStore(3000, { XKH2O: 0 }));
+  const creep = stubActor(10, 10, "E58N6", {
+    store: stubStore(500, { energy: 500, XKH2O: 200 }),
+    memory: { home: "E58N6" },
+    closest: { [FIND_MY_STRUCTURES]: [spawn, lab] },
+  });
+
+  actionResults.transfer = ERR_NOT_IN_RANGE;
+  assert.equal(TransportEnergyToHomeSpawn(creep), true);
+  assert.equal(TransportToHomeLab(creep, "XKH2O"), true);
+
+  assert.equal(creep.memory.useSupply, "spawn");
+  assert.equal(creep.memory.useLab, "lab");
+  assert.notEqual(
+    creep.memory.useSupply,
+    creep.memory.useLab,
+    "beide Ketten merken sich ihr Ziel unter getrennten Schlüsseln",
+  );
+});
+
+test("abliefern an ein gemerktes Ziel: deliverTo setzt kein fromId", async () => {
+  const { deliverTo, RememberedTarget } = await loadTarget();
+
+  const target = stubStructure("ziel", "extension", 11, 10, "E58N6", stubStore(200, { energy: 0 }));
+  const creep = stubActor(10, 10, "E58N6", { store: stubStore(500, { energy: 500 }) });
+  const remembered = new RememberedTarget(creep.memory, "useSupply");
+  remembered.remember(target as any);
+
+  actionResults.transfer = OK;
+  assert.equal(deliverTo(creep, target as any, remembered, RESOURCE_ENERGY), true);
+  assert.equal(creep.memory.fromId, undefined, "beim Abliefern wird keine Quelle gemerkt — Sache der Beschaffung");
+  assert.equal(creep.memory.useSupply, undefined, "nach OK ist die Wahl verbraucht");
+
+  // Ohne übergebenes Ziel: das Ergebnis ist `false`, die Wahl wird trotzdem vergessen.
+  installCreepWorld();
+  const creepOhneZiel = stubActor(10, 10, "E58N6", { store: stubStore(500, { energy: 500 }) });
+  const rememberedOhneZiel = new RememberedTarget(creepOhneZiel.memory, "useSupply");
+  rememberedOhneZiel.remember(target as any);
+
+  assert.equal(deliverTo(creepOhneZiel, null, rememberedOhneZiel, RESOURCE_ENERGY), false);
+  assert.equal(creepOhneZiel.memory.fromId, undefined);
+  assert.equal(creepOhneZiel.memory.useSupply, undefined, "ohne Ziel wird die gemerkte Wahl verworfen");
 });

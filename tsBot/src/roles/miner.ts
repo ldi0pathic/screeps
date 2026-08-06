@@ -7,6 +7,7 @@
  */
 
 import { bot } from "../globals";
+import { energySources, mineralSources } from "../controller/room-inventory";
 import * as creepBase from "../creep/base";
 import { BODIES } from "../creep/bodies";
 import { PathMemory } from "../creep/path-memory";
@@ -113,15 +114,24 @@ export class Miner implements CreepRole {
                                 return;
                             }
                             if (state === ERR_FULL) {
-                                finalLocation = adjacentSpots.find(p =>
-                                    p.lookFor(LOOK_TERRAIN)[0] !== 'wall'
-                                );
-                                creep.memory.pos = finalLocation;
-                                return;
+                                break;
                             }
                             creep.say(state as any)
                         }
 
+                        // Kein Feld nimmt eine Containerbaustelle an — das
+                        // Baustellenkontingent ist voll (ERR_FULL) oder überall
+                        // steht schon etwas. Der Miner stellt sich trotzdem an
+                        // die Quelle: ohne `pos` liefe dieser ganze Block in
+                        // jedem Tick erneut und gefördert würde nie etwas.
+                        //
+                        // `container` bleibt dabei bewusst ungesetzt. Das ist
+                        // die Merkregel dieser Rolle: eine gesetzte Id heißt
+                        // „hier gehört ein Container hin", keine Id heißt
+                        // „hier ist nachgesehen worden, es gibt keinen".
+                        creep.memory.pos = adjacentSpots.find(p =>
+                            p.lookFor(LOOK_TERRAIN)[0] !== 'wall'
+                        );
                         return;
                     }
                 }
@@ -133,7 +143,12 @@ export class Miner implements CreepRole {
 
             if (creep.pos.x == creep.memory.pos.x && creep.pos.y == creep.memory.pos.y)
             {
-                var source: any = creep.pos.findClosestByPath(creep.memory.mineEnergy ? FIND_SOURCES : FIND_MINERALS);
+                // Die Quelle steht seit dem Spawn im Memory. Sie hier per Pfadsuche erneut zu
+                // bestimmen war das Teuerste an dieser Stelle. Der Rückfall bleibt für den
+                // Fall, dass die Id nicht mehr trägt — dann aber nach Entfernung statt nach
+                // Weg: der Miner steht bereits neben der Quelle.
+                var source: any = Game.getObjectById(creep.memory.source) ??
+                    creep.pos.findClosestByRange(creep.memory.mineEnergy ? FIND_SOURCES : FIND_MINERALS);
                 var state: any = creep.harvest(source);
                 if (state === ERR_NOT_IN_RANGE)
                 {
@@ -207,6 +222,21 @@ export class Miner implements CreepRole {
                                     return;
                                 }
                             }
+
+                            // Kein Feld nimmt den Link an (Wand, Straße, die Quelle selbst, oder das
+                            // Linkkontingent des Raums ist voll). Der Miner nimmt trotzdem seinen Platz
+                            // ein — ohne diese Zeile bliebe `onPosition` false und die gesamte teure
+                            // Standortsuche liefe in **jedem** Tick erneut.
+                            //
+                            // Ein neuer Anlauf ist deswegen nicht nötig: der Miner wird nicht erneuert
+                            // (`renewCreep` gibt es im Bot nicht), sein Nachfolger startet ohne
+                            // `onPosition` und durchläuft die Standortsuche komplett neu. Der Versuch
+                            // wiederholt sich damit einmal je Creepleben, und solange der Miner auf dem
+                            // Container steht, fördert er ohnehin — der Link ist Durchsatz, kein
+                            // Betriebszustand.
+                            creep.memory.onPosition = true;
+                            this._clearMemory(creep);
+                            return;
                         }
                         else
                         {
@@ -224,6 +254,33 @@ export class Miner implements CreepRole {
         {
             let source: any = Game.getObjectById(creep.memory.source);
             var container: any = Game.getObjectById(creep.memory.container);
+
+            // Die gemerkte Id trägt nicht mehr. Zwei Fälle: die Baustelle ist
+            // fertig geworden — das fertige Bauwerk bekommt eine **neue** Id —,
+            // oder der Container ist verfallen.
+            //
+            // Das ist keine Kosmetik: der Überschuss einer Ernte fällt auf den
+            // Boden, und nur auf dem Containerfeld landet er automatisch im
+            // Container (`docs/knowledge/mechanics/structures-rcl.md`). Neben
+            // dem Container verfällt er. Deshalb wird erst auf dem eigenen Feld
+            // nachgesehen — dort soll der Miner stehen, das ist ein Blick statt
+            // einer Suche —, und sonst der Standplatz neu bestimmt.
+            if(creep.memory.container && !container)
+            {
+                container = creep.pos.lookFor(LOOK_STRUCTURES)
+                    .find((s: any) => s.structureType === STRUCTURE_CONTAINER);
+
+                if(container)
+                {
+                    creep.memory.container = container.id;
+                }
+                else
+                {
+                    delete creep.memory.container;
+                    creep.memory.onPosition = false;
+                    return;
+                }
+            }
 
             if(creep.memory.mineEnergy)
             {
@@ -284,35 +341,16 @@ export class Miner implements CreepRole {
                     }
                 }
 
-                if( creep.memory.link && creep.store.getFreeCapacity() == 0)
+                // Der Miner füllt nur noch seinen eigenen Link. Wohin dieser weitersendet,
+                // entscheidet `controller/links.ts` einmal je Raum und Tick — nach Vorrang
+                // statt zufällig und mit expliziter Menge.
+                if(creep.memory.link && creep.store.getFreeCapacity() == 0)
                 {
-                    var link: any = Game.getObjectById( creep.memory.link);
-
-                   if(link != null && link.cooldown < 1 && creep.transfer(link,RESOURCE_ENERGY) == ERR_FULL)
-                   {
-                        var target: any;
-                        if(creep.room.storage && creep.room.storage.store.getUsedCapacity()*0.5 > creep.room.storage.store.getFreeCapacity())
-                        {
-                            target = Game.getObjectById(bot.room[creep.room.name]!.controllerLink as any);
-                        }
-                        else
-                        {
-                            target = Game.getObjectById((bot.room[creep.room.name]!.targetLinks as any)[[Math.floor((Math.random()*bot.room[creep.room.name]!.targetLinks!.length))] as any]);
-                        }
-
-                        if(target && target.store.getFreeCapacity(RESOURCE_ENERGY) > 50)
-                        {
-                            link.transferEnergy(target);
-                        }
-                        else
-                        {
-                            if(container && container.store.getFreeCapacity() == 0 && creep.store.getFreeCapacity() == 0)
-                            {
-                                creep.say('🚯');
-                                return;
-                            }
-                        }
-                   }
+                    var link: any = Game.getObjectById(creep.memory.link);
+                    if(link)
+                    {
+                        creep.transfer(link, RESOURCE_ENERGY);
+                    }
                 }
             }
             else
@@ -407,25 +445,25 @@ export class Miner implements CreepRole {
         if(spawn.room.name != workroom && !Memory.rooms[workroom]!.claimed && !bot.room[workroom]!.claim)
             return false;
 
-        for(var id in bot.room[workroom]!.energySources)
+        for(const sourceId of energySources(workroom))
         {
-            if(!Game.getObjectById((bot.room[workroom]!.energySources as any)[id]))
+            if(!Game.getObjectById(sourceId))
                 continue;
 
-            if(this._spawn(spawn,workroom, (bot.room[workroom]!.energySources as any)[id], true))
+            if(this._spawn(spawn,workroom, sourceId, true))
                 return true;
         }
 
         var room = Game.rooms[workroom];
         if(room && room.controller && room.controller.my && room.controller.level >= 6)
         {
-            for(var id in bot.room[workroom]!.mineralSources)
+            for(const sourceId of mineralSources(workroom))
             {
-               var mineral: any =  Game.getObjectById((bot.room[workroom]!.mineralSources as any)[id]);
+               var mineral: any =  Game.getObjectById(sourceId);
                if(!mineral || mineral.mineralAmount < 1)
                     return false;
 
-                if(this._spawn(spawn,workroom, (bot.room[workroom]!.mineralSources as any)[id], false))
+                if(this._spawn(spawn,workroom, sourceId, false))
                     return true;
             }
         }

@@ -9,8 +9,10 @@ const botGlobal = global as typeof global & {
 };
 const botMemory = Memory as RebuildMemory;
 
-export function rebuildRoads(): void {
+// `onlyRoom`: siehe Kommentar an `memory.ts::findAndSaveRoomWalls`.
+export function rebuildRoads(onlyRoom?: string): void {
   for (const name in botGlobal.room) {
+    if (onlyRoom && name !== onlyRoom) continue;
     const config = botGlobal.room[name];
     const room = Game.rooms[name];
     if (!config?.saveRoads || !room || room.controller?.level === undefined || room.controller.level < 7) {

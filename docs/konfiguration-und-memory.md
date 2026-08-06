@@ -15,6 +15,13 @@ Eine Raumdefinition enthält typischerweise `room`, `spawnRoom`, Flags zum Entse
 
 Der Schalter `sendLinkkeeper` aktiviert die Rolle `linkkeeper` für den Raum. Sie schiebt die Energie aus dem Link in der Basis (`spawnLink`) kontinuierlich ins Storage. Muss an sein, solange `useLinks` für den Raum gilt: Der frühere Direktzugriff `harvestSpawnLink` ist entfernt, weshalb ohne `sendLinkkeeper` niemand sonst den Link leert. Ein voller Empfänger-Link blockiert dann alle Quell-Links, die auf ihn senden. Voraussetzungen: `useLinks` gesetzt, `spawnLink` konfiguriert, ein Storage im Raum, der Raum ist sein eigener Spawnraum. Höchstens ein Creep je Raum. Derzeit gesetzt in E58N6, E58N7, E59N3 und E59N9.
 
+**Links stehen nicht mehr in der Config.** Die früheren Schlüssel `targetLinks`, `spawnLink`, `controllerLink` und `useLinks` sind alle entfallen:
+
+- **Welcher Link welche Rolle hat**, bestimmt `controller/link-list.ts` aus der Lage — Reichweite 3 zum Controller, 2 zum Storage, alles andere sendet. Von Hand gepflegte Ids tragen nicht mehr, seit `controller/link-planner.ts` Links im laufenden Spiel baut.
+- **Ob ein Raum Links nutzt**, folgt aus `controller.my` und dem Linkkontingent seines RCL (`usesLinks()`). Ein Raum, der RCL5 erreicht, bekommt seine Links dadurch von selbst. Bewusst am Kontingent festgemacht statt an vorhandenen Links — sonst käme der Planer nie dazu, den ersten zu bauen.
+
+Zur Nachprüfbarkeit meldet `discover()` jede **geänderte** Zuordnung auf der Konsole (`[E58N6] Links: Controller=… Storage=… Sender=2`). Der Preis der Lage-Regel: läge eine Quelle zufällig nahe am Controller, würde ihr Quell-Link zum Empfänger — dagegen hilft kein Code, sondern dieses Log.
+
 Die Prioritätstabellen verwenden kleinere Werte als höhere Priorität. `build` bevorzugt u. a. Extensions, Spawns, Links und Storage; `repair` bevorzugt Ramparts vor Walls, danach kritische Gebäudetypen — Ramparts stehen vor Walls, weil sie dauerhaft 300 Hits je 100 Ticks verlieren, während Walls gar nicht zerfallen. `hits` definiert die Reparaturschwelle als Anteil der Maximalhits (Wände `0,0005`, Ramparts `0,001`).
 
 `showPaths` schaltet die Pfad-Visualisierung in `creep/goto.ts::moveByMemory` frei (roter `RoomVisual`-Restpfad je bewegtem Creep); im Normalbetrieb bleibt sie aus, weil sie jeden Tick den gecachten Pfad erneut deserialisiert und durchsucht.
@@ -35,6 +42,7 @@ Die manuellen Helfer in `controller.memory` suchen sichtbare Räume ab und speic
 - `container`: Container
 - `tower`: Türme
 - `roads`: Straßen und Straßen-Baustellen, mit `id`, `pos` und Typ `b`/`c`
+- `links`: die klassifizierten Links des Raums als `{ controller, spawn, sender[] }` — erhoben von `controller/link-list.ts`, nicht von `controller.memory`. Die Liste wird alle 1000 Ticks neu erhoben und zusätzlich verworfen, sobald eine gemerkte Id ins Leere zeigt.
 
 `FindAndSaveTerminals()` speichert Terminal-IDs zentral in `Memory.terminals`. Diese Suchfunktionen werden nicht automatisch aus `main.js` ausgeführt; die dort vorhandenen Aufrufe sind auskommentiert.
 

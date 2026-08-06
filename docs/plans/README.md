@@ -51,13 +51,15 @@ Räume besitzen, fünf davon gerade ausbauen".
 | # | Plan | Zweck | Verhaltensänderung | Stand |
 | --- | --- | --- | --- | --- |
 | 01 | [Profiler und Kennzahlen](01-profiler.md) | Grundlinie messen, Engpässe finden. Ohne das ist alles Weitere Raten. | nein | Stufe 1+2 umgesetzt, Stufe 3 zurückgestellt |
-| 02 | [Strukturerkennung statt Hand-IDs](02-strukturerkennung.md) | Quellen, Links, Container automatisch finden. Größter Hebel gegen Handarbeit pro Raum. | ja | offen |
-| 03 | [Durchsatz und Körperprofile](03-durchsatz-und-bodies.md) | Bodies und Creepzahlen aus Durchsatz statt fester Zahlen. Enthält einen gefundenen Bug. | ja | Bug behoben, Profile zentralisiert; Durchsatzlogik offen |
-| 04 | [RCL8-Upgrader und GCL](04-rcl8-upgrader-und-gcl.md) | Ungenutzte Upgrade-Kapazität heben — das GCL-Nadelöhr. | ja | offen |
-| 05 | [CPU-Verteilung](05-cpu-verteilung.md) | Scans staffeln, CPU-Stufen als Ausfallsicherung. | ja | offen |
+| 02 | [Strukturerkennung statt Hand-IDs](02-strukturerkennung.md) | Quellen, Links, Container automatisch finden. Größter Hebel gegen Handarbeit pro Raum. | ja | Schritt 1+2 gebaut, `mineralContainerId`/`prioBuildings` offen |
+| 03 | [Durchsatz und Körperprofile](03-durchsatz-und-bodies.md) | Bodies und Creepzahlen aus Durchsatz statt fester Zahlen. Enthält einen gefundenen Bug. | ja | Punkte 1–3 gebaut; Bedarf statt Kopfzahl (4) und Ersatzzeitpunkt (5) offen |
+| 04 | [RCL8-Upgrader und GCL](04-rcl8-upgrader-und-gcl.md) | Ungenutzte Upgrade-Kapazität heben — das GCL-Nadelöhr. | ja | Rumpf und RCL8-Drossel gebaut, RCL6/7 offen |
+| 05 | [CPU-Verteilung](05-cpu-verteilung.md) | Scans staffeln, CPU-Stufen als Ausfallsicherung. | ja | Schritte 1–5 gebaut, Befund 6 (`range`) offen |
 | 06 | [Sparmodus und Rotationsbetrieb](06-raum-sparmodus.md) | Besitz von Betrieb entkoppeln: zehn Räume besitzen, sechs betreiben. | ja | offen |
 | 07 | [Expansion](07-expansion.md) | Aufklärung, Raumbewertung, Remote-Rentabilität, automatisches Claimen. | ja | offen |
 | 08 | [Ausblick: Phasen, Layout, Labore](08-ausblick.md) | Was danach kommt und was wir selbst bauen müssen. | ja | offen |
+| 09 | [Linknetz und Übernahmen](09-linknetz-und-uebernahmen.md) | Links zentral senden statt zufällig aus dem Miner; dazu die Auswertung, was aus dem Vergleichsbot taugt und was nicht. | ja | Teil A gebaut |
+| 10 | [Logistikrollen](10-logistikrollen.md) | Den teuersten Posten des Bots zerlegen: Zielgedächtnis beim Abliefern, Miner ohne Endlossuche, `filler` und `hauler` als eigene Rollen. | ja | gebaut, Wirkung ungemessen |
 
 Begründung der Reihenfolge: 01 liefert die Messgrundlage. 02 bis 04 sind kleine,
 lokal begrenzte Schritte mit direkter Wirkung auf Wachstum — sie zahlen sich aus,

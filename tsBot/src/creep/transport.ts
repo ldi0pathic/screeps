@@ -20,7 +20,7 @@
 import { bot } from "../globals";
 import { ContainerList } from "./containers";
 import { moveByMemory } from "./goto";
-import { RememberedTarget, transferTo } from "./target";
+import { RememberedTarget, deliverTo, transferTo } from "./target";
 
 /**
  * Nächstes eigenes Bauwerk eines der Typen, das `accepts` erfüllt und **nicht**
@@ -29,18 +29,38 @@ import { RememberedTarget, transferTo } from "./target";
  * Terminal und Türme benutzen das bewusst nicht: der Terminal wird über eine
  * gemerkte Id gefunden, die Türme werden nach Lücke sortiert, und beide kennen
  * die `fromId`-Regel nicht.
+ *
+ * Ein gemerktes Ziel spart die Suche — aber nur, solange es die Ladung noch
+ * annimmt. Anders als auf der Beschaffungsseite wird hier **im selben Tick**
+ * ersatzweise gesucht: gäbe die Funktion stattdessen `null` zurück, liefe die
+ * Kaskade der Rolle weiter und der Creep kippte seine Ladung ins Storage,
+ * statt die nächste Extension zu füllen.
  */
 function findDeliveryTarget(
     creep: Creep,
+    remembered: RememberedTarget,
     types: string[],
     accepts: (structure: any) => boolean,
 ): AnyStructure | null {
-    return creep.pos.findClosestByPath(FIND_MY_STRUCTURES, {
+    if (remembered.isRemembered) {
+        const known: any = remembered.resolve();
+        if (known && accepts(known) && known.id != creep.memory.fromId) {
+            return known;
+        }
+        remembered.forget();
+    }
+
+    const found = creep.pos.findClosestByPath(FIND_MY_STRUCTURES, {
         filter: (structure: any) =>
             types.includes(structure.structureType) &&
             accepts(structure) &&
             structure.id != creep.memory.fromId,
     });
+
+    if (found) {
+        remembered.remember(found);
+    }
+    return found;
 }
 
 export function TransportToHomeContainer(creep: Creep, type: string, mul?: number): boolean {
@@ -154,10 +174,11 @@ export function TransportToHomeTerminal(creep: Creep): boolean {
 }
 
 export function TransportToHomeLab(creep: Creep, type: string): boolean {
-    const target = findDeliveryTarget(creep, [STRUCTURE_LAB], (structure: any) =>
+    const remembered = new RememberedTarget(creep.memory, "useLab");
+    const target = findDeliveryTarget(creep, remembered, [STRUCTURE_LAB], (structure: any) =>
         structure.store.getFreeCapacity([type]) > 0);
 
-    return transferTo(creep, target, type);
+    return deliverTo(creep, target, remembered, type);
 }
 
 export function TransportEnergyToHomeSpawn(creep: Creep): boolean {
@@ -165,10 +186,11 @@ export function TransportEnergyToHomeSpawn(creep: Creep): boolean {
        creep.store[RESOURCE_ENERGY] == 0)
         return false;
 
-    const target = findDeliveryTarget(creep, [STRUCTURE_SPAWN, STRUCTURE_EXTENSION],
+    const remembered = new RememberedTarget(creep.memory, "useSupply");
+    const target = findDeliveryTarget(creep, remembered, [STRUCTURE_SPAWN, STRUCTURE_EXTENSION],
         (structure: any) => structure.store.getFreeCapacity([RESOURCE_ENERGY]) > 0);
 
-    return transferTo(creep, target, RESOURCE_ENERGY);
+    return deliverTo(creep, target, remembered, RESOURCE_ENERGY);
 }
 
 export function TransportEnergyToHomeTower(creep: Creep): boolean {

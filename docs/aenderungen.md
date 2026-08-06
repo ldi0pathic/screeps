@@ -338,3 +338,527 @@ gefunden:
    weiterhin ein eigener `switch`, mit Begründung im Code.
 3. Beim Terminal hatte ich die Kapazitätsprüfung negiert — dieselbe Falle wie in
    der Runde davor. Sie ist wieder positiv formuliert.
+
+## Runde 2026-08-05: Linknetz zentral gesteuert (Plan 09 Teil A)
+
+Erste Runde **mit** Verhaltensänderung seit der Migration: wer wann wohin sendet,
+ändert sich. Anlass war die erste Profilermessung aus dem Spiel
+(`docs/profiler/`) — sie hat die Annahme widerlegt, auf der Plan 09 aufgebaut
+war.
+
+**Was die Messung ergeben hat.** 9,12 CPU/Tick bei Limit 20. Der Debitor ist mit
+38,7 % der größte Posten, der Miner mit 11,1 % (0,07 je Creep) *nicht* die heiße
+Rolle, für die Plan 09 ihn hielt. Der Linkkeeper kostet 0,10 CPU/Tick — der
+Gegenbefund aus Plan 09, ihn nicht von einem Manager wecken zu lassen, ist damit
+gemessen statt argumentiert. Die Umstellung hier ist deshalb **keine
+CPU-Maßnahme, sondern eine Durchsatzmaßnahme**; sie wirkt auf die CPU nur
+mittelbar, weil kürzere Wege kleinere und weniger Debitoren brauchen.
+
+| Was | Warum | Wirkung |
+| --- | --- | --- |
+| Neue Klasse `LinkNetwork` (`src/controller/links.ts`), aufgerufen **jeden Tick** aus `controller/timing.ts`. Sie wählt je Raum die sendebereiten Links und die Empfänger nach Vorrang und sendet mit **expliziter Menge** `min(vorhanden, frei)`. | Bisher entschied jeder Miner einzeln: Ziel per `Math.random()` aus `targetLinks`, ohne Vorrang, ohne Mengenangabe. Ein Link-Cooldown entspricht der Entfernung zum Ziel (20 Felder = 20 Ticks, in denen bis zu 800 Energie hätten fließen können) und wurde so für beliebig kleine Mengen verbrannt. | **Verhaltensänderung.** Vorrang: unter RCL8 Controller-Link vor Storage-Link, ab RCL8 umgekehrt (dort zahlt Upgraden nur noch auf GCL ein). Zwei Sender zielen im selben Tick nie auf denselben Empfänger. |
+| Neue Klasse `LinkList` (`src/controller/link-list.ts`) für `Memory.rooms[<raum>].links`: erheben, klassifizieren, auflösen. **Controller- und Storage-Link sind Empfänger, alle übrigen Links sind Sender.** | Die Quell-Links standen nirgends: der Miner fand „seinen" Link per `findInRange` und legte die Id in **sein** Creep-Memory — das Wissen starb mit ihm. | Keine für sich. Zuordnung zuerst aus der Config (`spawnLink`, `controllerLink`), sonst aus der Lage: ≤3 zum Controller, ≤2 zum Storage. |
+| Neue Klasse `LinkPlanner` (`src/controller/link-planner.ts`): baut die beiden Empfängerlinks selbst, höchstens eine Baustelle je Tagesdurchlauf und Raum. | Ein Raum soll vier Links haben (zwei an den Quellen, einer am Spawn, einer am Controller). Von Hand gepflegte Ids skalieren dabei nicht. | **Neu.** Platzwahl: Controller-Link bevorzugt auf Reichweite 2 (Upgrader arbeiten auf 3 und können daneben stehen), Storage-Link nur auf Feldern, für die ein Standplatz des Linkkeepers existiert. Es gewinnt das Feld mit der kleinsten Entfernungssumme zu den sendenden Links — der Cooldown ist die Entfernung, kurze Strecken heißen Durchsatz. |
+| Der Miner verliert seine Weiterleitung (`roles/miner.ts`), er füllt nur noch seinen eigenen Link. | Siehe oben. | **Nebenbei ein Fehler behoben:** die alte Bedingung `link.cooldown < 1 && creep.transfer(...)` hat den Link **gar nicht befüllt**, solange sein Cooldown lief. Der Cooldown gehört zum *sendenden* Link und hat mit dem Einlagern nichts zu tun. |
+| `targetLinks` ist aus `config.ts` und `globals.ts` entfernt. | Nach dem Schnitt im Miner las es niemand mehr. Kein toter Code, kein toter Konfigwert. | Keine. |
+| Eigene Profilerabschnitte `timing.links`, `timing.roads` und `timing.linkplan`. | Der Straßenplaner lief bisher nur innerhalb des Sammelwerts `timing.daily`. Weil die Tagessequenz alle 28 800 Ticks läuft, stand der in der Messung auf 0,00 und verriet nichts über seine Kosten. | Keine. Die nächste Messung zeigt beide Planer einzeln. |
+
+**Zwei Entscheidungen, die bewusst so getroffen sind:**
+
+- **`SEND_MIN = LINK_CAPACITY / 4` (200).** Eine Quelle liefert 10 Energie/Tick,
+  ein Linkpaar über 20 Felder trägt 40/Tick — der Cooldown ist also nicht der
+  Engpass, Warten kostet nichts. Die Schwelle verhindert allein, dass ein
+  Cooldown für eine Handvoll Energie verbrannt wird.
+- **Gesendet wird jeden Tick, nicht getaktet.** Der *empfangende* Link hat keinen
+  Cooldown, es gibt also nichts, worauf man warten könnte; jeder ausgelassene
+  Tick wäre verlorener Durchsatz. Ohne sendebereiten Link ist der Durchgang
+  billig — er liest zwei Zahlen je Sender und steigt aus.
+
+**Drei Fehler des Vergleichsbots, die hier ausdrücklich nicht übernommen wurden**
+(vgl. Plan 09 Teil B): `800` hartcodiert statt `LINK_CAPACITY`; „nur senden, wenn
+der Empfänger die **ganze** Ladung aufnehmen kann" (ein halb gefüllter Empfänger
+bekäme so nie etwas); ein Zielzähler, der auch weiterläuft, wenn nichts gesendet
+wurde.
+
+**Was noch nicht gemessen ist.** Es gibt keine Grundlinie vor der Umstellung —
+`prof.baseline("vor-linknetz")` ist nicht gelaufen, weil die Änderung in einem
+Zug entstanden ist. Die Wirkung auf den Durchsatz ist deshalb bis zur nächsten
+Messung eine begründete Erwartung, keine Zahl.
+
+## Runde 2026-08-05: Links ohne Konfiguration, Config verschlankt
+
+Nachtrag zur Runde davor. Leitsatz, der dabei entstanden und in `CLAUDE.md`
+festgehalten ist: **Absicht gehört in die Config, Tatsachen über die Welt
+nicht.**
+
+| Was | Warum | Wirkung |
+| --- | --- | --- |
+| `spawnLink` und `controllerLink` sind aus der Config verschwunden. `LinkList` entscheidet allein nach Lage; `linkkeeper`, `harvestControllerLink` und `upgrader` lesen sie jetzt von dort. | Von Hand gepflegte Ids tragen nicht mehr, seit der Linkplaner Links im laufenden Spiel baut. | Keine, solange die Lage stimmt. `discover()` meldet jede **geänderte** Zuordnung auf der Konsole — läge eine Quelle zufällig nahe am Controller, würde ihr Quell-Link zum Empfänger, und genau das fällt dort auf. |
+| `useLinks` ist entfallen und wird aus `controller.my` und `CONTROLLER_STRUCTURES[link][RCL] > 0` abgeleitet (`usesLinks()`). | Links gibt es ab RCL5; ein eigener Raum, der so weit ist, soll sie nutzen. Bewusst am **Kontingent** festgemacht statt an vorhandenen Links — sonst käme der Planer nie dazu, den ersten zu bauen. | **Verhaltensänderung.** Jeder eigene Raum ab RCL5 beginnt selbständig, seine Empfängerlinks zu bauen. Bisher galt das nur in vier von Hand eingetragenen Räumen. |
+| **Fehler im Linkplaner behoben:** er reserviert jetzt Plätze für die Sender, `reserve = min(Quellen ohne Link, erlaubteLinks − 1)`, gebaut wird nur bei `freie Plätze > reserve`. | Auf RCL5 sind nur zwei Links erlaubt. Der Planer hätte beide mit Empfängern belegt und keinen Platz für einen Quell-Link gelassen — ein Linknetz aus zwei Empfängern und keinem Sender bewegt nichts. Vorher fiel das nicht auf, weil `useLinks` nur in RCL8-Räumen stand. | Ergibt die üblichen Ausbaustufen: RCL5 ein Empfänger, RCL6 einer, RCL7 zwei, RCL8 zwei plus zwei freie Plätze. |
+| **Zweiter toter Zweig behoben:** `debitor._spawn` prüfte `Memory.rooms[workroom].useLinks` — einen solchen Memory-Schlüssel setzt niemand, die Bedingung war immer falsch. Ersetzt durch `linksDeliver(workroom)`. | Ein Quellcontainer mit Link braucht keinen Debitor — aber nur, wenn das Linknetz die Energie auch abliefert. | `linksDeliver` verlangt zusätzlich einen **Empfänger am Storage**. Der RCL allein genügt nicht: zwischen „Raum darf Links bauen" und „ein Empfänger nimmt sie an" liegen Tage Bauzeit, und in dieser Lücke hätte das Wegfallen der Container-Debitoren den Raum ausgehungert. |
+| **Toter Konfigwert entfernt:** `debitorProSource` und `walls`. | Beide las kein Modul; in `globals.ts` stand das sogar als Kommentar. | Keine. |
+| **`resetWorld()` in den Test-Stubs leert jetzt auch `Game.rooms` und `Game.creeps`.** | Ein Raum aus dem vorigen Test blieb sichtbar; ein Test für „keine Sicht auf den Raum" prüfte dadurch das Gegenteil dessen, was er behauptet. | Keine im Bot. Kein bestehender Test ist daran zerbrochen. |
+| **`CLAUDE.md` korrigiert:** `global.minSalePrice` und `global.maxOrderPrice` waren dort als Konfiguration beschrieben. | Beide existieren im TypeScript-Bot nirgends — Erbe aus `prod/`. | Keine. |
+
+`config.ts` schrumpft von 346 auf 309 Zeilen. Der größere Gewinn ist nicht die
+Länge, sondern dass eine Klasse von Fehlern wegfällt: eine Id in der Config, die
+nach einem Wiederaufbau ins Leere zeigt.
+
+**Noch offen:** `energySources`, `mineralSources` und `mineralContainerId` sind
+ebenfalls Tatsachen. Sie bleiben vorerst, weil `miner.spawn` und `debitor.spawn`
+sie für Räume **ohne Sicht** lesen — dafür braucht es erst einen einmalig
+erhobenen Bestand im Memory. Das gehört zu Plan 02.
+
+## Runde 2026-08-06: Profilerdaten überleben den Moment im Log
+
+Ohne Verhaltensänderung am Bot. Anlass: der Detailbericht ging nur auf die
+Konsole — wer den Moment verpasste, verlor ihn. `Memory.stats` hielt zwar die
+groben Zahlen, aber immer nur das **letzte** Fenster, und die Grundlinien nur
+Skalare.
+
+| Was | Warum | Wirkung |
+| --- | --- | --- |
+| **`prof.compare(name)`** (`profiler/report.ts::formatComparison`): stellt eine Grundlinie dem laufenden Fenster gegenüber, Abschnitt für Abschnitt und Rolle für Rolle, sortiert nach dem Betrag der Änderung. Dafür hält `Baseline` jetzt auch `sections` und `roles`. | `prof.baselines()` konnte sagen, **dass** es teurer wurde, aber nicht **wo** — und genau dafür legt man Grundlinien an. | Neuer Befehl. Ein Eintrag, den es nur auf einer Seite gibt, wird als `neu` oder `weggefallen` markiert statt eine Zahl zu erfinden. |
+| **`prof.mail()`** (`profiler/mail.ts`): schickt den Bericht über `Game.notify` an die Profiladresse, zerlegt in Blöcke `[i/n]`. | Der Bericht soll das Spiel überleben. | Neuer Befehl. Die API begrenzt auf 1000 Zeichen je Nachricht und 20 je Tick; ein Detailbericht braucht rund acht Blöcke. Mehr als 20 werden **nicht** stillschweigend abgeschnitten, die Rückgabe benennt die weggelassenen. |
+| **`prof.history()`** (`profiler/history.ts`): Verlauf aller Fenster in **Speichersegment 99**, eine Zeile je Fenster, Ringpuffer über 1000 Zeilen mit harter 100-KB-Grenze. | `Memory` wird bei der ersten Berührung in **jedem** Tick per `JSON.parse` ausgepackt — Verlauf gehört dort nicht hin. Ein Segment kostet nichts, solange es nicht angefordert ist. | Neuer Befehl. Der erste Aufruf fordert das Segment nur an, die Ausgabe kommt einen Tick später — das ist die API, kein Fehler. |
+| `Memory.profiler`-Budget von 1 KB auf 8 KB angehoben. | Die Grundlinien halten jetzt Abschnitte und Rollen. Auf zwei Nachkommastellen gerundet, weil feiner bei CPU-Werten Rauschen ist und jedes Zeichen in jedem Tick mitgeparst wird. | Bewusst gekaufte Tickkosten gegen die Antwort auf „welcher Abschnitt wurde teurer". Methoden und einzelne Creeps bleiben draußen. |
+| Eigene Messpunkte gab es schon; **`RawMemory` ist jetzt auch im Smoketest gestellt**, und der prüft `prof.history()`, `prof.compare()` und `prof.baseline()` gegen das gebaute Bundle. | Ohne den Eintrag fiele `RawMemory` in den Proxy für unbekannte Konstanten und wäre `0` — der erste Zugriff hätte geworfen. | Der Smoketest deckt die neuen Befehle mit ab. `prof.mail()` bewusst nicht: er wertet jedes `Game.notify` als Fehlermeldung des Bots. |
+
+**Ein Fehler, der beim Gegenlesen der eigenen Änderung auffiel:** `formatComparison`
+prüfte nur, ob die **Grundlinie** Abschnitte kennt. Läuft das **laufende Fenster**
+in `light`, hätte die Tabelle jede Zeile der Grundlinie als „weggefallen"
+ausgewiesen — obwohl nichts weg ist, sondern nur niemand misst. Unterschieden
+wird jetzt am Zustand (`metrics.mode === "full"`), nicht an leeren Listen: eine
+leere Liste **in `full`** heißt sehr wohl „ist weg" und soll auch so dastehen.
+
+## Runde 2026-08-06: Zielgedächtnis beim Abliefern (Plan 10, Runde 1)
+
+Anlass ist die Messung in `docs/profiler/detail_01.txt`: `Debitor.doJob` ist mit
+38,5 % der teuerste Posten des Bots, und die Ursache ist die Zielwahl, nicht die
+Bewegung. `findDeliveryTarget` suchte in **jedem** Tick per
+`findClosestByPath(FIND_MY_STRUCTURES)` das nächste Ablieferziel — auch in den
+Ticks, die der Creep dorthin unterwegs war, und im ausgebauten Raum über 50+
+Extensions plus Türme, Labs und Links. Die Beschaffungsseite hatte dieses
+Problem seit der Runde vom 2026-08-05 nicht mehr; die Ablieferseite schon.
+
+| Was | Warum | Wirkung |
+| --- | --- | --- |
+| `findDeliveryTarget` (`creep/transport.ts`) bekommt einen `RememberedTarget`. Memory-Schlüssel `useSupply` für Spawn und Extensions, `useLab` für Labore. | Die Suche gehört einmal je Ablieferung gemacht, nicht einmal je Tick des Hinwegs. Getrennte Schlüssel, weil ein Creep in derselben Kaskade beides probiert. | Statt einer Pfadsuche je Tick nur noch eine je Ziel. Betrifft jede Rolle, die abliefert: Debitor, Transfer, Builder. |
+| Neu: `deliverTo` (`creep/target.ts`) als Gegenstück zu `collectFrom`. Setzt **kein** `fromId`, vergisst das Ziel bei `OK` und bei jedem Fehlercode, behält es nur bei `ERR_NOT_IN_RANGE`. | Nach einer Ablieferung ist die Extension voll oder der Creep leer — die Wahl ist verbraucht. `fromId` merkt sich die Quelle einer Ladung, und beim Abliefern gibt es keine. | Kein Verhaltensunterschied gegenüber `transferTo`, das für Terminal, Türme und Storage unverändert bleibt. |
+| Ein gemerktes Ziel, das die Ladung nicht mehr annimmt, löst **im selben Tick** eine Ersatzsuche aus. | Bewusste Abweichung von der Beschaffungsseite, wo ein verschwundenes Ziel keine Ersatzsuche auslöst. Gäbe `findDeliveryTarget` hier `null` zurück, liefe die Kaskade der Rolle weiter und der Creep kippte seine Ladung ins Storage, statt die nächste Extension zu füllen. | Korrektheit, nicht Sparsamkeit. Ist als Test festgehalten. |
+
+`findClosestByPath` bleibt bewusst stehen. Ein Wechsel auf `findClosestByRange`
+wäre eine zweite Verhaltensänderung im selben Schritt; ob er nach dem
+Zielgedächtnis überhaupt noch etwas bringt, entscheidet die Messung.
+
+**Wirkung noch nicht gemessen.** Zum Zeitpunkt der Änderung gab es keinen
+Spielzugriff. Nachzutragen nach dem nächsten Deploy über `prof.baseline(...)`
+und `prof.compare(...)`.
+
+## Runde 2026-08-06: Der Miner steht und fördert (Plan 10, Runde 2)
+
+Anlass ist dieselbe Messung: fünfzehn Miner, elf davon kosten 0,01–0,06 CPU je
+Tick, **vier** kosten 0,14 bis 0,39. Ein Miner steht auf seinem Container und
+erntet — diese Spreizung durfte es nicht geben. Ursache waren zwei Sackgassen
+im Standortzweig, aus denen `doJob` zurückkehrte, ohne einen Zustand erreicht
+zu haben. Der Creep wiederholte dann in **jedem** weiteren Tick seines Lebens
+Quellensuche, `findInRange` und bis zu acht Bauanfragen.
+
+| Was | Warum | Wirkung |
+| --- | --- | --- |
+| Nimmt ab RCL 6 kein Nachbarfeld eine **Link**baustelle an, wird jetzt trotzdem `onPosition` gesetzt. | Vorher fiel der Zweig durch, ohne einen Zustand zu setzen. Kein Ausgang des Standortzweigs verlässt `doJob` mehr, ohne dass `onPosition` steht oder eine Baustelle angelegt wurde. | Die vier teuren Miner fallen auf das Niveau der übrigen elf. |
+| Nimmt kein Nachbarfeld eine **Container**baustelle an, wird `memory.pos` auf das erste Feld ohne Wandterrain gesetzt — bisher tat das nur der `ERR_FULL`-Fall. | Dieselbe Sackgasse eine Ebene früher und schlimmer: ohne `pos` stand der Miner nirgends und förderte nie. | Der Miner arbeitet auch dann, wenn gerade kein Container gebaut werden kann. |
+| Eine `memory.container`-Id, die nicht mehr trägt, wird nachgezogen: erst per `lookFor` auf dem **eigenen** Feld, sonst `onPosition = false` und Standplatz neu bestimmen. | Der Miner merkt sich die **Baustelle** als `container` — das fertige Bauwerk bekommt eine **neue** Id. Nach Fertigstellung zeigte die Id für den Rest des Creeplebens ins Leere, und der Container wurde nie wieder repariert. Container verfallen mit 5.000 Trefferpunkten je 100 Ticks. | Behobener Fehler mit Wirkung auf die Fördermenge, nicht nur auf CPU. |
+| Die Quelle wird aus `creep.memory.source` gelesen statt per `findClosestByPath` neu bestimmt; Rückfall ist `findClosestByRange`. | Der Miner steht in diesem Moment direkt neben seiner Quelle, und deren Id steht seit dem Spawn im Memory. Eine Pfadsuche, um etwas zu bestimmen, das man schon weiß. | Eine Pfadsuche weniger je Standortbewertung. |
+
+**Merkregel, die dabei entstanden ist und im Code steht:** eine gesetzte
+`memory.container`-Id heißt „hier gehört ein Container hin", **keine** Id heißt
+„hier wurde nachgesehen, es gibt keinen". Nur im ersten Fall wird nachgezogen —
+sonst wäre die Endlosschleife durch die Hintertür zurück.
+
+**Ein periodischer Wiederholungsversuch wurde erwogen und verworfen.** Der erste
+Entwurf ließ einen Miner ohne Link seinen Standplatz alle 100 Ticks neu
+bewerten. Das ist unnötig: der Miner wird nicht erneuert (`renewCreep` kommt im
+Bot nicht vor), und `Miner._spawn` zählt einen vorhandenen Miner nur, solange
+`ticksToLive > 300` (im Heimatraum 150) — der Nachfolger startet rund 200 Ticks
+vor dem Ende ohne `onPosition` im Memory und durchläuft die Standortsuche
+komplett neu. Der Versuch wiederholt sich damit einmal je Creepleben zum Preis
+von null, während das Intervall zusätzlich einen Ausschlag erzeugt hätte: bei
+`Game.time % 100` schlagen alle linklosen Miner im selben Tick zu.
+
+Dieselbe Begründung trägt eine bewusst offen gelassene Lücke: baut jemand
+**später** einen Container neben eine Quelle, deren Miner keinen hat, merkt der
+laufende Miner das nicht. Ihn danach suchen zu lassen hieße, in jedem Tick eine
+Umgebungssuche zu machen — genau die Kosten, die diese Runde entfernt. Sein
+Nachfolger übernimmt den Container korrekt.
+
+Nebenbei aufgefallen: `LOOK_TERRAIN` fehlte in `tests/support/screeps-stubs.ts`.
+Dieselbe Tabelle stellt auch die Welt für `pnpm smoke`, dort fiel die Konstante
+also in den Proxy für Unbekanntes und war `0`. Jetzt mit dem echten Wert
+eingetragen, zusammen mit `ERR_RCL_NOT_ENOUGH` und `FIND_MINERALS`.
+
+**Wirkung noch nicht gemessen.** Zum Zeitpunkt der Änderung gab es keinen
+Spielzugriff. Nachzutragen nach dem nächsten Deploy.
+
+## Runde 2026-08-06: Logistik nach Job geschnitten — `filler` und `hauler` (Plan 10, Runde 3)
+
+`Debitor.doJob` bediente vier Jobs in einer `if`-Kaskade: Heimatversorgung,
+Remote-Transport, Freelancer, Notfall. Jeder Creep wertete in jedem Tick auch
+die Bedingungen der drei Jobs mit aus, die er nicht hat — Tombstones, Drops,
+Ruinen, Mineralienverkauf aus dem Storage, Terminal, Labs. Ein Creep, dessen
+einziger Job „Extension füllen" ist, zahlte für alles davon mit. Bei 38,7 %
+Anteil war das der teuerste Posten des Bots.
+
+| Was | Warum | Wirkung |
+| --- | --- | --- |
+| Neue Rolle **`filler`**: Storage → Spawn, Extensions, Türme, nur im eigenen Raum. Kein `goToWorkroom`, keine Distanzmessung, kein Tombstone-/Drop-/Ruinen-Scan, kein Mineralienverkauf, kein Terminal, kein Lab. | Der Job, der im ausgebauten Raum übrig bleibt, ist kurz und immer derselbe. Er verdient eine Rolle, die nur ihn kann. | Ersetzt den Freelancer-Debitor. Rumpf unverändert `BODIES.debitorWithoutContainer`. |
+| Neue Rolle **`hauler`**: Quellcontainer → Storage, nur im eigenen Raum, einer je Container. | Übernimmt den containergebundenen Debitor für `home == workroom`. Entfällt je Quelle, sobald deren Link wirklich abliefert (`linksDeliver`). | Rumpf unverändert `BODIES.debitor`. |
+| `Debitor.spawn` steigt für den Heimatraum **mit Storage** aus. | Damit schließen sich die drei Zuständigkeiten gegenseitig aus: kein Raum wird von beiden bedient und keiner von keinem. Am **Bauwerk** festgemacht, nicht am RCL — ein Raum kann RCL 4 erreicht haben, ohne das Storage gebaut zu haben. | `Debitor.doJob` bleibt **unverändert**: Rollennamen stehen im Creep-Memory, die lebenden Debitoren müssen ihre bis zu 1500 Ticks zu Ende arbeiten. Die toten Zweige fallen in einem späteren Commit weg. |
+| `linksDeliver` von `roles/debitor.ts` nach `controller/link-list.ts` verschoben. | Seit es mit `hauler` einen zweiten Aufrufer gibt, gehört die Frage „liefert das Linknetz wirklich ab?" zur Linkliste. | Keine Verhaltensänderung. |
+| **Spawn-Priorität geändert:** `filler` steht in `roles/index.ts` ganz vorn, `hauler` direkt hinter dem `linkkeeper`. | Sind Spawn und Extensions leer, spawnt der Raum überhaupt nichts mehr — auch keinen Ersatzfiller. Wer den Spawn füttert, muss vor allen stehen, die daraus bezahlt werden. Der Hauler ist wie der Linkkeeper eine Durchsatzsperre: ohne ihn läuft der Quellcontainer über und der Miner fördert ins Leere. | Verhaltensänderung an der Spawnreihenfolge. |
+
+**Keine neue Config-Option und keine neue Zahl.** Die Absicht „dieser Raum soll
+Logistik haben" steht schon in `sendDebitor`; die Rumpfprofile sind die, mit
+denen Freelancer und Containerdebitor heute schon fahren. Diese Runde teilt
+Rollen auf, sie dimensioniert nicht um — eine neue Zahl würde die Messung
+verfälschen, die den Nutzen belegen soll. Ein Filler je Raum genügt nach
+Durchsatz (20 Energie je Tick, rund zehn Ticks Umlauf → vier `CARRY` nach
+`docs/knowledge/efficiency/energy-economy.md`); `debitorAsFreelancer` bleibt als
+Obergrenze erhalten, damit Räume mit mehr Freelancern nichts verlieren.
+
+**Eine Falle, die beim Gegenlesen auffiel:** der Notfallfiller trägt `notfall:
+false`, nicht `true`. Das Flag steuert im Debitor einen eigenen Zweig in
+`doJob`, den der Filler gar nicht hat — es hätte hier nur eine Nebenwirkung:
+`controller/spawn.ts` überspringt für einen Spawn, unter dessen Heimatcreeps ein
+`notfall` steht, das Spawnen **aller anderen** Arbeitsräume. Ein Notfallfiller
+hätte die Remote-Räume also bis zu 1500 Ticks blockiert. Dieselbe Falle hat der
+Notfallminer schon einmal gestellt.
+
+**Wirkung noch nicht gemessen.** Zum Zeitpunkt der Änderung gab es keinen
+Spielzugriff. Nachzutragen nach dem nächsten Deploy.
+
+## Runde 2026-08-06: RCL8-Upgrader schöpft die erlaubte Rate aus (Plan 04)
+
+GCL wächst **ausschließlich** aus Controller-Upgrades und ist die Erlaubnis,
+einen weiteren Raum zu claimen. Bei RCL8 nimmt der Controller 15 Energie je Tick
+an — der Bot schöpfte davon rund **3 %** aus. Zwei Ursachen, beide behoben:
+
+| Was | Warum | Wirkung |
+| --- | --- | --- |
+| `BODIES.upgraderRcl8`: 4 WORK / 18 CARRY / 18 MOVE → **15 / 5 / 5**. | `UPGRADE_CONTROLLER_POWER` ist 1 Energie je WORK und Tick, die Grenze bei RCL8 liegt bei 15 — fünf Sätze zu drei WORK schöpfen sie genau aus. 18 CARRY waren 900 Tragfähigkeit für einen Creep, der am Controller-Link steht und 15 Energie je Tick verbraucht; wenige MOVE genügen, weil er danach steht. | Kosten 2000 Energie bei 25 Teilen. Die Energiekapazität eines RCL8-Raums liegt bei 12 900, der Rückfall greift dort nie. |
+| Die Tickdrossel (`sparmodus`, `Game.time % level`) gilt ab RCL8 **nicht** mehr. Stattdessen entscheidet der Vorrat: gearbeitet wird bei mehr als 100 000 Energie im Storage — oder wenn `ticksToDowngrade` unter 100 000 fällt. | Die Tickdrossel achtelte die Leistung unabhängig davon, **ob** Energie da ist. Bei RCL8 ist RCL-Fortschritt kein Ziel mehr und der Raum hat typischerweise Überschuss; die richtige Frage ist der Vorrat, nicht der Tick. | Bei Überschuss 15 statt 0,5 Energie je Tick in den Controller — rund der dreißigfache GCL-Fortschritt je RCL8-Raum, und der Storage wird dabei abgebaut. |
+
+**Die Arbeitsschwelle liegt bewusst unter der Spawnschwelle.** `spawn()` verlangt
+weiterhin 250 000 Energie im Storage, bevor bei RCL8 überhaupt ein Upgrader
+entsteht; gearbeitet wird bis 100 000 herunter. Mit derselben Zahl auf beiden
+Seiten verstummte der Upgrader genau in dem Moment, in dem er anfängt, den
+Überschuss abzubauen.
+
+**Der Downgrade-Timer schlägt den Vorrat.** Dieselbe Grenze prüfen jetzt
+`spawn()` und die Arbeitsdrossel — sonst bestellte der eine einen Upgrader, den
+der andere verstummen ließe, und der Raum verlöre eine Stufe.
+
+**Nicht in dieser Runde:** die Tickdrossel bei RCL6 und RCL7. Dort greift sie mit
+Faktor 1/6 bzw. 1/7 und kostet echten RCL-Fortschritt, nicht nur GCL — das ist
+ein eigener Schritt mit eigener Messung (Plan 04, Punkt 3).
+
+`tests/creep-bodies.test.ts` führt die alten Formeln als Referenz mit und hat die
+Rumpfänderung sofort gemeldet — genau dafür ist der Test da. `upgraderRcl8` steht
+dort jetzt in einer benannten Liste `deliberatelyChanged` statt die Prüfung
+aufzuweichen: ein **neu** hinzugefügtes Profil ohne Referenz fällt weiterhin auf.
+
+**Wirkung noch nicht gemessen.** Kennzahl nach dem nächsten Deploy ist der
+Controller-Fortschritt je 1000 Ticks, dazu die Storage-Energie als Gegenprobe,
+dass der Upgrader den Raum nicht leerzieht.
+
+**Beim Testen der Drossel gefunden und mitbehoben:** stand `memory.sparmodus`
+und hatte der Raum **keinen** Controller — ein Upgrader auf dem Weg durch einen
+Korridorraum —, rechnete die alte Zeile `Game.time % creep.room.controller!.level`
+auf `undefined` und warf einen `TypeError`. `main.ts` wirft Rollenfehler weiter,
+das hätte also den **kompletten Tick** abgebrochen: alle Rollen nach dem
+Upgrader und den Timing-Controller mit Türmen und Spawn. `_mayWork` steigt jetzt
+vor der Drossel aus, wenn kein Controller da ist.
+
+## Runde 2026-08-06: Ein Feind-Scan je Raum und Tick (Plan 05, Schritte 1 und 2)
+
+**Ohne Verhaltensänderung.** Der Bot tut danach exakt dasselbe, nur mit weniger
+Raumscans. Anlass ist Plan 05: bei zehn Räumen wächst die **Spitzenlast** je Tick
+linear mit der Raumzahl, und die Spitze entscheidet, ob der Tick durchläuft —
+greift das CPU-Limit, bricht das Spiel den Rest stillschweigend ab.
+
+| Was | Warum | Wirkung |
+| --- | --- | --- |
+| `defence.ts::tower()` rief im Reparaturzweig **zweimal** `room.find(FIND_STRUCTURES)` ohne Filter auf — einmal für den Hits-Schnappschuss, einmal für den Schadensvergleich. Jetzt eine Variable. | Zwischen beiden Aufrufen passierte nichts, das die Liste ändern könnte (kein `destroy`, kein Bau, kein anderer `find`) — geprüft, bevor zusammengelegt wurde. | Ein Strukturscan je Raum und Tick weniger im Reparaturzweig. |
+| Neue Klasse `HostileScanCache`: `check()` und `tower()` teilen sich einen `FIND_HOSTILE_CREEPS`-Scan je Raum und Tick. | Beide durchlaufen `bot.room` und fragten denselben Raum im selben Tick zweimal ab, obwohl sich der Feindbestand innerhalb eines Ticks nicht ändert. | Halbiert die Feind-Scans in den Ticks, in denen beide laufen (alle 7). |
+
+Drei Eigenschaften des Caches, die bewusst so sind:
+
+- **Er gilt genau einen Tick.** Der Vergleich läuft gegen `Game.time`, nie gegen
+  ein „schon gesehen"-Flag — damit ist er auch bei einem Tickwechsel ohne
+  Neuladen korrekt. Das Dreitickfenster des Vergleichsbots übernehmen wir
+  **nicht**: Feinde bewegen sich, und Turmfeuer ist taktisch.
+- **Er lebt im Modul, nicht in `Memory`.** Ein globaler Reset leert ihn von
+  selbst, und er kostet keine Tickkosten beim `JSON.parse` von `Memory`.
+- **Er wächst nicht.** Es gibt höchstens so viele Einträge wie Räume in
+  `bot.room`; ältere Ticks werden beim nächsten Zugriff überschrieben statt
+  zusätzlich gespeichert.
+
+**`tower()` wird ausdrücklich nicht gestaffelt.** Turmfeuer muss in jedem Tick
+für jeden bedrohten Raum laufen. Gestaffelt werden `check()` und die Tagesjobs,
+das ist ein eigener Schritt.
+
+Beim Lesen gemeldet, **nicht** geändert: im nicht-`needDefence`-Zweig von
+`tower()` steht ein dritter Strukturscan für den regulären Reparaturmodus
+(`Game.time % 3 == 2`). Er liegt in einem anderen Zweig als die beiden oben und
+gehört in einen eigenen Schritt.
+
+## Runde 2026-08-06: Türme laufen vor der Creep-Schleife (Plan 05, Schritt 3)
+
+**Verhaltensänderung** — eine Reihenfolgeänderung im Tick, die nur im Mangelfall
+überhaupt sichtbar wird.
+
+`main.ts::loop` arbeitete erst alle Creeps ab und rief **danach**
+`timer.controll()` — und damit Türme, Spawncontroller und Verteidigungsscan.
+Greift das CPU-Limit während der Creep-Schleife, bricht das Spiel den Tick ab:
+alles Spätere findet stillschweigend nicht mehr statt, die Türme hätten in so
+einem Tick **nicht geschossen**.
+
+`timing.ts` hat dafür `controllCritical()` bekommen: Raum-Memory und Türme.
+`main.ts` ruft es als erstes, noch vor der Visualisierungsschleife. Der Rest von
+`controll()` bleibt hinter den Creeps.
+
+Zwei Entscheidungen dabei:
+
+- **Der Spawncontroller bleibt hinten.** Plan 05 nennt „Türme und Notfall-Spawn",
+  aber einen eigenen Einstieg nur für den Notfallspawn gibt es nicht — ihn
+  herauszulösen wäre ein Umbau des Spawncontrollers. Er nach vorn zu ziehen wäre
+  zudem kontraproduktiv: er läuft nur alle fünf Ticks, kostet je Aufruf ein
+  Vielfaches der Türme (5,47 gegen 0,40 gemessen) und würde die Spitze
+  vergrößern statt verkleinern. Ein Tick Verzögerung beim Spawnen ist folgenlos,
+  ein ausgelassener Turmschuss kann den Raum kosten.
+- **`memoryController.init()` wandert mit nach vorn.** Es muss vor jedem Zugriff
+  auf `Memory.rooms` laufen — auch vor der Visualisierungsschleife in `main.ts`,
+  die es bisher nur über einen `catch` nachholte.
+
+Gemessen wird beides unter demselben Profilerabschnitt `timing`, damit die
+Zahlen mit den bisherigen Fenstern vergleichbar bleiben.
+
+Nebenbei: `Game.cpu.generatePixel` fehlte im gemeinsamen Teststub. Der erste
+Test, der `controll()` aufrief, musste seinen Tick deshalb um die Pixelerzeugung
+herumlegen. Jetzt nachgetragen und mitgezählt (`cpu.generatePixelCalls`).
+
+## Runde 2026-08-06: Raumarbeit gestaffelt statt gebündelt (Plan 05, Schritt 4)
+
+**Verhaltensänderung an der Taktung, nicht an der Arbeit.** Jeder Raum wird
+genauso oft bearbeitet wie vorher — nur nicht mehr alle im selben Tick. Die
+Summe bleibt gleich, die **Spitze** sinkt, und die Spitze entscheidet, ob der
+Tick durchläuft: greift das CPU-Limit, bricht das Spiel den Rest stillschweigend
+ab.
+
+| Was | Vorher | Jetzt |
+| --- | --- | --- |
+| `defence.ts::check()` | alle 7 Ticks, dann **alle** neun Räume gebündelt | jeden Tick gerufen, bearbeitet je Raum nach `(Game.time + Position) % 7` — ein bis zwei Räume je Tick, jeder Raum weiterhin alle 7 Ticks |
+| Tagessequenz `daylie()` | sieben feste `case`-Nummern, jede Nummer ein Job über **alle** Räume | ein Paar aus (Job, Raum) je Tick: fünf staffelbare Jobs × Raumzahl, dazu Slot 0 und 1 ungestaffelt |
+| `findAndSaveRoomWalls`, `findAndSaveRoomContainer`, `findAndSaveRoomTower`, `rebuildRoads`, `planReceiverLinks` | liefen über alle Räume | haben einen optionalen ersten Parameter `onlyRoom?: string`. **Ohne** Argument unverändert alle Räume — die Funktionen sind auch von Hand aus der Konsole aufrufbar. |
+
+`clear()` und `findAndSaveTerminals()` bleiben ungestaffelt: beide bauen **eine**
+Liste über alle Räume auf und müssen sie in einem Zug schreiben, häppchenweise
+wäre sie zwischendurch unvollständig. Das steht jetzt als Kommentar an beiden
+Funktionen.
+
+**`tower()` wird weiterhin nicht gestaffelt.** Turmfeuer ist taktisch und muss in
+jedem Tick für jeden bedrohten Raum laufen.
+
+Ein Nebeneffekt, der in die richtige Richtung geht: `planReceiverLinks()` legte
+bisher „höchstens eine Baustelle **je Raum**" an — bei neun Räumen also bis zu
+neun im selben Tick, denn die Schleife über die Räume hatte kein `break`. Durch
+die Staffelung ist es jetzt höchstens **eine je Tick**. Das ist strenger als
+vorher, nicht lockerer.
+
+### Befund, bewusst nicht behoben: der Straßenwiederaufbau arbeitet auf einem toten Datenstand
+
+`memory.ts::findAndSaveRoads()` ist die **einzige** Stelle, die
+`Memory.rooms[<raum>].roads` füllt — und sie wird nirgends aufgerufen. Der
+Tagesjob `rebuildRoads` liest genau diese Liste (`if (!roomMemory?.roads)
+continue;`) und tut ohne sie nichts.
+
+Das ist keine Migrationslücke: im alten Bot steht der Aufruf **auskommentiert**
+in `prod/controller.timing.js:79` (`// case 6: memoryControll.FindAndSaveRoads();`).
+Jemand hat das absichtlich abgeschaltet. Der TypeScript-Bot hat den Zustand
+getreu übernommen.
+
+Damit gibt es zwei Möglichkeiten, und beide sind eine Entscheidung des
+Betreibers, keine technische Frage:
+
+- Die Straßenliste im laufenden Spiel stammt noch vom alten Bot und wird nie
+  aufgefrischt. `rebuildRoads` baut dann Straßen nach einem alten Schnappschuss
+  wieder auf — inklusive solcher, die man absichtlich hat verfallen lassen.
+- Oder es gibt gar keine Liste mehr, dann ist der ganze Zweig samt
+  `saveRoads`-Flag in vier Räumen toter Code.
+
+Nachzusehen ist das im Spiel mit einem Blick auf
+`Memory.rooms["E58N6"].roads`. Bis dahin bleibt der Code, wie er ist —
+etwas wieder einzuschalten, das ein Mensch bewusst abgeschaltet hat, wäre keine
+Fehlerbehebung.
+
+## Runde 2026-08-06: CPU-Stufen als Ausfallsicherung (Plan 05, Schritt 5)
+
+Neu: `controller/cpu-budget.ts` mit zwei Fragen — `mayRunLow()` und
+`mayRunNormal()`. Verdrahtet in `timing.ts`.
+
+| Stufe | Inhalt | Fällt aus, wenn |
+| --- | --- | --- |
+| kritisch | Türme, Raum-Memory (`controllCritical`) | **nie** — fragt gar nicht erst nach |
+| normal | Spawncontroller, Verteidigungsscan | Bucket unter 500 |
+| niedrig | Statuslog, Terminal und Markt, Tagesjobs | Bucket unter 2000 **und** der laufende Tick hat `Game.cpu.limit` schon überschritten |
+
+**Es ist eine Ausfallsicherung, kein Effizienzgewinn.** Bei vollem Bucket und
+einem Tick weit unter dem Limit gibt es nichts zu sparen; eine Drossel, die im
+Normalbetrieb etwas abschaltet, wäre eine Verschlechterung ohne Gegenwert. Der
+Nutzen zeigt sich, wenn das CPU-Limit mitten im Tick greift: dann bricht das
+Spiel den Rest **stillschweigend** ab, und ohne Stufen fällt aus, was zufällig
+hinten steht, statt dessen, was am wenigsten wehtut.
+
+**Warum die niedrige Stufe zwei Bedingungen hat.** Der Bucket allein wäre das
+falsche Signal: er wird regelmäßig von der Pixelerzeugung auf 0 gefahren —
+gemessenes Mittel 2043, Minimum 1545 — und das ist gewollt, kein Notstand. Eine
+reine Bucket-Schwelle hätte Terminal und Markt nach jedem Pixel für rund hundert
+Ticks stillgelegt, also gut ein Zehntel der Handelszeit. Erst die zweite
+Bedingung (`getUsed() > limit`) macht daraus eine echte Notlage; bei gemessenen
+9,12 CPU je Tick greift sie im Normalbetrieb nie.
+
+**Warum `Game.cpu.limit` und nicht `tickLimit`.** `tickLimit` enthält den Bucket
+und liegt deshalb fast immer bei 500 — eine Prüfung dagegen spräche nie an.
+`limit` ist das, was ein Tick verbrauchen darf, ohne den Puffer anzugreifen.
+
+Ausfälle werden gemeldet, aber höchstens alle 100 Ticks je Stufe: ein Ausfall
+gehört sichtbar gemacht, ein Dauerzustand darf die Konsole nicht unbrauchbar
+machen — und die Meldung selbst kostet in einem Tick, der ohnehin knapp ist.
+
+## Runde 2026-08-06: Quellen und Minerale werden erhoben, nicht konfiguriert (Plan 02, Schritt 1)
+
+Neu: `controller/room-inventory.ts` mit `energySources(raum)`,
+`mineralSources(raum)` und dem Tagesjob `discover(raum?)`. Miner, Debitor und
+Hauler lesen die Quellen jetzt von dort statt direkt aus `bot.room[...]`.
+
+**Warum das mehr ist als Aufräumen:** `controller/spawn.ts` überspringt jeden
+Raum ohne passenden `bot.room`-Eintrag vollständig. Ein frisch geclaimter Raum
+tut also gar nichts, bis jemand die Quellen-Ids von Hand nachträgt — bei zehn
+Räumen sind das rund dreißig Zeilen Handarbeit je Raum. Das ist die direkte
+Bremse für das eigentliche Ziel, viele Räume zu betreiben.
+
+**Die Config gewinnt.** Ist in `config.ts` eine Liste gesetzt und nicht leer,
+gilt sie; erst sonst entscheidet die Erhebung. Damit verhält sich jeder heute
+laufende Raum unverändert, und die Automatik greift nur dort, wo bisher nichts
+steht. Eine Fehlerkennung lässt sich außerdem im Spiel sofort übergehen, ohne
+Codeänderung. Eine **leere** Liste zählt dabei wie keine — sonst könnte ein
+Raum, in dem jemand `energySources: []` stehen ließ, nie fördern.
+
+**Keine Invalidierung, und das ist kein Versehen.** Quellen und Minerale werden
+weder zerstört noch gebaut noch verschoben. Anders als bei Containern, Türmen
+oder Links gibt es nichts, was verfallen könnte: erhoben wird einmal, danach
+kostet der Tagesjob nur noch einen Blick ins Memory. Eine gelöschte Raum-Memory
+erhebt sich beim nächsten Durchgang von selbst neu.
+
+**Sicht ist Voraussetzung**, und daraus folgt die Reihenfolge für einen neuen
+Raum: erst fährt der Claimer hin (der hängt an keiner Quellenliste), damit
+entsteht Sicht, im nächsten Tagesdurchgang stehen die Quellen im Memory, und
+erst danach spawnen Miner. Das ist die einzige Reihenfolge, die ohne Handarbeit
+auskommt.
+
+Die Schleifen in den drei Rollen wurden bei der Gelegenheit von
+`for (var id in ...)` mit `(... as any)[id]` auf `for (const sourceId of ...)`
+umgestellt — dieselben Stellen, keine Logikänderung. Insbesondere bleibt der
+Unterschied erhalten, dass der Mineralzweig des Miners bei einem nicht
+auflösbaren Vorkommen mit `return false` aus der ganzen Methode aussteigt,
+während die Energiezweige `continue` machen.
+
+**Noch offen aus Plan 02:** `mineralContainerId` und `prioBuildings` stehen
+weiter in der Config. Schritt 2 (Links geometrisch zuordnen) ist mit dem
+Linknetz aus Plan 09 bereits erledigt.
+
+## Runde 2026-08-06: Umlaufmessung als eigene Klasse (Plan 03, Vorbereitung zu Punkt 3)
+
+**Ohne Verhaltensänderung.** Neu: `creep/round-trip.ts` mit der Klasse
+`RoundTrip`. Der Debitor benutzt sie, rechnet aber Bit für Bit dasselbe wie
+vorher.
+
+Der Debitor ist die einzige Rolle im Bot, die ihre Dimensionierung **misst**
+statt sie zu schätzen: er zählt die tatsächliche Umlaufzeit seiner Creeps und
+leitet daraus Tragfähigkeit und Anzahl ab. Das ist die bessere Lösung — der
+Vergleichsbot schätzt aus Raumsprüngen und widerspricht sich dabei an zwei
+Stellen selbst. Nur steckte sie mitten in `Debitor.bodyFor` fest, weshalb
+`transfer.ts` weiter stumpf `min(25, energieKapazität / 100)` rechnet: bei RCL8
+also 25 CARRY und 25 MOVE für 2500 Energie und 150 Spawnticks, unabhängig davon,
+ob der Weg fünf oder fünfzig Felder lang ist.
+
+Die Memory-Schlüssel kommen aus dem Konstruktor
+(`{ samples: "distances", size: "needDebitorSize", count: "needDebitors" }`).
+Das ist der Grund für die Klasse: die bestehenden Schlüssel stehen im laufenden
+Spiel und dürfen sich nicht ändern, aber ein zweiter Nutzer braucht eigene, um
+dem Debitor nicht seine Messreihe wegzunehmen.
+
+Die beiden wortgleich duplizierten `checkHarvest`-Rückrufe in `Debitor.doJob`
+sind dabei zu einer Methode zusammengefasst — dieselbe Stelle, keine
+Logikänderung.
+
+### Drei Eigenarten, wörtlich erhalten statt begradigt
+
+- **Der „Median" ist keiner.** Der Index ist `ceil(länge × 0,5)` auf der
+  sortierten Reihe, also bei gerader Länge der obere der beiden mittleren Werte.
+- **Die Festschreibung greift bei rund 61 Messungen, nicht bei 31.** Verglichen
+  wird nicht die Zahl der Messwerte, sondern der Medianindex — `length > 30`
+  steht dort für „mehr als 30 **Indexschritte**". Das ist die überraschendste
+  Stelle der ganzen Arithmetik und jetzt als Test festgehalten.
+- **Eine einzige Messung liefert `NaN`**, weil der Medianindex dann außerhalb
+  des Arrays liegt. Abgefangen wird das weiter unten in `carryMove`. Auch das ist
+  festgehalten, damit es nicht unbemerkt kippt.
+
+Nachgewiesen wurde die Gleichwertigkeit durch einen Zahlenvergleich alt gegen
+neu über fünf Messreihen (1, 5, 10, 31, 40 Werte) mal drei Energiekapazitäten
+(300, 2300, 12900) plus vier Reihen um den Umschlagpunkt herum — alle Ergebnisse
+identisch.
+
+**Noch offen:** `transfer.ts` benutzt die Klasse noch nicht. Das ist der
+eigentliche Punkt 3 des Plans und kommt als eigener Commit mit
+Verhaltensänderung.
+
+## Runde 2026-08-06: Transfer misst seine Strecke (Plan 03, Punkt 3)
+
+**Verhaltensänderung, lokal.** `transfer` dimensionierte seinen Rumpf bisher aus
+der Raumenergie: `min(25, energieKapazität / 100)` Paare aus CARRY und MOVE. Bei
+RCL8 sind das **25 CARRY und 25 MOVE — 2500 Energie und 150 Spawnticks**,
+unabhängig davon, ob der Weg fünf oder fünfzig Felder lang ist. Der Durchsatz
+hängt aber an der Strecke und an der Quelle, nicht an der Tragfähigkeit; ein zu
+großer Träger kostet nur Spawnzeit ohne Mehrertrag.
+
+Jetzt misst die Rolle ihren Umlauf wie der Debitor und benutzt `RoundTrip` mit
+**eigenen** Memory-Schlüsseln (`transferDistances`, `transferSize`,
+`transferCount`), damit die Messreihe des Debitors für denselben Arbeitsraum
+unangetastet bleibt.
+
+Was das an Zahlen bedeutet, bei 12 900 Energiekapazität:
+
+| Gemessener Umlauf | Rumpf vorher | Rumpf jetzt |
+| --- | --- | --- |
+| 10 Ticks | 25 CARRY + 25 MOVE, 2500 Energie, 150 Spawnticks | 4 CARRY + 4 MOVE, 400 Energie, 24 Spawnticks |
+| 100 Ticks | 25 CARRY + 25 MOVE, 2500 Energie, 150 Spawnticks | 20 CARRY + 20 MOVE, 2000 Energie, 120 Spawnticks |
+
+Solange **noch keine** Messung vorliegt, bleibt es beim alten Profil — der erste
+Transfer eines Raumpaars muss überhaupt erst fahren, damit es etwas zu messen
+gibt.
+
+**Die Anzahl bleibt bei einem Transfer je Spawn und Zielraum.** `RoundTrip`
+leitet zwar auch eine Creepzahl ab und schreibt sie ins Memory, aber sie hier zu
+benutzen wäre eine zweite, größere Verhaltensänderung: mehrere Transfer-Creeps
+können den Heimat-Storage schneller leeren, als er sich füllt. Ob das gewollt
+ist, entscheidet eine Messung im Spiel und nicht diese Runde. Der Grund steht als
+Kommentar an der Stelle.
+
+**Nebenbei behoben:** `creep.memory.distance` wurde beim Spawnen nie auf `0`
+gesetzt, der erste Tick rechnete also `undefined + 1` und der Zähler stand auf
+`NaN`. Im Spiel heilt das über die JSON-Serialisierung von `Memory` — aus `NaN`
+wird `null`, und `null + 1` ist 1 —, im Testgeschirr ohne diesen Umweg aber
+nicht: dort bliebe der Zähler dauerhaft `NaN`, und `RoundTrip.record` verwirft
+solche Werte. Jetzt bei Debitor **und** Transfer mit `distance: 0` initialisiert.

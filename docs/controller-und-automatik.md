@@ -14,13 +14,17 @@ Periodische Aufgaben:
 
 | Intervall | Aufgabe |
 | --- | --- |
+| jeder Tick | Linknetz senden (`links.sendAll()`) |
 | 3 Ticks | Bei vollem CPU-Bucket ein Pixel generieren |
 | 5 Ticks | Spawncontroller ausführen |
 | 7 Ticks | Sichtbare Räume auf Feinde, Cores und Nukes prüfen |
 | 11 Ticks | Raumstatus loggen |
-| ca. täglich (28.800 Ticks) | Memory bereinigen, Wände/Container/Türme/Terminals speichern und Straßen wiederaufbauen |
+| 1000 Ticks | Linklisten neu erheben (`links.discoverAll()`) |
+| ca. täglich (28.800 Ticks) | Memory bereinigen, Wände/Container/Türme/Terminals speichern, Straßen wiederaufbauen und Empfängerlinks planen |
 
-Die tägliche Sequenz verteilt die sechs Aufgaben auf aufeinanderfolgende Ticks. Das Speichern von Straßen ist aktuell auskommentiert; ohne bereits vorhandenes `Memory.rooms[name].roads` kann der darauffolgende Straßenbau nichts wiederherstellen.
+Die tägliche Sequenz verteilt die sieben Aufgaben auf aufeinanderfolgende Ticks. Das Speichern von Straßen ist aktuell auskommentiert; ohne bereits vorhandenes `Memory.rooms[name].roads` kann der darauffolgende Straßenbau nichts wiederherstellen.
+
+Die Linkliste hängt bewusst **nicht** an der Tagessequenz, sondern an `% 1000`: sie heilt sich selbst, wenn ein Link *verschwindet* (eine Id ohne Objekt verwirft die ganze Liste), aber nicht, wenn einer *dazukommt* — und genau das tut der Linkplaner. 28.800 Ticks wären dafür zu lang.
 
 ## Spawncontroller (`controller.spawn.js`)
 
@@ -41,6 +45,45 @@ Während ein Invader Core gemeldet ist, werden für diesen Arbeitsraum keine nor
 ## Straßenwiederaufbau (`controller.rebuild.js`)
 
 Für Räume mit `saveRoads` und RCL mindestens 7 erstellt `rebuildRoads()` fehlende, zuvor gespeicherte Straßen erneut als Baustellen. Pro Raum werden höchstens zehn gleichzeitige Baustellen zugelassen. Erfolgreiche automatische Baustellen werden in `Memory.rooms[name].autobuild` gezählt.
+
+## Linknetz (`controller/links.ts`, `controller/link-list.ts`)
+
+Ein Raum hat im Zielzustand vier Links: zwei an den Quellen, einen am Spawn/Storage und einen am Controller. **Empfänger sind Controller- und Storage-Link, alle übrigen Links senden.**
+
+`LinkList` hält den Bestand in `Memory.rooms[<raum>].links` (`{ controller, spawn, sender[] }`). Zugeordnet wird allein nach Lage: der nächste Link in Reichweite 3 zum Controller, der nächste in Reichweite 2 zum Storage, alle übrigen senden. Config-Ids gibt es dafür nicht mehr — sie trügen nicht, seit der Linkplaner Links im laufenden Spiel baut. Zeigt eine gemerkte Id ins Leere, wird die **ganze** Liste verworfen und neu erhoben. Jede geänderte Zuordnung wird auf der Konsole gemeldet, damit eine Fehlzuordnung auffällt.
+
+Ob ein Raum überhaupt Links nutzt, beantwortet `usesLinks(raum)`: eigener Controller und ein RCL, dessen Kontingent Links zulässt (ab RCL5). Auch das steht nicht mehr in der Config.
+
+`LinkNetwork.send()` läuft je Raum und Tick:
+
+1. Sender sind die sendenden Links mit `cooldown === 0` und mindestens `SEND_MIN` Energie. Gibt es keinen, ist der Durchgang hier zu Ende — das ist der billige Normalfall.
+2. Empfänger nach Vorrang, gefiltert auf mindestens `SEND_MIN` freien Platz: unter RCL8 zuerst der Controller-Link (Upgraden bringt dort noch RCL-Fortschritt), ab RCL8 zuerst der Storage-Link (dort zahlt Upgraden nur noch auf GCL ein).
+3. Jeder Empfänger wird höchstens **einmal je Tick** bedient, damit zwei Sender nicht auf dasselbe Ziel zielen.
+4. Gesendet wird mit **expliziter Menge** `min(vorhanden, frei)`. Ohne Mengenangabe sendet ein Link „alles" und läuft bei zu vollem Empfänger auf `ERR_FULL` — dann passiert gar nichts, während die Quell-Container volllaufen.
+
+`SEND_MIN` ist `LINK_CAPACITY / 4` (200). Eine Quelle liefert 10 Energie/Tick, ein Linkpaar über 20 Felder trägt 40/Tick — der Cooldown ist also nicht der Engpass, und die Schwelle verhindert allein, dass er für eine Handvoll Energie verbrannt wird.
+
+Gesendet wird jeden Tick statt getaktet, weil der *empfangende* Link keinen Cooldown hat: es gibt nichts, worauf man warten könnte, und jeder ausgelassene Tick wäre verlorener Durchsatz. Dieselbe Begründung trägt den Linkkeeper, der den Storage-Link jeden Tick prüft.
+
+## Linkplaner (`controller/link-planner.ts`)
+
+Baut die beiden Empfängerlinks selbst, ein Aufruf je Tagesdurchlauf und höchstens **eine** Baustelle je Raum. Voraussetzungen: `usesLinks` (Sicht, eigener Controller, RCL ab 5), ein freier Linkplatz laut `CONTROLLER_STRUCTURES` (RCL5 zwei, RCL6 drei, RCL7 vier, RCL8 sechs) und weniger als zehn Baustellen im Raum. Eine laufende Baustelle zählt dabei wie ein fertiger Link.
+
+**Der Planer reserviert Plätze für die Sender.** Quell-Links baut nicht er, sondern der Miner neben seinem Quellcontainer. Ohne Reservierung würde er auf RCL5 beide erlaubten Plätze mit Empfängern belegen — ein Linknetz aus zwei Empfängern und keinem Sender bewegt nichts. Die Regel: `reserve = min(Quellen ohne Link, erlaubteLinks − 1)`, gebaut wird nur bei `freie Plätze > reserve`. Das `− 1` hält immer einen Platz für einen Empfänger frei. Bei zwei Quellen ergibt das die üblichen Ausbaustufen:
+
+| RCL | erlaubt | reserve | Empfänger |
+| --- | --- | --- | --- |
+| 5 | 2 | 1 | einer |
+| 6 | 3 | 2 | einer |
+| 7 | 4 | 2 | zwei |
+| 8 | 6 | 2 | zwei (zwei Plätze bleiben frei) |
+
+Zuerst entsteht der Controller-Link, danach der Storage-Link. Kandidatenfelder:
+
+- **Controller-Link:** Reichweite genau 2 zum Controller, ersatzweise 3, danach 1. Auf Abstand 2 kann ein Upgrader neben dem Link stehen und zugleich upgraden (Arbeitsdistanz 3).
+- **Storage-Link:** Reichweite bis 2 zum Storage, aber nur Felder, für die ein **Standplatz des Linkkeepers** existiert — ein begehbares Feld, das an Link *und* Storage zugleich angrenzt. Ohne diesen Platz wäre der Link nicht leerbar.
+
+Beide filtern Wandfelder, blockierende Bauwerke und blockierende Baustellen (Straße, Container und Rampart blockieren nicht). Es gewinnt das Feld mit der kleinsten Summe der Entfernungen zu den sendenden Links — der Cooldown eines Links ist seine Entfernung zum Ziel, kurze Strecken heißen Durchsatz. Gibt es noch keinen sendenden Link, dienen die Quellen als Bezug. Bei Gleichstand gewinnt das Feld mit mehr begehbaren Nachbarn, damit der Link keinen Engpass zubaut.
 
 ## Profiler (`profiler/`)
 

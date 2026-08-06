@@ -1,7 +1,16 @@
 # Plan 04: RCL8-Upgrader und das GCL-Nadelöhr
 
-Status: **Vorschlag.** Verhaltensänderung: **ja** — braucht Zustimmung.
-Aufwand: **klein**, eine Rollendatei. Wirkung: die größte im ganzen Plansatz.
+Status: **Punkt 1 und 2 gebaut** (2026-08-06, siehe `docs/aenderungen.md`),
+Wirkung noch nicht gemessen. **Punkt 3 offen** — die Tickdrossel bei RCL 6 und 7
+ist unangetastet, sie kostet dort echten RCL-Fortschritt und braucht eine eigene
+Messung.
+
+Die offene Frage unten wurde nach dem Vorschlag dieses Plans entschieden: 250 000
+bleibt die Spawnschwelle, 100 000 ist die Arbeitsuntergrenze
+(`RCL8_WORK_RESERVE`). Dazu kam eine Bedingung, die im Vorschlag fehlte: fällt
+`ticksToDowngrade` unter 100 000, wird unabhängig vom Vorrat gearbeitet — sonst
+hätte das Spawn-Gate einen Upgrader bestellt, den die Arbeitsdrossel verstummen
+lässt, und der Raum verlöre eine Stufe.
 
 ## Warum das das Hauptziel betrifft
 

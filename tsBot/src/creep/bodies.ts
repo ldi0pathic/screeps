@@ -85,17 +85,28 @@ export const BODIES = {
   }),
 
   /**
-   * Upgrader ab RCL8: ein halbes WORK je Satz. Der Controller nimmt dort nur
-   * noch 15 Energie je Tick an, mehr WORK wäre bezahlte Untätigkeit.
+   * Upgrader ab RCL8: **genau** die erlaubte Rate ausschöpfen.
+   *
+   * Der Controller nimmt dort 15 Energie je Tick an, und `UPGRADE_CONTROLLER_POWER`
+   * ist 1 je WORK — also fünf Sätze zu drei WORK. Mehr wäre bezahlte Untätigkeit,
+   * weniger verschenkt GCL, und GCL ist die Erlaubnis für den nächsten Raum.
+   *
+   * Wenige CARRY, weil der Controller-Link in Reichweite 1 steht: 250
+   * Tragfähigkeit reichen für rund siebzehn Ticks Arbeit. Wenige MOVE, weil der
+   * Creep nach der Anreise steht — das Vorgängerprofil trug 18 CARRY und 18 MOVE
+   * für eine Aufgabe, die 15 Energie je Tick verbraucht.
+   *
+   * Kosten 2000 Energie bei 25 Teilen; die Energiekapazität eines RCL8-Raums
+   * liegt bei 12 900, der Rückfall greift dort also nie.
    */
   upgraderRcl8: new BodyProfile({
     sets: [
-      { part: WORK, perSet: 0.5 },
-      { part: CARRY, perSet: 2 },
-      { part: MOVE, perSet: 2 },
+      { part: WORK, perSet: 3 },
+      { part: CARRY, perSet: 1 },
+      { part: MOVE, perSet: 1 },
     ],
-    maxSets: 9,
-    fallback: [WORK, CARRY, MOVE, MOVE],
+    maxSets: 5,
+    fallback: [WORK, CARRY, MOVE],
   }),
 
   /** Extupgrader in einem Raum ohne Sicht oder unter RCL6. */

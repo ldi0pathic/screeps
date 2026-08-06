@@ -5,8 +5,74 @@
  */
 import { bot } from "../globals";
 
+/**
+ * Ein-Tick-Cache für den Feind-Scan je Raum.
+ *
+ * `check()` und `tower()` durchlaufen beide `bot.room` und fragen im selben
+ * Tick `FIND_HOSTILE_CREEPS` für denselben Raum ab. Ohne Cache scannt das
+ * zweimal je Raum und Tick, obwohl sich der Feindbestand innerhalb eines
+ * Ticks nicht ändert — bei zehn Räumen und `tower()` jeden Tick ist genau das
+ * einer der Posten, die linear mit der Raumzahl wachsen und die Spitzenlast
+ * je Tick erhöhen.
+ *
+ * Der Cache gilt bewusst nur für den aktuellen Tick: der Vergleich läuft
+ * gegen `Game.time`, nie gegen ein „schon gesehen"-Flag, und ist damit auch
+ * bei einem Tickwechsel ohne Neuladen korrekt. Ein Mehrtick-Fenster (wie beim
+ * Vergleichsbot mit drei Ticks) übernehmen wir bewusst nicht: Feinde bewegen
+ * sich, und Turmfeuer ist taktisch. Der Cache lebt im Modul, nicht in
+ * `Memory` — ein globaler Reset leert ihn von selbst — und wächst nicht
+ * unbegrenzt: es gibt je Tick höchstens so viele Einträge wie Räume in
+ * `bot.room`, ältere Ticks werden beim nächsten Zugriff auf denselben Raum
+ * überschrieben statt zusätzlich gespeichert.
+ */
+class HostileScanCache {
+  private readonly entries = new Map<string, { tick: number; hostiles: Creep[] }>();
+
+  get(room: Room): Creep[] {
+    const cached = this.entries.get(room.name);
+    if (cached && cached.tick === Game.time) return cached.hostiles;
+
+    const hostiles = room.find(FIND_HOSTILE_CREEPS);
+    this.entries.set(room.name, { tick: Game.time, hostiles });
+    return hostiles;
+  }
+}
+
+const hostileScan = new HostileScanCache();
+
+/**
+ * Wie oft jeder Raum geprüft wird. Unverändert alle 7 Ticks — neu ist nur, dass
+ * nicht mehr alle Räume denselben Tick treffen.
+ */
+const CHECK_INTERVAL = 7;
+
+/**
+ * Verteidigungsscan, **gestaffelt**: ein Raum je Tick statt alle im selben.
+ *
+ * Wird seit Plan 05 in **jedem** Tick gerufen, nicht mehr nur alle sieben. Die
+ * Häufigkeit je Raum bleibt dieselbe (`(Game.time + index) % 7`), aber die
+ * Räume verteilen sich über die sieben Ticks. Das ändert nicht die Summe,
+ * sondern die **Spitze** — und die entscheidet, ob der Tick durchläuft: greift
+ * das CPU-Limit, bricht das Spiel den Rest stillschweigend ab. Mit neun Räumen
+ * fielen bisher neun Raumscans in denselben Tick, jetzt sind es ein bis zwei.
+ *
+ * Der Versatz kommt aus der Position des Raums in `bot.room`. Die
+ * Schlüsselreihenfolge eines Objekts ist für Stringschlüssel die
+ * Einfügereihenfolge, also stabil — ein Raum behält seinen Tick, solange
+ * `config.ts` unverändert bleibt. Ändert sie sich, verschiebt sich der Versatz
+ * einmalig; das ist folgenlos, weil jede Prüfung für sich steht.
+ *
+ * `tower()` wird ausdrücklich **nicht** gestaffelt: Turmfeuer ist taktisch und
+ * muss in jedem Tick für jeden bedrohten Raum laufen.
+ */
 export function check(): void {
+  var roomIndex = 0;
+
   for (var name in bot.room) {
+    var offset = roomIndex++;
+
+    if ((Game.time + offset) % CHECK_INTERVAL !== 0) continue;
+
     if (!bot.room[name]!.sendDefender) continue;
 
     if (
@@ -27,7 +93,7 @@ export function check(): void {
 
     if (!room) continue;
 
-    var hostiles = room.find(FIND_HOSTILE_CREEPS);
+    var hostiles = hostileScan.get(room);
     var core = room.find(FIND_HOSTILE_STRUCTURES, {
       filter: (s: any) => s.structureType == STRUCTURE_INVADER_CORE
     });
@@ -97,7 +163,7 @@ export function tower(): void {
       continue;
 
     if (Memory.rooms[name]!.needDefence) {
-      var hostileCreeps = room.find(FIND_HOSTILE_CREEPS);
+      var hostileCreeps = hostileScan.get(room);
 
       if (hostileCreeps.length > 0) {
         // Sortiere die feindlichen Creeps nach ihren Bodypart-Kosten in absteigender Reihenfolge
@@ -158,16 +224,16 @@ export function tower(): void {
             if (tower) tower.attack(target);
           }
         } else {
+          var allStructures = room.find(FIND_STRUCTURES);
+
           if (!Memory.rooms[name]!.structureHP) {
             Memory.rooms[name]!.structureHP = {};
-            var allStructures = room.find(FIND_STRUCTURES);
             for (var structure of allStructures) {
               Memory.rooms[name]!.structureHP[structure.id] = structure.hits;
             }
           }
 
           var damagedStructure = null;
-          var allStructures = room.find(FIND_STRUCTURES);
           for (var structure of allStructures) {
             if (
               Memory.rooms[name]!.structureHP[structure.id] &&

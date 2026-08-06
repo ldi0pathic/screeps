@@ -13,7 +13,9 @@
 
 import { bot } from "../globals";
 import type { FlagSwitch } from "./flag";
-import { formatBaselines, formatDetailReport, formatWindowLine } from "./report";
+import * as history from "./history";
+import { mailReport } from "./mail";
+import { formatBaselines, formatComparison, formatDetailReport, formatWindowLine } from "./report";
 import { flagSwitch, measurement, state } from "./runtime";
 import type { ProfilerState } from "./state";
 import { clearStats, writeStats } from "./stats";
@@ -22,6 +24,7 @@ import {
   type Baseline,
   type ProfilerHandle,
   type ProfilerMode,
+  type RankedEntry,
   type WindowMetrics,
 } from "./types";
 import type { MeasurementWindow } from "./window";
@@ -30,9 +33,32 @@ export { SECTION } from "./types";
 export { profile, wrapRoles } from "./decorator";
 export type { ProfilerHandle, ProfilerMode } from "./types";
 
-/** Baut aus Kennzahlen eine Grundlinie — bewusst nur Skalare. */
+/**
+ * Rundet eine Rangliste auf `name -> cpuPerTick`, zwei Nachkommastellen.
+ *
+ * Die Rundung ist kein Schönheitsfehler, sondern Absicht: die Grundlinie liegt
+ * in `Memory` und wird damit in **jedem** Tick mitgeparst. `0.07` statt
+ * `0.07213948...` spart je Eintrag ein Vielfaches an Zeichen, und feiner als
+ * zwei Stellen ist bei CPU-Messwerten ohnehin Rauschen.
+ */
+function toCpuMap(entries: RankedEntry[]): Record<string, number> {
+  const map: Record<string, number> = {};
+  for (const entry of entries) {
+    map[entry.name] = Math.round(entry.cpuPerTick * 100) / 100;
+  }
+  return map;
+}
+
+/**
+ * Baut aus Kennzahlen eine Grundlinie.
+ *
+ * Abschnitte und Rollen kommen mit — ohne sie kann `prof.compare` zwar sagen,
+ * dass es teurer wurde, aber nicht **wo**. Methoden und einzelne Creeps bleiben
+ * draußen: sie sind der Großteil der Datenmenge, und Creep-Schlüssel verwaisen
+ * mit dem Creep.
+ */
 function toBaseline(metrics: WindowMetrics): Baseline {
-  return {
+  const baseline: Baseline = {
     tick: Game.time,
     ticks: metrics.ticks,
     mode: metrics.mode,
@@ -43,6 +69,16 @@ function toBaseline(metrics: WindowMetrics): Baseline {
     rooms: metrics.rooms,
     creeps: metrics.creeps,
   };
+
+  // Nur im Zustand `full` gibt es überhaupt Abschnitte und Rollen. Leere
+  // Objekte zu schreiben würde `compare` später vorgaukeln, alles sei
+  // weggefallen — deshalb bleiben die Felder dann ganz weg.
+  if (metrics.mode === "full") {
+    baseline.sections = toCpuMap(metrics.sections);
+    baseline.roles = toCpuMap(metrics.roles);
+  }
+
+  return baseline;
 }
 
 /**
@@ -71,6 +107,14 @@ export class Profiler implements ProfilerHandle {
    */
   tick(): void {
     this.state.syncFromMemory();
+
+    // Das Verlaufssegment muss angefordert sein, bevor am Fensterende
+    // hineingeschrieben werden kann — ein Schreibzugriff auf ein nicht aktives
+    // Segment verpufft. Im Zustand `off` bleibt es unangetastet und kostet
+    // nichts.
+    if (this.state.mode !== "off") {
+      history.requestSegment();
+    }
 
     // Vor der Messung, damit ein Farbwechsel schon in diesem Tick greift.
     this.applyFlagRequest();
@@ -106,6 +150,9 @@ export class Profiler implements ProfilerHandle {
     const metrics = this.measurement.metrics();
     console.log(formatWindowLine(metrics));
     writeStats(metrics);
+    // Scheitert stillschweigend, solange das Segment noch nicht bereit ist —
+    // das ist genau ein Fenster Verzögerung nach dem Einschalten, kein Fehler.
+    history.append(metrics);
     this.measurement.reset();
   }
 
@@ -191,6 +238,40 @@ export class Profiler implements ProfilerHandle {
   baselines(): string {
     const metrics = this.measurement.metrics();
     return formatBaselines(this.state.readBaselines(), metrics.ticks > 0 ? metrics : null);
+  }
+
+  compare(name: string): string {
+    if (!name) {
+      return 'Name fehlt. Beispiel: prof.compare("vor-linknetz")';
+    }
+
+    const baseline = this.state.readBaselines()[name];
+    if (!baseline) {
+      return `Keine Grundlinie "${name}". Vorhandene zeigt prof.baselines().`;
+    }
+
+    const metrics = this.measurement.metrics();
+    if (metrics.ticks === 0) {
+      return "Kein gemessener Tick im Fenster — es gibt nichts zu vergleichen.";
+    }
+
+    return formatComparison(name, baseline, metrics);
+  }
+
+  mail(): string {
+    const report = this.report();
+    return mailReport(`[prof] Bericht Tick ${Game.time}`, report);
+  }
+
+  history(): string {
+    if (!history.isAvailable()) {
+      // Segmente werden erst im nächsten Tick lesbar — das ist die API, kein
+      // Fehler. Anfordern und den Nutzer wiederkommen lassen.
+      history.requestSegment();
+      return "Verlaufssegment angefordert. prof.history() im nächsten Tick noch einmal aufrufen.";
+    }
+
+    return history.format(history.read());
   }
 
   /**

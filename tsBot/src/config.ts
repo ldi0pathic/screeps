@@ -62,15 +62,10 @@ bot.room = {
     sendClaimer: true,
 
     //mining
-    debitorProSource: 1,
     debitorAsFreelancer: 0,
     energySources: ["5bbcb07b9099fc012e63c406"],
     mineralSources: [],
 
-    useLinks: false,
-    targetLinks: [],
-    spawnLink: null,
-    controllerLink: null,
 
     //structures
     repairer: 0,
@@ -92,14 +87,9 @@ bot.room = {
     sendClaimer: true,
 
     //mining
-    debitorProSource: 1,
     debitorAsFreelancer: 0,
     energySources: ["5bbcb08d9099fc012e63c593"],
     mineralSources: [],
-    useLinks: false,
-    targetLinks: [],
-    spawnLink: null,
-    controllerLink: null,
 
     //structures
     repairer: 0,
@@ -121,23 +111,18 @@ bot.room = {
     sendBuilder: true,
     sendDefender: true,
     sendClaimer: false,
-    // Muss an sein, solange `useLinks` gilt: seit dem Entfernen von
-    // `harvestSpawnLink` leert niemand sonst den Link in der Basis, und ein
+    // Muss an sein, sobald der Raum Links nutzt (ab RCL5): seit dem Entfernen
+    // von `harvestSpawnLink` leert niemand sonst den Link in der Basis, und ein
     // voller Empfänger-Link blockiert alle Quell-Links, die auf ihn senden.
     sendLinkkeeper: true,
 
     saveRoads: true,
 
     //mining
-    debitorProSource: 1,
     debitorAsFreelancer: 1,
     energySources: ["5bbcb08d9099fc012e63c58f", "5bbcb08d9099fc012e63c590"],
     mineralSources: ["5bbcb72cd867df5e54207db1"],
 
-    useLinks: true,
-    targetLinks: ["653aed0d2fa32d1c887ab4e7", "657f0915dbc7505af702443c"],
-    spawnLink: "657f0915dbc7505af702443c",
-    controllerLink: "653aed0d2fa32d1c887ab4e7",
 
     //structures
     repairer: 0,
@@ -158,24 +143,19 @@ bot.room = {
     sendBuilder: true,
     sendDefender: true,
     sendClaimer: false,
-    // Muss an sein, solange `useLinks` gilt: seit dem Entfernen von
-    // `harvestSpawnLink` leert niemand sonst den Link in der Basis, und ein
+    // Muss an sein, sobald der Raum Links nutzt (ab RCL5): seit dem Entfernen
+    // von `harvestSpawnLink` leert niemand sonst den Link in der Basis, und ein
     // voller Empfänger-Link blockiert alle Quell-Links, die auf ihn senden.
     sendLinkkeeper: true,
 
     saveRoads: true,
 
     //mining
-    debitorProSource: 0,
     debitorAsFreelancer: 1,
     energySources: ["5bbcb08d9099fc012e63c58c", "5bbcb08d9099fc012e63c58a"],
     mineralSources: ["5bbcb72cd867df5e54207db0"],
     mineralContainerId: "658f0b73615ae9c2e4995fb6",
 
-    useLinks: true,
-    targetLinks: ["655269336b163b788bbbaec1", "65380c0c74becf6de75f0370"],
-    spawnLink: "655269336b163b788bbbaec1",
-    controllerLink: "65380c0c74becf6de75f0370",
 
     //structures
     repairer: 0,
@@ -197,22 +177,16 @@ bot.room = {
     sendClaimer: true,
 
     //mining
-    debitorProSource: 2,
     debitorAsFreelancer: 0,
     energySources: ["5bbcb08d9099fc012e63c588"],
     mineralSources: [],
 
-    useLinks: false,
-    targetLinks: [],
-    spawnLink: null,
-    controllerLink: null,
 
     //structures
     repairer: 0,
     maxwallRepairer: 0,
     maxbuilder: 1,
     prioBuildings: [],
-    walls: [],
 
     //controller
     upgrader: 0,
@@ -227,23 +201,18 @@ bot.room = {
     sendBuilder: true,
     sendDefender: true,
     sendClaimer: false,
-    // Muss an sein, solange `useLinks` gilt: seit dem Entfernen von
-    // `harvestSpawnLink` leert niemand sonst den Link in der Basis, und ein
+    // Muss an sein, sobald der Raum Links nutzt (ab RCL5): seit dem Entfernen
+    // von `harvestSpawnLink` leert niemand sonst den Link in der Basis, und ein
     // voller Empfänger-Link blockiert alle Quell-Links, die auf ihn senden.
     sendLinkkeeper: true,
 
     saveRoads: true,
 
     //mining
-    debitorProSource: 1,
     debitorAsFreelancer: 1,
     energySources: ["5bbcb09f9099fc012e63c71f", "5bbcb09f9099fc012e63c71d"],
     mineralSources: ["5bbcb73ad867df5e54207e20"],
     mineralContainerId: null,
-    useLinks: true,
-    targetLinks: ["6666029dda8491c8c7f5b5f8", "65ad15e5e25690e38e742550"],
-    spawnLink: "65ad15e5e25690e38e742550",
-    controllerLink: "6666029dda8491c8c7f5b5f8",
 
     //structures
     repairer: 0,
@@ -265,15 +234,10 @@ bot.room = {
     sendClaimer: true,
 
     //mining
-    debitorProSource: 0,
     debitorAsFreelancer: 0,
     energySources: ["5bbcb09e9099fc012e63c711"],
     mineralSources: ["5bbcb739d867df5e54207e1c"],
 
-    useLinks: false,
-    targetLinks: [],
-    spawnLink: null,
-    controllerLink: null,
 
     //structures
     repairer: 0,
@@ -295,15 +259,10 @@ bot.room = {
     sendClaimer: true,
 
     //mining
-    debitorProSource: 2,
     debitorAsFreelancer: 0,
     energySources: ["5bbcb09e9099fc012e63c70e"],
     mineralSources: [],
 
-    useLinks: false,
-    targetLinks: [],
-    spawnLink: null,
-    controllerLink: null,
 
     //structures
     repairer: 0,
@@ -324,23 +283,18 @@ bot.room = {
     sendBuilder: true,
     sendDefender: true,
     sendClaimer: false,
-    // Muss an sein, solange `useLinks` gilt: seit dem Entfernen von
-    // `harvestSpawnLink` leert niemand sonst den Link in der Basis, und ein
+    // Muss an sein, sobald der Raum Links nutzt (ab RCL5): seit dem Entfernen
+    // von `harvestSpawnLink` leert niemand sonst den Link in der Basis, und ein
     // voller Empfänger-Link blockiert alle Quell-Links, die auf ihn senden.
     sendLinkkeeper: true,
 
     saveRoads: true,
 
     //mining
-    debitorProSource: 0,
     debitorAsFreelancer: 1,
     energySources: ["5bbcb09e9099fc012e63c70a", "5bbcb09e9099fc012e63c70b"],
     mineralSources: ["5bbcb739d867df5e54207e1a"],
 
-    useLinks: true,
-    targetLinks: ["655261fc8c582e53825955a1", "65354f9aade2340fef294995"],
-    spawnLink: "655261fc8c582e53825955a1",
-    controllerLink: "65354f9aade2340fef294995",
 
     //structures
     repairer: 0,

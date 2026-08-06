@@ -1,9 +1,10 @@
-// Build: 2026-08-03 22:35:45 +02:00
+// Build: 2026-08-06 00:21:03 +02:00
 "use strict";
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
 var __getOwnPropNames = Object.getOwnPropertyNames;
 var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
 var __export = (target, all) => {
   for (var name in all)
     __defProp(target, name, { get: all[name], enumerable: true });
@@ -25,6 +26,7 @@ var __decorateClass = (decorators, target, key, kind) => {
   if (kind && result) __defProp(target, key, result);
   return result;
 };
+var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
 
 // src/main.ts
 var main_exports = {};
@@ -87,46 +89,14 @@ bot.room = {
     sendDefender: true,
     sendClaimer: true,
     //mining
-    debitorProSource: 1,
     debitorAsFreelancer: 0,
     energySources: ["5bbcb07b9099fc012e63c406"],
     mineralSources: [],
-    useLinks: false,
-    targetLinks: [],
-    spawnLink: null,
-    controllerLink: null,
     //structures
     repairer: 0,
     maxwallRepairer: 0,
     maxbuilder: 1,
     prioBuildings: [],
-    //controller
-    upgrader: 0
-  },
-  E58N4: {
-    room: "E58N4",
-    spawnRoom: "E59N4",
-    sendMiner: true,
-    sendDebitor: true,
-    sendFreeDebitor: false,
-    sendBuilder: false,
-    sendDefender: true,
-    sendClaimer: true,
-    //mining
-    debitorProSource: 1,
-    debitorAsFreelancer: 0,
-    energySources: ["5bbcb08d9099fc012e63c595"],
-    mineralSources: [],
-    useLinks: false,
-    targetLinks: [],
-    spawnLink: null,
-    controllerLink: null,
-    //structures
-    repairer: 0,
-    maxwallRepairer: 0,
-    maxbuilder: 1,
-    prioBuildings: [],
-    destroy: ["63adb4b3aeebaa08e3aa2851"],
     //controller
     upgrader: 0
   },
@@ -140,14 +110,9 @@ bot.room = {
     sendDefender: true,
     sendClaimer: true,
     //mining
-    debitorProSource: 1,
     debitorAsFreelancer: 0,
     energySources: ["5bbcb08d9099fc012e63c593"],
     mineralSources: [],
-    useLinks: false,
-    targetLinks: [],
-    spawnLink: null,
-    controllerLink: null,
     //structures
     repairer: 0,
     maxwallRepairer: 0,
@@ -167,20 +132,15 @@ bot.room = {
     sendBuilder: true,
     sendDefender: true,
     sendClaimer: false,
-    // Muss an sein, solange `useLinks` gilt: seit dem Entfernen von
-    // `harvestSpawnLink` leert niemand sonst den Link in der Basis, und ein
+    // Muss an sein, sobald der Raum Links nutzt (ab RCL5): seit dem Entfernen
+    // von `harvestSpawnLink` leert niemand sonst den Link in der Basis, und ein
     // voller Empfänger-Link blockiert alle Quell-Links, die auf ihn senden.
     sendLinkkeeper: true,
     saveRoads: true,
     //mining
-    debitorProSource: 1,
     debitorAsFreelancer: 1,
     energySources: ["5bbcb08d9099fc012e63c58f", "5bbcb08d9099fc012e63c590"],
     mineralSources: ["5bbcb72cd867df5e54207db1"],
-    useLinks: true,
-    targetLinks: ["653aed0d2fa32d1c887ab4e7", "657f0915dbc7505af702443c"],
-    spawnLink: "657f0915dbc7505af702443c",
-    controllerLink: "653aed0d2fa32d1c887ab4e7",
     //structures
     repairer: 0,
     maxwallRepairer: 1,
@@ -199,21 +159,16 @@ bot.room = {
     sendBuilder: true,
     sendDefender: true,
     sendClaimer: false,
-    // Muss an sein, solange `useLinks` gilt: seit dem Entfernen von
-    // `harvestSpawnLink` leert niemand sonst den Link in der Basis, und ein
+    // Muss an sein, sobald der Raum Links nutzt (ab RCL5): seit dem Entfernen
+    // von `harvestSpawnLink` leert niemand sonst den Link in der Basis, und ein
     // voller Empfänger-Link blockiert alle Quell-Links, die auf ihn senden.
     sendLinkkeeper: true,
     saveRoads: true,
     //mining
-    debitorProSource: 0,
     debitorAsFreelancer: 1,
     energySources: ["5bbcb08d9099fc012e63c58c", "5bbcb08d9099fc012e63c58a"],
     mineralSources: ["5bbcb72cd867df5e54207db0"],
     mineralContainerId: "658f0b73615ae9c2e4995fb6",
-    useLinks: true,
-    targetLinks: ["655269336b163b788bbbaec1", "65380c0c74becf6de75f0370"],
-    spawnLink: "655269336b163b788bbbaec1",
-    controllerLink: "65380c0c74becf6de75f0370",
     //structures
     repairer: 0,
     maxwallRepairer: 1,
@@ -232,20 +187,14 @@ bot.room = {
     sendDefender: true,
     sendClaimer: true,
     //mining
-    debitorProSource: 2,
     debitorAsFreelancer: 0,
     energySources: ["5bbcb08d9099fc012e63c588"],
     mineralSources: [],
-    useLinks: false,
-    targetLinks: [],
-    spawnLink: null,
-    controllerLink: null,
     //structures
     repairer: 0,
     maxwallRepairer: 0,
     maxbuilder: 1,
     prioBuildings: [],
-    walls: [],
     //controller
     upgrader: 0
   },
@@ -259,21 +208,16 @@ bot.room = {
     sendBuilder: true,
     sendDefender: true,
     sendClaimer: false,
-    // Muss an sein, solange `useLinks` gilt: seit dem Entfernen von
-    // `harvestSpawnLink` leert niemand sonst den Link in der Basis, und ein
+    // Muss an sein, sobald der Raum Links nutzt (ab RCL5): seit dem Entfernen
+    // von `harvestSpawnLink` leert niemand sonst den Link in der Basis, und ein
     // voller Empfänger-Link blockiert alle Quell-Links, die auf ihn senden.
     sendLinkkeeper: true,
     saveRoads: true,
     //mining
-    debitorProSource: 1,
     debitorAsFreelancer: 1,
     energySources: ["5bbcb09f9099fc012e63c71f", "5bbcb09f9099fc012e63c71d"],
     mineralSources: ["5bbcb73ad867df5e54207e20"],
     mineralContainerId: null,
-    useLinks: true,
-    targetLinks: ["6666029dda8491c8c7f5b5f8", "65ad15e5e25690e38e742550"],
-    spawnLink: "65ad15e5e25690e38e742550",
-    controllerLink: "6666029dda8491c8c7f5b5f8",
     //structures
     repairer: 0,
     maxwallRepairer: 2,
@@ -292,14 +236,9 @@ bot.room = {
     sendDefender: true,
     sendClaimer: true,
     //mining
-    debitorProSource: 0,
     debitorAsFreelancer: 0,
     energySources: ["5bbcb09e9099fc012e63c711"],
     mineralSources: ["5bbcb739d867df5e54207e1c"],
-    useLinks: false,
-    targetLinks: [],
-    spawnLink: null,
-    controllerLink: null,
     //structures
     repairer: 0,
     maxwallRepairer: 0,
@@ -318,14 +257,9 @@ bot.room = {
     sendDefender: true,
     sendClaimer: true,
     //mining
-    debitorProSource: 2,
     debitorAsFreelancer: 0,
     energySources: ["5bbcb09e9099fc012e63c70e"],
     mineralSources: [],
-    useLinks: false,
-    targetLinks: [],
-    spawnLink: null,
-    controllerLink: null,
     //structures
     repairer: 0,
     maxwallRepairer: 0,
@@ -344,20 +278,15 @@ bot.room = {
     sendBuilder: true,
     sendDefender: true,
     sendClaimer: false,
-    // Muss an sein, solange `useLinks` gilt: seit dem Entfernen von
-    // `harvestSpawnLink` leert niemand sonst den Link in der Basis, und ein
+    // Muss an sein, sobald der Raum Links nutzt (ab RCL5): seit dem Entfernen
+    // von `harvestSpawnLink` leert niemand sonst den Link in der Basis, und ein
     // voller Empfänger-Link blockiert alle Quell-Links, die auf ihn senden.
     sendLinkkeeper: true,
     saveRoads: true,
     //mining
-    debitorProSource: 0,
     debitorAsFreelancer: 1,
     energySources: ["5bbcb09e9099fc012e63c70a", "5bbcb09e9099fc012e63c70b"],
     mineralSources: ["5bbcb739d867df5e54207e1a"],
-    useLinks: true,
-    targetLinks: ["655261fc8c582e53825955a1", "65354f9aade2340fef294995"],
-    spawnLink: "655261fc8c582e53825955a1",
-    controllerLink: "65354f9aade2340fef294995",
     //structures
     repairer: 0,
     maxwallRepairer: 1,
@@ -673,6 +602,463 @@ function tower() {
   }
 }
 
+// src/controller/link-list.ts
+function usesLinks(roomName) {
+  var _a, _b, _c;
+  const controller = (_a = Game.rooms[roomName]) == null ? void 0 : _a.controller;
+  if (!(controller == null ? void 0 : controller.my)) {
+    return false;
+  }
+  return ((_c = (_b = CONTROLLER_STRUCTURES == null ? void 0 : CONTROLLER_STRUCTURES[STRUCTURE_LINK]) == null ? void 0 : _b[controller.level]) != null ? _c : 0) > 0;
+}
+var LinkList = class {
+  constructor(roomName) {
+    this.roomName = roomName;
+  }
+  get roomMemory() {
+    return Memory.rooms[this.roomName];
+  }
+  /** Kennt der Bot den Raum überhaupt? Ohne Raum-Memory gibt es nichts zu tun. */
+  get isRoomKnown() {
+    return this.roomMemory !== void 0;
+  }
+  /** Liegt überhaupt eine Liste vor — auch eine ohne Sender? */
+  get hasList() {
+    var _a;
+    return ((_a = this.roomMemory) == null ? void 0 : _a.links) !== void 0;
+  }
+  /**
+   * Erhebt die Links des Raums, klassifiziert sie und schreibt sie ins Memory.
+   *
+   * Reihenfolge der Zuordnung: erst die Config, dann die Lage, und ein Link
+   * ist nie beides — Controller zuerst, Storage aus dem Rest, alle übrigen
+   * Links sind Sender.
+   */
+  discover(room) {
+    const memory = this.roomMemory;
+    if (!memory) {
+      return;
+    }
+    const links = room.find(FIND_MY_STRUCTURES, {
+      filter: (structure) => structure.structureType === STRUCTURE_LINK
+    });
+    const remaining = new Set(links.map((link) => link.id));
+    const controllerId = this.resolveController(room, links);
+    if (controllerId) {
+      remaining.delete(controllerId);
+    }
+    const spawnId = this.resolveSpawn(room, links, remaining);
+    if (spawnId) {
+      remaining.delete(spawnId);
+    }
+    const previous = memory.links;
+    memory.links = {
+      controller: controllerId,
+      spawn: spawnId,
+      sender: [...remaining]
+    };
+    this.reportChange(room.name, previous, memory.links);
+  }
+  /**
+   * Meldet eine geänderte Zuordnung auf der Konsole — nur bei Änderung, nicht
+   * bei jeder Erhebung.
+   *
+   * Der Grund ist Nachprüfbarkeit: seit die Empfänger nicht mehr in `config.ts`
+   * stehen, entscheidet allein die Lage. Ob sie richtig entscheidet, sieht man
+   * sonst nirgends. Ein Raum, in dem eine Quelle zufällig nah am Controller
+   * liegt, würde deren Quell-Link zum Empfänger machen — das fällt hier auf.
+   */
+  reportChange(roomName, previous, current) {
+    var _a, _b;
+    const unchanged = previous !== void 0 && previous.controller === current.controller && previous.spawn === current.spawn && previous.sender.length === current.sender.length && previous.sender.every((id, index) => id === current.sender[index]);
+    if (unchanged) {
+      return;
+    }
+    console.log(
+      `[${roomName}] Links: Controller=${(_a = current.controller) != null ? _a : "-"} Storage=${(_b = current.spawn) != null ? _b : "-"} Sender=${current.sender.length}`
+    );
+  }
+  /** Der Empfänger am Controller: der nächste Link in Reichweite 3. */
+  resolveController(room, links) {
+    var _a;
+    const controller = room.controller;
+    if (!controller) {
+      return void 0;
+    }
+    return (_a = this.nearestWithinRange(links, controller.pos, 3)) == null ? void 0 : _a.id;
+  }
+  /** Der Empfänger am Storage: der nächste noch freie Link in Reichweite 2. */
+  resolveSpawn(room, links, candidates) {
+    var _a;
+    const storage = room.storage;
+    if (!storage) {
+      return void 0;
+    }
+    const remainingLinks = links.filter((link) => candidates.has(link.id));
+    return (_a = this.nearestWithinRange(remainingLinks, storage.pos, 2)) == null ? void 0 : _a.id;
+  }
+  /** Der nächstgelegene Link zu `pos`, sofern innerhalb von `range`. */
+  nearestWithinRange(links, pos, range) {
+    let nearest;
+    let nearestDistance = Infinity;
+    for (const link of links) {
+      const distance = link.pos.getRangeTo(pos);
+      if (distance <= range && distance < nearestDistance) {
+        nearestDistance = distance;
+        nearest = link;
+      }
+    }
+    return nearest;
+  }
+  /** Verwirft die Liste; sie wird beim nächsten Tagesjob neu erhoben. */
+  forget() {
+    const memory = this.roomMemory;
+    if (memory) {
+      delete memory.links;
+    }
+  }
+  /**
+   * Löst eine gemerkte Id auf. Zeigt sie ins Leere (Link abgerissen), wird die
+   * ganze Liste verworfen — analog zu `forgetListOnStaleId` in `ContainerList`,
+   * hier aber ohne Ausnahme, weil es für Links keine zwei Seiten mit
+   * unterschiedlichem Verhalten gibt.
+   */
+  resolve(id) {
+    if (!id) {
+      return null;
+    }
+    const link = Game.getObjectById(id);
+    if (!link) {
+      this.forget();
+      return null;
+    }
+    return link;
+  }
+  /** Der Empfänger am Controller, oder null. */
+  get controllerLink() {
+    var _a, _b;
+    return this.resolve((_b = (_a = this.roomMemory) == null ? void 0 : _a.links) == null ? void 0 : _b.controller);
+  }
+  /** Der Empfänger am Storage, oder null. */
+  get spawnLink() {
+    var _a, _b;
+    return this.resolve((_b = (_a = this.roomMemory) == null ? void 0 : _a.links) == null ? void 0 : _b.spawn);
+  }
+  /** Alle sendenden Links, aufgelöst. */
+  senders() {
+    var _a, _b;
+    const ids = (_b = (_a = this.roomMemory) == null ? void 0 : _a.links) == null ? void 0 : _b.sender;
+    if (!ids) {
+      return [];
+    }
+    const result = [];
+    for (const id of ids) {
+      const link = this.resolve(id);
+      if (link) {
+        result.push(link);
+      }
+    }
+    return result;
+  }
+};
+
+// src/controller/link-planner.ts
+var blockingStructureTypes = OBSTACLE_OBJECT_TYPES;
+var MAX_CONSTRUCTION_SITES = 10;
+var LinkPlanner = class {
+  constructor(roomName) {
+    this.roomName = roomName;
+  }
+  /** Legt höchstens eine Linkbaustelle an. `true`, wenn eine entstanden ist. */
+  plan() {
+    if (!usesLinks(this.roomName)) return false;
+    const room = Game.rooms[this.roomName];
+    const controller = room.controller;
+    const freeSlots = this.freeLinkSlots(room, controller.level);
+    if (freeSlots <= 0) return false;
+    const reserve = this.reservedSenderSlots(room, this.allowedLinks(controller.level));
+    if (freeSlots <= reserve) return false;
+    const freeConstructionSlots = MAX_CONSTRUCTION_SITES - room.find(FIND_CONSTRUCTION_SITES).length;
+    if (freeConstructionSlots <= 0) return false;
+    if (this.buildControllerLink(room, controller)) return true;
+    return this.buildStorageLink(room, controller);
+  }
+  /** Wie viele Links dieser RCL insgesamt erlaubt sind. */
+  allowedLinks(level) {
+    var _a, _b;
+    return (_b = (_a = CONTROLLER_STRUCTURES == null ? void 0 : CONTROLLER_STRUCTURES[STRUCTURE_LINK]) == null ? void 0 : _a[level]) != null ? _b : 0;
+  }
+  /** Wie viele Links in diesem Raum noch gebaut werden dürfen, abzüglich vorhandener und geplanter. */
+  freeLinkSlots(room, level) {
+    const allowed = this.allowedLinks(level);
+    const built = room.find(FIND_MY_STRUCTURES, { filter: (s) => s.structureType === STRUCTURE_LINK }).length;
+    const sites = room.find(FIND_CONSTRUCTION_SITES, { filter: (s) => s.structureType === STRUCTURE_LINK }).length;
+    return allowed - built - sites;
+  }
+  /** Anzahl der Quellen des Raums, in deren Reichweite 2 noch kein Link und keine Linkbaustelle steht. */
+  sourcesWithoutLink(room) {
+    return room.find(FIND_SOURCES).filter((source) => !this.hasLinkNear(room, source.pos, 2)).length;
+  }
+  /**
+   * Plätze, die für Quell-Links reserviert bleiben, bevor ein Empfänger
+   * gebaut wird: höchstens so viele wie es Quellen ohne Link gibt, aber
+   * mindestens ein Platz bleibt immer für einen Empfänger übrig (`- 1`) –
+   * auch wenn es mehr Quellen als erlaubte Links gäbe.
+   */
+  reservedSenderSlots(room, allowed) {
+    return Math.min(this.sourcesWithoutLink(room), allowed - 1);
+  }
+  /** Plant den Controller-Link, falls in Reichweite 3 noch keiner steht (auch keine Baustelle). */
+  buildControllerLink(room, controller) {
+    if (this.hasLinkNear(room, controller.pos, 3)) return false;
+    const candidates = this.candidatesNearController(room, controller.pos);
+    const best = this.selectBest(candidates, room, controller, room.storage);
+    if (!best) return false;
+    return this.build(room, best, "Controller");
+  }
+  /** Plant den Storage-Link, falls ein Storage existiert und in Reichweite 2 noch keiner steht. */
+  buildStorageLink(room, controller) {
+    const storage = room.storage;
+    if (!storage) return false;
+    if (this.hasLinkNear(room, storage.pos, 2)) return false;
+    const candidates = this.candidatesNearStorage(room, storage);
+    const best = this.selectBest(candidates, room, controller, storage);
+    if (!best) return false;
+    return this.build(room, best, "Storage");
+  }
+  /** Steht (gebaut oder als Baustelle) bereits ein Link in `range` um `pos`? */
+  hasLinkNear(room, pos, range) {
+    const links = room.find(FIND_MY_STRUCTURES, { filter: (s) => s.structureType === STRUCTURE_LINK });
+    if (links.some((link) => link.pos.getRangeTo(pos) <= range)) return true;
+    const sites = room.find(FIND_CONSTRUCTION_SITES, { filter: (s) => s.structureType === STRUCTURE_LINK });
+    return sites.some((site) => site.pos.getRangeTo(pos) <= range);
+  }
+  /**
+   * Kandidatenfelder für den Controller-Link: bevorzugt Reichweite 2, damit
+   * ein Upgrader (Arbeitsdistanz 3 zum Controller) neben dem Link stehen und
+   * zugleich upgraden kann. Findet sich dort keins, weicht die Suche auf
+   * Reichweite 3, danach auf Reichweite 1 aus.
+   */
+  candidatesNearController(room, controllerPos) {
+    for (const range of [2, 3, 1]) {
+      const positions = this.positionsAtRange(room, controllerPos, range).filter((pos) => this.isBuildable(pos, room));
+      if (positions.length > 0) return positions;
+    }
+    return [];
+  }
+  /**
+   * Kandidatenfelder für den Storage-Link: alle bebaubaren Felder bis
+   * Reichweite 2, für die zusätzlich ein Standplatz für den Linkkeeper
+   * existiert – ein begehbares Feld, das an Link **und** Storage zugleich
+   * angrenzt (siehe roles/linkkeeper.ts::_findPost). Ohne diesen Platz wäre
+   * der Link nicht leerbar.
+   */
+  candidatesNearStorage(room, storage) {
+    const positions = [];
+    for (let dx = -2; dx <= 2; dx++) {
+      for (let dy = -2; dy <= 2; dy++) {
+        const x = storage.pos.x + dx;
+        const y = storage.pos.y + dy;
+        if (x < 1 || x > 48 || y < 1 || y > 48) continue;
+        const pos = new RoomPosition(x, y, room.name);
+        if (!this.isBuildable(pos, room)) continue;
+        if (!this.hasKeeperPost(pos, storage, room)) continue;
+        positions.push(pos);
+      }
+    }
+    return positions;
+  }
+  /** Gibt es ein Feld, das an `linkPos` und `storage` zugleich angrenzt und begehbar ist? */
+  hasKeeperPost(linkPos, storage, room) {
+    for (let dx = -1; dx <= 1; dx++) {
+      for (let dy = -1; dy <= 1; dy++) {
+        if (dx === 0 && dy === 0) continue;
+        const x = linkPos.x + dx;
+        const y = linkPos.y + dy;
+        if (x < 1 || x > 48 || y < 1 || y > 48) continue;
+        const pos = new RoomPosition(x, y, room.name);
+        if (!pos.isNearTo(storage.pos)) continue;
+        if (!this.isBuildable(pos, room)) continue;
+        return true;
+      }
+    }
+    return false;
+  }
+  /** Alle Felder mit Chebyshev-Abstand `range` genau zu `center`, innerhalb der Raumgrenzen. */
+  positionsAtRange(room, center, range) {
+    const positions = [];
+    for (let dx = -range; dx <= range; dx++) {
+      for (let dy = -range; dy <= range; dy++) {
+        if (Math.max(Math.abs(dx), Math.abs(dy)) !== range) continue;
+        const x = center.x + dx;
+        const y = center.y + dy;
+        if (x < 1 || x > 48 || y < 1 || y > 48) continue;
+        positions.push(new RoomPosition(x, y, room.name));
+      }
+    }
+    return positions;
+  }
+  /** Feld begehbar und unverbaut: kein Wall-Terrain, kein blockierendes Bauwerk oder Baustelle. */
+  isBuildable(pos, room) {
+    if (pos.x < 1 || pos.x > 48 || pos.y < 1 || pos.y > 48) return false;
+    const terrain = room.getTerrain();
+    if ((terrain.get(pos.x, pos.y) & TERRAIN_MASK_WALL) !== 0) return false;
+    const blockedByStructure = pos.lookFor(LOOK_STRUCTURES).some((s) => blockingStructureTypes.includes(s.structureType));
+    if (blockedByStructure) return false;
+    const blockedBySite = pos.lookFor(LOOK_CONSTRUCTION_SITES).some((s) => blockingStructureTypes.includes(s.structureType));
+    return !blockedBySite;
+  }
+  /**
+   * Wählt aus `candidates` das beste Feld: kleinste Summe der Entfernungen zu
+   * den Referenzpositionen gewinnt, bei Gleichstand das Feld mit mehr
+   * begehbaren Nachbarfeldern – ein Link soll keinen Engpass zubauen.
+   */
+  selectBest(candidates, room, controller, storage) {
+    if (candidates.length === 0) return null;
+    const referencePositions = this.referencePositions(room, controller, storage);
+    let best = null;
+    let bestScore = Infinity;
+    let bestNeighbors = -1;
+    for (const candidate of candidates) {
+      const score = this.distanceSum(candidate, referencePositions);
+      const neighbors = this.walkableNeighborCount(candidate, room);
+      if (score < bestScore || score === bestScore && neighbors > bestNeighbors) {
+        best = candidate;
+        bestScore = score;
+        bestNeighbors = neighbors;
+      }
+    }
+    return best;
+  }
+  /**
+   * Referenzpositionen für die Entfernungsbewertung: die sendenden Links des
+   * Raums (weder Controller- noch Storage-Empfänger), ersatzweise die
+   * Quellen, solange noch kein sendender Link existiert.
+   */
+  referencePositions(room, controller, storage) {
+    const sendingLinks = this.sendingLinks(room, controller, storage);
+    if (sendingLinks.length > 0) return sendingLinks.map((link) => link.pos);
+    return room.find(FIND_SOURCES).map((source) => source.pos);
+  }
+  /** Alle gebauten Links des Raums, die weder Controller- noch Storage-Empfänger sind. */
+  sendingLinks(room, controller, storage) {
+    const links = room.find(FIND_MY_STRUCTURES, { filter: (s) => s.structureType === STRUCTURE_LINK });
+    return links.filter((link) => {
+      if (link.pos.getRangeTo(controller.pos) <= 3) return false;
+      if (storage && link.pos.getRangeTo(storage.pos) <= 2) return false;
+      return true;
+    });
+  }
+  distanceSum(pos, targets) {
+    let sum = 0;
+    for (const target of targets) sum += pos.getRangeTo(target);
+    return sum;
+  }
+  walkableNeighborCount(pos, room) {
+    const terrain = room.getTerrain();
+    let count = 0;
+    for (let dx = -1; dx <= 1; dx++) {
+      for (let dy = -1; dy <= 1; dy++) {
+        if (dx === 0 && dy === 0) continue;
+        const x = pos.x + dx;
+        const y = pos.y + dy;
+        if (x < 1 || x > 48 || y < 1 || y > 48) continue;
+        if ((terrain.get(x, y) & TERRAIN_MASK_WALL) === 0) count++;
+      }
+    }
+    return count;
+  }
+  /** Legt die Baustelle auf `pos` an und meldet das Ergebnis. */
+  build(room, pos, label) {
+    const result = pos.createConstructionSite(STRUCTURE_LINK);
+    if (result !== OK) return false;
+    console.log("[" + room.name + "] Linkbaustelle (" + label + "-Link) angelegt bei " + pos.x + "," + pos.y);
+    return true;
+  }
+};
+function planReceiverLinks() {
+  for (const roomName in bot.room) {
+    new LinkPlanner(roomName).plan();
+  }
+}
+
+// src/controller/links.ts
+var SEND_MIN = LINK_CAPACITY / 4;
+var LinkNetwork = class {
+  constructor(roomName) {
+    this.roomName = roomName;
+    __publicField(this, "list");
+    this.list = new LinkList(roomName);
+  }
+  /** Ein Durchgang: wählt Sender und Empfänger und sendet. */
+  send() {
+    var _a;
+    if (!usesLinks(this.roomName)) {
+      return;
+    }
+    const room = Game.rooms[this.roomName];
+    if (!this.list.hasList) {
+      if (this.list.isRoomKnown) {
+        this.list.discover(room);
+      }
+      return;
+    }
+    const senders = this.readySenders();
+    if (senders.length === 0) {
+      return;
+    }
+    const receivers = this.receiversByPriority(room);
+    for (const sender of senders) {
+      const receiver = receivers.shift();
+      if (!receiver) {
+        return;
+      }
+      const amount = Math.min(sender.store[RESOURCE_ENERGY], (_a = receiver.store.getFreeCapacity(RESOURCE_ENERGY)) != null ? _a : 0);
+      if (amount < SEND_MIN) {
+        continue;
+      }
+      sender.transferEnergy(receiver, amount);
+    }
+  }
+  /** Sendende Links mit abgelaufenem Cooldown und ausreichend Ladung. */
+  readySenders() {
+    return this.list.senders().filter((link) => link.cooldown === 0 && link.store[RESOURCE_ENERGY] >= SEND_MIN);
+  }
+  /**
+   * Empfänger nach Vorrang, gefiltert auf ausreichend freien Platz.
+   *
+   * Der Vorrang kippt bei RCL8: darunter bekommt der Controller-Link zuerst
+   * (Upgraden bringt dort noch RCL-Fortschritt), ab RCL8 der Storage-Link
+   * (dort zahlt Upgraden nur noch auf GCL ein). Empfänger dürfen dabei
+   * teilweise befüllt werden — wer nur ganze Ladungen annimmt, bekäme als
+   * halb gefüllter Empfänger nie etwas ab.
+   */
+  receiversByPriority(room) {
+    var _a, _b;
+    const controllerFirst = ((_b = (_a = room.controller) == null ? void 0 : _a.level) != null ? _b : 0) < 8;
+    const ordered = controllerFirst ? [this.list.controllerLink, this.list.spawnLink] : [this.list.spawnLink, this.list.controllerLink];
+    return ordered.filter(
+      (link) => {
+        var _a2;
+        return link !== null && ((_a2 = link.store.getFreeCapacity(RESOURCE_ENERGY)) != null ? _a2 : 0) >= SEND_MIN;
+      }
+    );
+  }
+};
+function sendAll() {
+  for (const roomName in bot.room) {
+    new LinkNetwork(roomName).send();
+  }
+}
+function discoverAll() {
+  for (const roomName in bot.room) {
+    if (!usesLinks(roomName)) {
+      continue;
+    }
+    new LinkList(roomName).discover(Game.rooms[roomName]);
+  }
+}
+
 // src/controller/rebuild.ts
 var botGlobal2 = global;
 var botMemory2 = Memory;
@@ -700,7 +1086,194 @@ function rebuildRoads() {
   }
 }
 
+// src/creep/containers.ts
+var ContainerList = class {
+  constructor(roomName) {
+    this.roomName = roomName;
+  }
+  get roomMemory() {
+    return Memory.rooms[this.roomName];
+  }
+  /** Kennt der Bot den Raum überhaupt? Ohne Raum-Memory gibt es nichts zu tun. */
+  get isRoomKnown() {
+    return this.roomMemory !== void 0;
+  }
+  /**
+   * Liegt überhaupt eine Liste vor — auch eine leere?
+   *
+   * Der Unterschied zu `hasEntries` ist keine Spitzfindigkeit: die Ablieferseite
+   * behandelt eine **leere** Liste als „keine Container da" und erhebt sie nicht
+   * neu, die Beschaffungsseite erhebt sie neu. Beides war schon so und bleibt so.
+   */
+  get hasList() {
+    var _a;
+    return ((_a = this.roomMemory) == null ? void 0 : _a.container) !== void 0;
+  }
+  /** Liegt eine nicht leere Liste vor? */
+  get hasEntries() {
+    var _a;
+    const ids = (_a = this.roomMemory) == null ? void 0 : _a.container;
+    return ids !== void 0 && ids.length > 0;
+  }
+  /** Verwirft die Liste; sie wird dann neu erhoben. */
+  forget() {
+    const memory = this.roomMemory;
+    if (memory) {
+      delete memory.container;
+    }
+  }
+  /**
+   * Erhebt die Container des Raums und schreibt die Liste ins Memory.
+   * Liefert `true`, wenn es welche gibt — der Aufrufer beendet damit seinen Tick,
+   * denn geholt oder abgeliefert wurde in diesem Durchgang noch nichts.
+   */
+  discover(room) {
+    const memory = this.roomMemory;
+    if (!memory) {
+      return false;
+    }
+    const containers = room.find(FIND_STRUCTURES, {
+      filter: (structure) => structure.structureType === STRUCTURE_CONTAINER
+    });
+    memory.container = containers.map((container) => container.id);
+    return containers.length > 0;
+  }
+  /**
+   * Der nächstgelegene Container, der `accepts` erfüllt — oder `null`.
+   *
+   * Verglichen wird die **quadrierte** Entfernung: für die Reihenfolge ist das
+   * dasselbe wie die Wurzel, spart aber je Kandidat eine Wurzelberechnung.
+   */
+  nearest(creep, accepts, options = {}) {
+    var _a;
+    const ids = (_a = this.roomMemory) == null ? void 0 : _a.container;
+    if (!ids) {
+      return null;
+    }
+    let nearest = null;
+    let nearestDistance = Infinity;
+    for (const id of ids) {
+      const container = Game.getObjectById(id);
+      if (!container) {
+        if (options.forgetListOnStaleId) {
+          this.forget();
+        }
+        continue;
+      }
+      if (!accepts(container)) {
+        continue;
+      }
+      const dx = container.pos.x - creep.pos.x;
+      const dy = container.pos.y - creep.pos.y;
+      const distance = dx * dx + dy * dy;
+      if (distance < nearestDistance) {
+        nearestDistance = distance;
+        nearest = container;
+      }
+    }
+    return nearest;
+  }
+};
+
+// src/creep/path-memory.ts
+var STUCK_TICKS = 3;
+var PathMemory = class {
+  constructor(memory) {
+    __publicField(this, "memory");
+    this.memory = memory;
+  }
+  /** Der gespeicherte Weg, ohne Rücksicht auf sein Ziel. */
+  get path() {
+    return this.memory.path;
+  }
+  /** Ticks ohne Ortswechsel. */
+  get stuckTicks() {
+    var _a;
+    return (_a = this.memory.dontMove) != null ? _a : 0;
+  }
+  /**
+   * Steht der Creep lange genug still, dass ein Weg um andere Creeps herum
+   * gesucht werden sollte?
+   */
+  get isStuck() {
+    return this.stuckTicks > STUCK_TICKS;
+  }
+  /** Verwirft den gespeicherten Weg, **behält** die Stauerkennung. */
+  forgetPath() {
+    delete this.memory.path;
+    delete this.memory.pathTarget;
+  }
+  /** Verwirft Weg **und** Stauerkennung. */
+  clear() {
+    this.forgetPath();
+    delete this.memory.dontMove;
+    delete this.memory.lastPos;
+  }
+  /**
+   * Der gespeicherte Weg, falls er zu `target` gehört — sonst `undefined`.
+   *
+   * Zum Ziel gehört auch der Raumname: derselbe Punkt in einem anderen Raum ist
+   * ein anderes Ziel. Ein `pathTarget` ohne Raumnamen gilt als unbrauchbar.
+   */
+  pathTo(target) {
+    const stored = this.memory.pathTarget;
+    if (!this.memory.path || !stored || !stored.roomName) {
+      return void 0;
+    }
+    const sameTarget = stored.x === target.x && stored.y === target.y && stored.roomName === target.roomName;
+    return sameTarget ? this.memory.path : void 0;
+  }
+  /** Merkt den Weg, ohne ein Ziel zu hinterlegen. */
+  rememberPath(serializedPath) {
+    this.memory.path = serializedPath;
+  }
+  /** Merkt Weg und Ziel — der reguläre Fall. */
+  rememberPathTo(serializedPath, target) {
+    this.memory.path = serializedPath;
+    this.memory.pathTarget = { x: target.x, y: target.y, roomName: target.roomName };
+  }
+  /** Setzt den Stauzähler zurück, ohne die letzte Position zu vergessen. */
+  resetStuck() {
+    this.memory.dontMove = 0;
+  }
+  /**
+   * Führt die Stauerkennung einen Tick weiter: steht der Creep noch auf der
+   * gemerkten Position, steigt der Zähler; sonst wird die neue Position gemerkt
+   * und der Zähler beginnt neu.
+   */
+  trackPosition(pos) {
+    const last = this.memory.lastPos;
+    if (last && last.x === pos.x && last.y === pos.y) {
+      this.memory.dontMove = this.stuckTicks + 1;
+      return;
+    }
+    this.memory.lastPos = { x: pos.x, y: pos.y };
+    this.memory.dontMove = 0;
+  }
+};
+
 // src/creep/goto.ts
+function searchRoute(creep, target, ignoreCreeps) {
+  const steps = creep.pos.findPathTo(target, { ignoreCreeps });
+  return { serialized: Room.serializePath(steps), steps };
+}
+function drawRemainingPath(creep, route) {
+  var _a;
+  const steps = (_a = route.steps) != null ? _a : Room.deserializePath(route.serialized);
+  const currentPos = creep.pos;
+  const index = steps.findIndex((pos) => pos.x === currentPos.x && pos.y === currentPos.y);
+  if (index <= 0) {
+    return;
+  }
+  const visual = new RoomVisual(creep.room.name);
+  for (let i = index + 1; i < steps.length; i++) {
+    visual.circle(
+      steps[i].x,
+      steps[i].y,
+      { fill: "transparent", radius: 0.25, stroke: "red" }
+    );
+  }
+}
 function goToMyHome(creep) {
   if (creep.memory.home && creep.room.name !== creep.memory.home) {
     var room = new RoomPosition(25, 25, creep.memory.home);
@@ -713,7 +1286,6 @@ function goToRoomFlag(creep) {
     const flags = creep.room.find(FIND_FLAGS);
     if (flags.length > 0 && !creep.pos.inRangeTo(flags[0].pos, 2)) {
       return moveByMemory(creep, flags[0].pos);
-      ;
     }
   }
   return false;
@@ -726,73 +1298,40 @@ function goToWorkroom(creep) {
   return false;
 }
 function moveByMemory(creep, target) {
+  const cache = new PathMemory(creep.memory);
   if (creep.pos.isEqualTo(target)) {
-    delete creep.memory.path;
-    delete creep.memory.pathTarget;
-    delete creep.memory.dontMove;
-    delete creep.memory.lastPos;
+    cache.clear();
     return false;
   }
-  var deserializePath;
-  var serializedPath;
-  if (creep.memory.dontMove > 3) {
-    deserializePath = creep.pos.findPathTo(target, { ignoreCreeps: false });
-    serializedPath = Room.serializePath(deserializePath);
-    creep.memory.path = serializedPath;
-    creep.memory.dontMove = 0;
-    creep.moveByPath(serializedPath);
+  if (cache.isStuck) {
+    const route2 = searchRoute(creep, target, false);
+    cache.rememberPath(route2.serialized);
+    cache.resetStuck();
+    creep.moveByPath(route2.serialized);
     return true;
   }
-  var t = creep.memory.pathTarget;
-  var p = creep.memory.path;
-  if (p && t && t.roomName && target.isEqualTo(new RoomPosition(t.x, t.y, t.roomName))) {
-    serializedPath = p;
+  const known = cache.pathTo(target);
+  let route;
+  if (known !== void 0) {
+    route = { serialized: known };
   } else {
-    deserializePath = creep.pos.findPathTo(target, { ignoreCreeps: true });
-    serializedPath = Room.serializePath(deserializePath);
-    creep.memory.path = serializedPath;
-    creep.memory.pathTarget = {};
-    creep.memory.pathTarget.x = target.x;
-    creep.memory.pathTarget.y = target.y;
-    creep.memory.pathTarget.roomName = target.roomName;
+    route = searchRoute(creep, target, true);
+    cache.rememberPathTo(route.serialized, target);
   }
-  var state = creep.moveByPath(serializedPath);
+  const state2 = creep.moveByPath(route.serialized);
   if (bot.const.showPaths) {
-    if (!deserializePath)
-      deserializePath = Room.deserializePath(serializedPath);
-    const currentPos = creep.pos;
-    const index = deserializePath.findIndex((pos) => pos.x === currentPos.x && pos.y === currentPos.y);
-    if (index > 0) {
-      const visual = new RoomVisual(creep.room.name);
-      for (let i = index + 1; i < deserializePath.length; i++) {
-        visual.circle(
-          deserializePath[i].x,
-          deserializePath[i].y,
-          { fill: "transparent", radius: 0.25, stroke: "red" }
-        );
-      }
-    }
+    drawRemainingPath(creep, route);
   }
-  switch (state) {
+  switch (state2) {
     case OK:
     case ERR_TIRED: {
-      if (creep.memory.lastPos && creep.memory.lastPos.x == creep.pos.x && creep.memory.lastPos.y == creep.pos.y) {
-        creep.memory.dontMove = (creep.memory.dontMove || 0) + 1;
-      } else {
-        creep.memory.lastPos = {};
-        creep.memory.lastPos.x = creep.pos.x;
-        creep.memory.lastPos.y = creep.pos.y;
-        creep.memory.dontMove = 0;
-      }
+      cache.trackPosition(creep.pos);
       return true;
     }
     case ERR_INVALID_ARGS:
     case ERR_NO_BODYPART:
     case ERR_NOT_FOUND: {
-      delete creep.memory.path;
-      delete creep.memory.pathTarget;
-      delete creep.memory.dontMove;
-      delete creep.memory.lastPos;
+      cache.clear();
       return true;
     }
     default:
@@ -800,48 +1339,105 @@ function moveByMemory(creep, target) {
   }
 }
 
-// src/creep/transport.ts
-function _Transfer(creep, target, type) {
-  if (target) {
-    switch (creep.transfer(target, type)) {
-      case ERR_NOT_IN_RANGE:
-        moveByMemory(creep, target.pos);
-        return true;
-      case OK:
-        return true;
-      default:
-        return false;
-    }
+// src/creep/target.ts
+var RememberedTarget = class {
+  constructor(memory, key) {
+    this.key = key;
+    __publicField(this, "memory");
+    this.memory = memory;
   }
-  return false;
+  /**
+   * Ist überhaupt ein Ziel gemerkt?
+   *
+   * Der Unterschied zu `resolve()` ist wichtig: ist ein Ziel gemerkt, das es
+   * nicht mehr gibt, wird **nicht** ersatzweise gesucht. Der Creep vergisst es
+   * und versucht es im nächsten Tick neu — genau so verhielt sich der Code schon
+   * vorher, und es begrenzt die Suchen je Tick.
+   */
+  get isRemembered() {
+    return Boolean(this.memory[this.key]);
+  }
+  /** Das gemerkte Ziel, oder `null` wenn keines gemerkt ist oder es nicht mehr existiert. */
+  resolve() {
+    const id = this.memory[this.key];
+    if (!id) {
+      return null;
+    }
+    return Game.getObjectById(id);
+  }
+  /** Merkt das Ziel für die nächsten Ticks. */
+  remember(target) {
+    this.memory[this.key] = target.id;
+  }
+  /** Vergisst das Ziel. */
+  forget() {
+    delete this.memory[this.key];
+  }
+};
+function collectFrom(creep, target, remembered, state2) {
+  switch (state2) {
+    case ERR_NOT_IN_RANGE:
+      moveByMemory(creep, target.pos);
+      remembered.remember(target);
+      return true;
+    case OK:
+      remembered.remember(target);
+      creep.memory.fromId = target.id;
+      return true;
+    default:
+      remembered.forget();
+      return false;
+  }
+}
+function transferTo(creep, target, type) {
+  if (!target) {
+    return false;
+  }
+  switch (creep.transfer(target, type)) {
+    case ERR_NOT_IN_RANGE:
+      moveByMemory(creep, target.pos);
+      return true;
+    case OK:
+      return true;
+    default:
+      return false;
+  }
+}
+function withdrawFrom(creep, target, type) {
+  switch (creep.withdraw(target, type)) {
+    case ERR_NOT_IN_RANGE:
+      moveByMemory(creep, target.pos);
+      return true;
+    case OK:
+      creep.memory.fromId = target.id;
+      return true;
+    default:
+      return false;
+  }
+}
+
+// src/creep/transport.ts
+function findDeliveryTarget(creep, types, accepts) {
+  return creep.pos.findClosestByPath(FIND_MY_STRUCTURES, {
+    filter: (structure) => types.includes(structure.structureType) && accepts(structure) && structure.id != creep.memory.fromId
+  });
 }
 function TransportToHomeContainer(creep, type, mul) {
-  var container;
   if (!mul) mul = 0.5;
-  if (creep.memory.useContainer) {
-    container = Game.getObjectById(creep.memory.useContainer);
-  } else if (Memory.rooms[creep.room.name] && Memory.rooms[creep.room.name].container) {
-    var distance = Infinity;
-    var minCap = creep.store.getUsedCapacity() * mul;
-    for (var id of Memory.rooms[creep.room.name].container) {
-      var c = Game.getObjectById(id);
-      if (c && c.store.getFreeCapacity(type) > minCap && c.id != bot.room[creep.room.name].mineralContainerId && c.id != creep.memory.fromId) {
-        var d = Math.sqrt(Math.pow(creep.pos.x - c.pos.x, 2) + Math.pow(creep.pos.y - c.pos.y, 2));
-        if (d < distance) {
-          distance = d;
-          container = c;
-          creep.memory.useContainer = container.id;
-        }
-      }
+  const remembered = new RememberedTarget(creep.memory, "useContainer");
+  const containers = new ContainerList(creep.room.name);
+  const minFree = creep.store.getUsedCapacity() * mul;
+  const mineralContainerId = bot.room[creep.room.name].mineralContainerId;
+  let container = null;
+  if (remembered.isRemembered) {
+    container = remembered.resolve();
+  } else if (containers.hasList) {
+    container = containers.nearest(creep, (candidate) => candidate.store.getFreeCapacity(type) > minFree && candidate.id != mineralContainerId && candidate.id != creep.memory.fromId);
+    if (container) {
+      remembered.remember(container);
     }
-  } else if (Memory.rooms[creep.room.name] && !Memory.rooms[creep.room.name].container) {
-    var containers = creep.room.find(FIND_STRUCTURES, { filter: (structure) => {
-      return structure.structureType === STRUCTURE_CONTAINER;
-    } });
-    Memory.rooms[creep.room.name].container = containers.map((c2) => {
-      return c2.id;
-    });
-    return containers.length > 0;
+  } else if (containers.isRoomKnown) {
+    return containers.discover(creep.room);
   }
   if (container && container.store.getFreeCapacity() > 0) {
     switch (creep.transfer(container, type)) {
@@ -849,23 +1445,24 @@ function TransportToHomeContainer(creep, type, mul) {
         moveByMemory(creep, container.pos);
         return true;
       case OK:
-        delete creep.memory.useContainer;
+        remembered.forget();
         return true;
       default:
         return false;
     }
   }
-  delete creep.memory.useContainer;
+  remembered.forget();
   return false;
 }
 function TransportToHomeTerminal(creep) {
   if (!creep.room.controller.my || creep.room.controller.level < 6)
     return false;
+  const roomMemory = Memory.rooms[creep.memory.workroom];
   var terminal;
-  if (Memory.rooms[creep.memory.workroom].terminalId) {
-    terminal = Game.getObjectById(Memory.rooms[creep.memory.workroom].terminalId);
+  if (roomMemory.terminalId) {
+    terminal = Game.getObjectById(roomMemory.terminalId);
     if (!terminal) {
-      delete Memory.rooms[creep.memory.workroom].terminalId;
+      delete roomMemory.terminalId;
       return false;
     }
   } else {
@@ -878,46 +1475,36 @@ function TransportToHomeTerminal(creep) {
       }
     );
     if (target.length > 0) {
-      Memory.rooms[creep.memory.workroom].terminalId = target[0].id;
+      roomMemory.terminalId = target[0].id;
       terminal = target[0];
     }
   }
   if (terminal && terminal.store.getFreeCapacity() > 0) {
-    var t = false;
+    var delivered = false;
     for (var resourceType in creep.store) {
       if (resourceType == RESOURCE_ENERGY && terminal.store[RESOURCE_ENERGY] > 1e5)
         continue;
-      if (_Transfer(creep, terminal, resourceType) && !t) {
-        t = true;
+      if (transferTo(creep, terminal, resourceType)) {
+        delivered = true;
       }
     }
-    return t;
+    return delivered;
   }
   return false;
 }
 function TransportToHomeLab(creep, type) {
-  var target = creep.pos.findClosestByPath(
-    FIND_MY_STRUCTURES,
-    {
-      filter: (structure) => {
-        return structure.structureType === STRUCTURE_LAB && structure.store.getFreeCapacity([type]) > 0 && structure.id != creep.memory.fromId;
-      }
-    }
-  );
-  return _Transfer(creep, target, type);
+  const target = findDeliveryTarget(creep, [STRUCTURE_LAB], (structure) => structure.store.getFreeCapacity([type]) > 0);
+  return transferTo(creep, target, type);
 }
 function TransportEnergyToHomeSpawn(creep) {
   if (creep.memory.home != creep.room.name || creep.store[RESOURCE_ENERGY] == 0)
     return false;
-  var target = creep.pos.findClosestByPath(
-    FIND_MY_STRUCTURES,
-    {
-      filter: (structure) => {
-        return (structure.structureType === STRUCTURE_SPAWN || structure.structureType === STRUCTURE_EXTENSION) && structure.store.getFreeCapacity([RESOURCE_ENERGY]) > 0 && structure.id != creep.memory.fromId;
-      }
-    }
+  const target = findDeliveryTarget(
+    creep,
+    [STRUCTURE_SPAWN, STRUCTURE_EXTENSION],
+    (structure) => structure.store.getFreeCapacity([RESOURCE_ENERGY]) > 0
   );
-  return _Transfer(creep, target, RESOURCE_ENERGY);
+  return transferTo(creep, target, RESOURCE_ENERGY);
 }
 function TransportEnergyToHomeTower(creep) {
   if (creep.store[RESOURCE_ENERGY] == 0)
@@ -930,28 +1517,22 @@ function TransportEnergyToHomeTower(creep) {
       }
     }
   );
-  if (towers.length > 0) {
-    towers.sort((a, b) => b.store.getFreeCapacity(RESOURCE_ENERGY) - a.store.getFreeCapacity(RESOURCE_ENERGY));
-    return _Transfer(creep, towers[0], RESOURCE_ENERGY);
+  if (towers.length === 0) {
+    return false;
   }
-  return false;
+  towers.sort((a, b) => b.store.getFreeCapacity(RESOURCE_ENERGY) - a.store.getFreeCapacity(RESOURCE_ENERGY));
+  return transferTo(creep, towers[0], RESOURCE_ENERGY);
 }
 function TransportToHomeStorage(creep) {
   var target = creep.room.storage;
   if (!target)
     return false;
-  if (bot.room[creep.memory.workroom].spawnLink) {
-    var link = Game.getObjectById(bot.room[creep.memory.home].spawnLink);
-    if (link.store[RESOURCE_ENERGY] < 100 && creep.memory.fromId == target.id)
-      return false;
-  } else if (creep.memory.fromId == target.id) return false;
-  if (target) {
-    for (var resourceType in creep.store) {
-      _Transfer(creep, target, resourceType);
-    }
-    return true;
+  if (creep.memory.fromId == target.id)
+    return false;
+  for (var resourceType in creep.store) {
+    transferTo(creep, target, resourceType);
   }
-  return false;
+  return true;
 }
 
 // src/creep/base.ts
@@ -971,260 +1552,146 @@ function harvest(creep) {
   if (harvestRoomEnergySource(creep))
     return;
 }
+function rememberedOrSearched(remembered, search) {
+  return remembered.isRemembered ? remembered.resolve() : search();
+}
 function harvestRoomDrops(creep, type) {
-  var drop;
-  if (creep.memory.useRoomDrop) {
-    drop = Game.getObjectById(creep.memory.useRoomDrop);
-  } else {
-    drop = creep.pos.findClosestByPath(FIND_DROPPED_RESOURCES, { filter: (d) => d.amount > 100 });
+  const remembered = new RememberedTarget(creep.memory, "useRoomDrop");
+  const drop = rememberedOrSearched(remembered, () => creep.pos.findClosestByPath(FIND_DROPPED_RESOURCES, { filter: (d) => d.amount > 100 }));
+  if (!drop) {
+    remembered.forget();
+    return false;
   }
-  if (drop) {
-    switch (creep.pickup(drop)) {
-      case ERR_NOT_IN_RANGE:
-        moveByMemory(creep, drop.pos);
-        creep.memory.useRoomDrop = drop.id;
-        return true;
-      case OK:
-        creep.memory.useRoomDrop = drop.id;
-        creep.memory.fromId = drop.id;
-        return true;
-      case ERR_INVALID_TARGET:
-      default:
-        delete creep.memory.useRoomDrop;
-        return false;
-    }
-  }
-  delete creep.memory.useRoomDrop;
-  return false;
+  return collectFrom(creep, drop, remembered, creep.pickup(drop));
 }
 function harvestRoomTombstones(creep, type) {
-  var tombstone;
-  if (creep.memory.useTombstone) {
-    tombstone = Game.getObjectById(creep.memory.useTombstone);
-  } else {
-    tombstone = creep.pos.findClosestByPath(FIND_TOMBSTONES, { filter: (d) => d.store.getUsedCapacity(type) > 100 });
+  const remembered = new RememberedTarget(creep.memory, "useTombstone");
+  const tombstone = rememberedOrSearched(remembered, () => creep.pos.findClosestByPath(
+    FIND_TOMBSTONES,
+    { filter: (d) => d.store.getUsedCapacity(type) > 100 }
+  ));
+  if (!tombstone) {
+    remembered.forget();
+    return false;
   }
-  if (tombstone) {
-    switch (creep.withdraw(tombstone, type)) {
-      case ERR_NOT_IN_RANGE:
-        creep.memory.useTombstone = tombstone.id;
-        moveByMemory(creep, tombstone.pos);
-        return true;
-      case OK:
-        creep.memory.useTombstone = tombstone.id;
-        creep.memory.fromId = tombstone.id;
-        return true;
-      case ERR_INVALID_TARGET:
-      default:
-        delete creep.memory.useTombstone;
-        return false;
-    }
-  }
-  delete creep.memory.useTombstone;
-  return false;
+  return collectFrom(creep, tombstone, remembered, creep.withdraw(tombstone, type));
 }
 function harvestCompleteRoomTombstones(creep) {
-  var tombstone;
-  if (creep.memory.useTombstone) {
-    tombstone = Game.getObjectById(creep.memory.useTombstone);
-  } else {
-    tombstone = creep.pos.findClosestByPath(FIND_TOMBSTONES, { filter: (d) => d.store.getUsedCapacity() > 100 });
+  const remembered = new RememberedTarget(creep.memory, "useTombstone");
+  const tombstone = rememberedOrSearched(remembered, () => creep.pos.findClosestByPath(FIND_TOMBSTONES, { filter: (d) => d.store.getUsedCapacity() > 100 }));
+  if (!tombstone) {
+    remembered.forget();
+    return false;
   }
-  if (tombstone) {
-    for (var resourceType in tombstone.store) {
-      switch (creep.withdraw(tombstone, resourceType)) {
-        case ERR_NOT_IN_RANGE:
-          moveByMemory(creep, tombstone.pos);
-          creep.memory.useTombstone = tombstone.id;
-          return true;
-        case OK:
-          creep.memory.useTombstone = tombstone.id;
-          creep.memory.fromId = tombstone.id;
-          return true;
-        case ERR_INVALID_TARGET:
-        default:
-          delete creep.memory.useTombstone;
-          return false;
-      }
-    }
+  const resourceType = Object.keys(tombstone.store)[0];
+  if (resourceType === void 0) {
+    remembered.forget();
+    return false;
   }
-  delete creep.memory.useTombstone;
-  return false;
+  return collectFrom(
+    creep,
+    tombstone,
+    remembered,
+    creep.withdraw(tombstone, resourceType)
+  );
 }
 function harvestRoomRuins(creep, type) {
-  var ruin;
-  if (creep.memory.useRuin) {
-    ruin = Game.getObjectById(creep.memory.useRuin);
-  } else {
-    ruin = creep.pos.findClosestByPath(FIND_RUINS, { filter: (d) => d.store.getUsedCapacity(type) > 50 });
+  const remembered = new RememberedTarget(creep.memory, "useRuin");
+  const ruin = rememberedOrSearched(remembered, () => creep.pos.findClosestByPath(
+    FIND_RUINS,
+    { filter: (d) => d.store.getUsedCapacity(type) > 50 }
+  ));
+  if (!ruin) {
+    remembered.forget();
+    return false;
   }
-  if (ruin) {
-    switch (creep.withdraw(ruin, type)) {
-      case ERR_NOT_IN_RANGE:
-        moveByMemory(creep, ruin.pos);
-        creep.memory.useRuin = ruin.id;
-        return true;
-      case OK:
-        creep.memory.useRuin = ruin.id;
-        creep.memory.fromId = ruin.id;
-        return true;
-      case ERR_INVALID_TARGET:
-      default:
-        delete creep.memory.useRuin;
-        return false;
-    }
-  }
-  delete creep.memory.useRuin;
-  return false;
+  return collectFrom(creep, ruin, remembered, creep.withdraw(ruin, type));
 }
 function harvestRoomStorage(creep, type) {
-  let storage = creep.room.storage;
-  let min = type === "energy" ? creep.store.getCapacity() * 0.5 : 50;
+  const storage = creep.room.storage;
+  const min = type === "energy" ? creep.store.getCapacity() * 0.5 : 50;
   if (storage && storage.store[type] > min) {
-    var state = creep.withdraw(storage, type);
-    switch (state) {
-      case ERR_NOT_IN_RANGE:
-        moveByMemory(creep, storage.pos);
-        return true;
-      case OK:
-        creep.memory.fromId = storage.id;
-        return true;
-      default:
-        return false;
-    }
+    return withdrawFrom(creep, storage, type);
   }
   return false;
 }
 function harvestRoomContainer(creep, type, mul) {
   if (!mul) mul = 0.5;
-  var container;
-  if (creep.memory.useContainer) {
-    container = Game.getObjectById(creep.memory.useContainer);
-  } else if (Memory.rooms[creep.room.name] && Memory.rooms[creep.room.name].container && Memory.rooms[creep.room.name].container.length > 0) {
-    var distance = Infinity;
-    var minCap = creep.store.getFreeCapacity() * mul;
-    for (var id of Memory.rooms[creep.room.name].container) {
-      var c = Game.getObjectById(id);
-      if (!c) {
-        delete Memory.rooms[creep.room.name].container;
-      }
-      if (c && c.store.getUsedCapacity(type) > minCap) {
-        var d = Math.sqrt(Math.pow(c.pos.x - creep.pos.x, 2) + Math.pow(c.pos.y - creep.pos.y, 2));
-        if (d < distance) {
-          distance = d;
-          container = c;
-          creep.memory.useContainer = c.id;
-        }
-      }
+  const remembered = new RememberedTarget(creep.memory, "useContainer");
+  const containers = new ContainerList(creep.room.name);
+  const minAmount = creep.store.getFreeCapacity() * mul;
+  let container = null;
+  if (remembered.isRemembered) {
+    container = remembered.resolve();
+  } else if (containers.hasEntries) {
+    container = containers.nearest(
+      creep,
+      (candidate) => candidate.store.getUsedCapacity(type) > minAmount,
+      { forgetListOnStaleId: true }
+    );
+    if (container) {
+      remembered.remember(container);
     }
-  } else if (Memory.rooms[creep.room.name] && (!Memory.rooms[creep.room.name].container || Memory.rooms[creep.room.name].container && Memory.rooms[creep.room.name].container.length == 0)) {
-    var containers = creep.room.find(FIND_STRUCTURES, { filter: (structure) => {
-      return structure.structureType === STRUCTURE_CONTAINER;
-    } });
-    Memory.rooms[creep.room.name].container = containers.map((c2) => {
-      return c2.id;
-    });
-    return containers.length > 0;
+  } else if (containers.isRoomKnown) {
+    return containers.discover(creep.room);
   }
-  if (container && container.store.getUsedCapacity(type) > creep.store.getFreeCapacity() * mul) {
-    switch (creep.withdraw(container, type)) {
-      case ERR_NOT_IN_RANGE:
-        moveByMemory(creep, container.pos);
-        return true;
-      case OK:
-        creep.memory.fromId = container.id;
-        return true;
-      default:
-        delete creep.memory.useContainer;
-        return false;
+  if (container && container.store.getUsedCapacity(type) > minAmount) {
+    if (withdrawFrom(creep, container, type)) {
+      return true;
     }
   }
-  delete creep.memory.useContainer;
+  remembered.forget();
   return false;
 }
 function harvestControllerLink(creep, type) {
-  if (creep.memory.workroom != creep.room.name || !bot.room[creep.memory.workroom].controllerLink || !creep.room.controller.my || creep.room.controller.level < 5)
+  if (creep.memory.workroom != creep.room.name || !creep.room.controller.my || creep.room.controller.level < 5)
     return false;
-  var link = Game.getObjectById(bot.room[creep.memory.workroom].controllerLink);
+  var link = new LinkList(creep.memory.workroom).controllerLink;
   if (link && link.store[type] > 100) {
-    switch (creep.withdraw(link, type)) {
-      case ERR_NOT_IN_RANGE:
-        moveByMemory(creep, link.pos);
-        return true;
-      case OK:
-        creep.memory.fromId = link.id;
-        return true;
-      default:
-        return false;
-    }
-  } else {
-    creep.memory.noLink = true;
+    return withdrawFrom(creep, link, type);
   }
+  creep.memory.noLink = true;
   return false;
 }
 function harvestMyContainer(creep, type) {
   if (creep.memory.workroom != creep.room.name || creep.memory.container == "")
     return false;
   var container = Game.getObjectById(creep.memory.container);
-  if (container) {
-    if (container.store[type] < 100) {
-      return false;
-    }
-    switch (creep.withdraw(container, type)) {
-      case ERR_NOT_IN_RANGE:
-        moveByMemory(creep, container.pos);
-        return true;
-      case OK:
-        creep.memory.fromId = container.id;
-        return true;
-      default:
-        return false;
-    }
+  if (!container || container.store[type] < 100) {
+    return false;
   }
-  return false;
+  return withdrawFrom(creep, container, type);
 }
 function harvestNotfall(creep) {
   var notfall = creep.room.find(FIND_STRUCTURES, { filter: (structure) => {
     return (structure.structureType === STRUCTURE_LINK || structure.structureType === STRUCTURE_LAB || structure.structureType === STRUCTURE_NUKER || structure.structureType == STRUCTURE_TOWER) && structure.store[RESOURCE_ENERGY] > 0;
   } });
-  if (notfall.length > 0) {
-    notfall.sort(function(a, b) {
-      return b.store[RESOURCE_ENERGY] - a.store[RESOURCE_ENERGY];
-    });
-    switch (creep.withdraw(notfall[0], RESOURCE_ENERGY)) {
-      case ERR_NOT_IN_RANGE:
-        moveByMemory(creep, notfall[0].pos);
-        return true;
-      case OK:
-        creep.memory.fromId = notfall[0].id;
-        return true;
-      default:
-        return false;
-    }
+  if (notfall.length === 0) {
+    return false;
   }
-  return false;
+  notfall.sort(function(a, b) {
+    return b.store[RESOURCE_ENERGY] - a.store[RESOURCE_ENERGY];
+  });
+  return withdrawFrom(creep, notfall[0], RESOURCE_ENERGY);
 }
 function harvestRoomEnergySource(creep) {
-  if (canHarvestEnergy(creep)) {
-    var source;
-    if (creep.memory.useRoomSource) {
-      source = Game.getObjectById(creep.memory.useRoomSource);
-    } else {
-      source = creep.pos.findClosestByRange(FIND_SOURCES_ACTIVE);
-    }
-    if (source && source.energy > 100) {
-      if (creep.harvest(source) === ERR_NOT_IN_RANGE) {
-        if (creep.moveTo(source) == ERR_NO_PATH) {
-          delete creep.memory.useRoomSource;
-          return false;
-        }
-      }
-      creep.memory.useRoomSource = source.id;
-      creep.memory.fromId = source.id;
-      return true;
-    }
-    delete creep.memory.useRoomSource;
+  if (!canHarvestEnergy(creep)) {
+    return false;
   }
+  const remembered = new RememberedTarget(creep.memory, "useRoomSource");
+  const source = rememberedOrSearched(remembered, () => creep.pos.findClosestByRange(FIND_SOURCES_ACTIVE));
+  if (source && source.energy > 100) {
+    if (creep.harvest(source) === ERR_NOT_IN_RANGE) {
+      if (creep.moveTo(source) == ERR_NO_PATH) {
+        remembered.forget();
+        return false;
+      }
+    }
+    remembered.remember(source);
+    creep.memory.fromId = source.id;
+    return true;
+  }
+  remembered.forget();
   return false;
 }
 function canHarvestEnergy(creep) {
@@ -1280,8 +1747,8 @@ function upgradeController(creep) {
   var controller = creep.room.controller;
   if (!controller || !controller.my)
     return;
-  const state = creep.upgradeController(controller);
-  if (state === ERR_NOT_IN_RANGE || state === ERR_INVALID_TARGET && controller.upgradeBlocked > 0) {
+  const state2 = creep.upgradeController(controller);
+  if (state2 === ERR_NOT_IN_RANGE || state2 === ERR_INVALID_TARGET && controller.upgradeBlocked > 0) {
     moveByMemory(creep, controller.pos);
   }
   if (!controller.sign || controller.sign.username == void 0 || controller.sign.username != creep.owner.username) {
@@ -1290,7 +1757,7 @@ function upgradeController(creep) {
       moveByMemory(creep, controller.pos);
     }
   }
-  return state == OK;
+  return state2 == OK;
 }
 function spawn(spawn3, profil, newName, memory) {
   if (spawn3.spawnCreep(profil, newName, { dryRun: true }) === 0) {
@@ -1301,82 +1768,191 @@ function spawn(spawn3, profil, newName, memory) {
   return false;
 }
 
-// src/profiler/state.ts
-var MAX_BASELINES = 8;
-var profilerMemory = Memory;
-var currentMode = "off";
-function ensureMemory() {
-  var _a;
-  return (_a = profilerMemory.profiler) != null ? _a : profilerMemory.profiler = { mode: "off" };
-}
-function syncFromMemory() {
-  currentMode = ensureMemory().mode;
-  return currentMode;
-}
-function getMode() {
-  return currentMode;
-}
-function setMode(mode) {
-  ensureMemory().mode = mode;
-  currentMode = mode;
-}
-function startDetail(ticks) {
-  const memory = ensureMemory();
-  if (memory.detailUntil === void 0) {
-    memory.detailReturnTo = currentMode;
+// src/creep/body.ts
+var BodyProfile = class {
+  constructor(spec) {
+    this.spec = spec;
   }
-  memory.detailUntil = Game.time + ticks;
-  memory.mode = "full";
-  currentMode = "full";
-}
-function detailActive() {
-  return ensureMemory().detailUntil !== void 0;
-}
-function detailRemaining() {
-  const memory = ensureMemory();
-  if (memory.detailUntil === void 0) {
-    return 0;
+  /** Energiekosten eines Satzes. */
+  get setCost() {
+    return this.spec.sets.reduce((total, entry) => total + BODYPART_COST[entry.part] * entry.perSet, 0);
   }
-  const remaining = memory.detailUntil - Game.time;
-  return remaining > 0 ? remaining : 0;
-}
-function expireDetail() {
-  var _a;
-  const memory = ensureMemory();
-  if (memory.detailUntil === void 0 || Game.time < memory.detailUntil) {
-    return false;
+  /** Wie viele Sätze `energy` bezahlt, begrenzt durch `maxSets`. */
+  setsFor(energy) {
+    return Math.min(this.spec.maxSets, Math.floor(energy / this.setCost));
   }
-  const returnTo = (_a = memory.detailReturnTo) != null ? _a : "off";
-  delete memory.detailUntil;
-  delete memory.detailReturnTo;
-  memory.mode = returnTo;
-  currentMode = returnTo;
-  return true;
-}
-function saveBaseline(name, baseline) {
-  var _a;
-  const memory = ensureMemory();
-  const baselines = (_a = memory.baselines) != null ? _a : memory.baselines = {};
-  baselines[name] = baseline;
-  const names = Object.keys(baselines);
-  if (names.length <= MAX_BASELINES) {
-    return;
-  }
-  let oldestName = names[0];
-  let oldestTick = baselines[oldestName].tick;
-  for (const candidate of names) {
-    const tick2 = baselines[candidate].tick;
-    if (tick2 < oldestTick) {
-      oldestTick = tick2;
-      oldestName = candidate;
+  /** Der Rumpf für `energy`. Nie leer. */
+  build(energy) {
+    var _a;
+    const sets = this.setsFor(energy);
+    if (sets <= 0) {
+      const fallback = this.spec.fallback;
+      return typeof fallback === "function" ? fallback(energy) : [...fallback];
     }
+    const body = [];
+    for (const entry of this.spec.sets) {
+      const count = Math.min(Math.floor(sets * entry.perSet), (_a = entry.max) != null ? _a : Infinity);
+      for (let index = 0; index < count; index += 1) {
+        body.push(entry.part);
+      }
+    }
+    return body;
   }
-  delete baselines[oldestName];
+};
+function carryMove(count) {
+  const pairs = Number.isFinite(count) ? Math.max(1, Math.floor(count)) : 1;
+  return [...Array(pairs).fill(CARRY), ...Array(pairs).fill(MOVE)];
 }
-function readBaselines() {
-  var _a;
-  return (_a = ensureMemory().baselines) != null ? _a : {};
-}
+
+// src/creep/bodies.ts
+var LINK_CARRY_PARTS = Math.ceil(LINK_CAPACITY / CARRY_CAPACITY);
+var CLAIMER_BODY = [CLAIM, CLAIM, MOVE, MOVE];
+var BODIES = {
+  /** Miner: 3 WORK je CARRY, damit die Quelle ausgeschöpft wird. */
+  miner: new BodyProfile({
+    sets: [
+      { part: WORK, perSet: 3 },
+      { part: CARRY, perSet: 1 },
+      { part: MOVE, perSet: 2 }
+    ],
+    maxSets: 8,
+    // 2 WORK sättigen die Quelle nicht voll, liefern aber Energie.
+    fallback: [WORK, WORK, CARRY, MOVE]
+  }),
+  builder: new BodyProfile({
+    sets: [
+      { part: WORK, perSet: 3 },
+      { part: CARRY, perSet: 2 },
+      { part: MOVE, perSet: 2 }
+    ],
+    maxSets: 7,
+    fallback: [WORK, CARRY, CARRY, MOVE, MOVE]
+  }),
+  /** Repairer: derselbe Bausatz wie der Builder, aber höchstens drei Sätze. */
+  repairer: new BodyProfile({
+    sets: [
+      { part: WORK, perSet: 3 },
+      { part: CARRY, perSet: 2 },
+      { part: MOVE, perSet: 2 }
+    ],
+    maxSets: 3,
+    fallback: [WORK, CARRY, CARRY, MOVE, MOVE]
+  }),
+  /** Wallrepairer: ein WORK je Satz, dafür viel Ladung für lange Schichten. */
+  wally: new BodyProfile({
+    sets: [
+      { part: WORK, perSet: 1 },
+      { part: CARRY, perSet: 2 },
+      { part: MOVE, perSet: 1 }
+    ],
+    maxSets: 9,
+    fallback: [WORK, CARRY, CARRY, MOVE, MOVE]
+  }),
+  /** Upgrader bis RCL7: zwei WORK je Satz. */
+  upgrader: new BodyProfile({
+    sets: [
+      { part: WORK, perSet: 2 },
+      { part: CARRY, perSet: 2 },
+      { part: MOVE, perSet: 2 }
+    ],
+    maxSets: 8,
+    fallback: [WORK, CARRY, MOVE, MOVE]
+  }),
+  /**
+   * Upgrader ab RCL8: ein halbes WORK je Satz. Der Controller nimmt dort nur
+   * noch 15 Energie je Tick an, mehr WORK wäre bezahlte Untätigkeit.
+   */
+  upgraderRcl8: new BodyProfile({
+    sets: [
+      { part: WORK, perSet: 0.5 },
+      { part: CARRY, perSet: 2 },
+      { part: MOVE, perSet: 2 }
+    ],
+    maxSets: 9,
+    fallback: [WORK, CARRY, MOVE, MOVE]
+  }),
+  /** Extupgrader in einem Raum ohne Sicht oder unter RCL6. */
+  extupgrader: new BodyProfile({
+    sets: [
+      { part: WORK, perSet: 2 },
+      { part: CARRY, perSet: 2, max: 16 },
+      { part: MOVE, perSet: 1 }
+    ],
+    maxSets: 9,
+    fallback: [WORK, CARRY, MOVE, MOVE]
+  }),
+  /** Extupgrader ab RCL6 des Arbeitsraums: ein WORK je Satz reicht. */
+  extupgraderRcl6: new BodyProfile({
+    sets: [
+      { part: WORK, perSet: 1 },
+      { part: CARRY, perSet: 2, max: 16 },
+      { part: MOVE, perSet: 1 }
+    ],
+    maxSets: 9,
+    fallback: [WORK, CARRY, MOVE, MOVE]
+  }),
+  /**
+   * Defender. Rechnet mit `energyAvailable` statt `energyCapacityAvailable` —
+   * er soll sofort losgehen, nicht auf gefüllte Extensions warten.
+   */
+  defender: new BodyProfile({
+    sets: [
+      { part: TOUGH, perSet: 1 },
+      { part: MOVE, perSet: 2 },
+      { part: ATTACK, perSet: 1 },
+      { part: RANGED_ATTACK, perSet: 1 }
+    ],
+    maxSets: 5,
+    fallback: [MOVE, MOVE, ATTACK, RANGED_ATTACK]
+  }),
+  /** Transfer: reiner Träger zwischen zwei Räumen, ein MOVE je CARRY. */
+  transfer: new BodyProfile({
+    sets: [
+      { part: CARRY, perSet: 1 },
+      { part: MOVE, perSet: 1 }
+    ],
+    maxSets: 25,
+    fallback: [CARRY, MOVE]
+  }),
+  /** Debitor im Heimatraum. */
+  debitor: new BodyProfile({
+    sets: [
+      { part: CARRY, perSet: 1 },
+      { part: MOVE, perSet: 1 }
+    ],
+    maxSets: 25,
+    fallback: [CARRY, MOVE]
+  }),
+  /** Debitor ohne zugeordneten Container — kleiner, weil er mehr läuft. */
+  debitorWithoutContainer: new BodyProfile({
+    sets: [
+      { part: CARRY, perSet: 1 },
+      { part: MOVE, perSet: 1 }
+    ],
+    maxSets: 20,
+    fallback: [CARRY, MOVE]
+  }),
+  /**
+   * Linkkeeper: genau ein Satz — der ganze Link in einem Zug, dazu ein einziges
+   * MOVE, weil der Creep nach der Anreise dauerhaft still steht. Links gibt es
+   * erst ab RCL5, das Vollprofil passt dort praktisch immer.
+   */
+  linkkeeper: new BodyProfile({
+    sets: [
+      { part: CARRY, perSet: LINK_CARRY_PARTS },
+      { part: MOVE, perSet: 1 }
+    ],
+    maxSets: 1,
+    // Rückfall: so viele CARRY wie neben dem MOVE hineinpassen, mindestens eines.
+    fallback: (energy) => {
+      const affordable = Math.max(
+        1,
+        Math.floor((energy - BODYPART_COST[MOVE]) / BODYPART_COST[CARRY])
+      );
+      return [...Array(affordable).fill(CARRY), MOVE];
+    }
+  })
+};
 
 // src/profiler/types.ts
 var WINDOW_TICKS = 100;
@@ -1400,12 +1976,255 @@ var SECTION = {
   defence: "timing.defence",
   /** Statuslog, `memory.writeStatus()`. */
   status: "timing.status",
+  /** Linknetz, `links.sendAll()`. */
+  links: "timing.links",
   /** Tagessequenz, `daylie()`. */
-  daily: "timing.daily"
+  daily: "timing.daily",
+  /**
+   * Straßenwiederaufbau, `rebuild.rebuildRoads()`. Eigener Abschnitt, obwohl
+   * der Aufruf innerhalb von `daylie()` steht: die Tagessequenz läuft nur alle
+   * 28 800 Ticks, ihr Sammelwert `timing.daily` ist in einem üblichen Messfenster
+   * deshalb null und verrät nichts über die Kosten des Planers.
+   */
+  roads: "timing.roads",
+  /** Linkplaner, `link-planner.planReceiverLinks()`. Eigener Abschnitt aus demselben Grund wie `roads`. */
+  linkplan: "timing.linkplan"
 };
 
+// src/profiler/flag.ts
+var FLAG_NAME = "prof";
+var SWITCH_COLORS = [
+  { color: COLOR_GREY, request: "off", label: "grau", meaning: "aus", css: "#b4b4b4" },
+  { color: COLOR_WHITE, request: "light", label: "wei\xDF", meaning: "light", css: "#ffffff" },
+  { color: COLOR_GREEN, request: "full", label: "gr\xFCn", meaning: "full", css: "#00ff00" },
+  {
+    color: COLOR_RED,
+    request: "detail",
+    label: "rot",
+    meaning: `Detail ${DEFAULT_DETAIL_TICKS}T`,
+    css: "#ff3030"
+  }
+];
+function bySwitchColor(color) {
+  return SWITCH_COLORS.find((entry) => entry.color === color);
+}
+function byRequest(request) {
+  return SWITCH_COLORS.find((entry) => entry.request === request);
+}
+function statusLine(data) {
+  const window = data.ticks === 0 ? "noch keine Messung" : `Fenster ${data.ticks}T | CPU/Tick ${data.cpuPerTick.toFixed(2)}`;
+  return data.detailRemaining > 0 ? `${window} | Detail noch ${data.detailRemaining}T` : window;
+}
+function isActive(entry, data) {
+  if (entry.request === "detail") return data.detailRemaining > 0;
+  return data.detailRemaining === 0 && entry.request === data.mode;
+}
+var FlagSwitch = class {
+  constructor(state2, flagName = FLAG_NAME) {
+    this.state = state2;
+    this.flagName = flagName;
+  }
+  /** Die Schalterflagge, falls gesetzt. */
+  get flag() {
+    return Game.flags[this.flagName];
+  }
+  /**
+   * Liefert die Anforderung der Flagge — **nur** bei einer Farbänderung, danach
+   * `null`, solange die Farbe steht. Eine unbelegte Farbe wird einmal gemeldet
+   * und dann wie „keine Änderung" behandelt.
+   */
+  readRequest() {
+    const flag = this.flag;
+    if (flag === void 0) return null;
+    if (flag.color === this.state.flagColor) return null;
+    this.state.flagColor = flag.color;
+    const entry = bySwitchColor(flag.color);
+    if (entry === void 0) {
+      const belegt = SWITCH_COLORS.map((item) => `${item.label}=${item.meaning}`).join(", ");
+      console.log(
+        `[prof] Flagge "${this.flagName}": diese Farbe ist nicht belegt. Belegt sind ${belegt}.`
+      );
+      return null;
+    }
+    return entry.request;
+  }
+  /**
+   * Färbt die Flagge passend zu `request` und merkt die Farbe als verarbeitet, so
+   * dass daraus keine Flanke wird. Damit lügt die Flagge nie: auch ein Umschalten
+   * über die Konsole färbt sie mit, rot bedeutet „misst gerade", und nach der
+   * Detailmessung fällt sie von allein auf die Farbe des Zustands zurück, in dem
+   * der Profiler weiterläuft.
+   *
+   * Ohne gesetzte Flagge tut die Methode nichts — dann kostet sie auch keinen
+   * Intent.
+   */
+  acknowledge(request) {
+    const flag = this.flag;
+    if (flag === void 0) return;
+    const color = byRequest(request).color;
+    if (flag.color !== color) {
+      flag.setColor(color, flag.secondaryColor);
+    }
+    this.state.flagColor = color;
+  }
+  /** Kurzbeschreibung der Flagge für `prof.status()`, `null` ohne Flagge. */
+  describe() {
+    const flag = this.flag;
+    if (flag === void 0) return null;
+    const entry = bySwitchColor(flag.color);
+    const color = entry !== void 0 ? `${entry.label} = ${entry.meaning}` : "unbelegte Farbe";
+    return `Flagge ${this.flagName} in ${flag.pos.roomName}: ${color}`;
+  }
+  /**
+   * Zeichnet die Legende neben die Flagge. Nur wenn die Flagge steht — sie ist
+   * damit der Ein- und Ausschalter der ganzen Anzeige. Room Visuals leben einen
+   * Tick, das hier läuft deshalb jeden Tick erneut.
+   */
+  draw(data) {
+    const flag = this.flag;
+    if (flag === void 0) return;
+    const visual = new RoomVisual(flag.pos.roomName);
+    const toLeft = flag.pos.x >= 25;
+    const x = toLeft ? flag.pos.x - 0.8 : flag.pos.x + 0.8;
+    const align = toLeft ? "right" : "left";
+    const top = Math.min(Math.max(flag.pos.y - 2, 0.8), 45);
+    const lineHeight = 0.7;
+    const style = {
+      align,
+      font: 0.5,
+      backgroundColor: "#000000",
+      backgroundPadding: 0.12
+    };
+    visual.text(`prof: ${data.mode}`, x, top, { ...style, color: "#ffffff" });
+    SWITCH_COLORS.forEach((entry, index) => {
+      const active = isActive(entry, data);
+      visual.text(
+        `${active ? "\u25B6" : "\xB7"} ${entry.label} = ${entry.meaning}`,
+        x,
+        top + lineHeight * (index + 1),
+        { ...style, color: entry.css, opacity: active ? 1 : 0.4 }
+      );
+    });
+    visual.text(statusLine(data), x, top + lineHeight * (SWITCH_COLORS.length + 1), {
+      ...style,
+      color: "#cccccc",
+      opacity: 0.8
+    });
+  }
+};
+
+// src/profiler/state.ts
+var _ProfilerState = class _ProfilerState {
+  constructor() {
+    /** Gespiegelter Zustand, einmal je Tick aus `Memory.profiler` übernommen. */
+    __publicField(this, "mirroredMode", "off");
+  }
+  /** `Memory.profiler`, bei Bedarf mit Standard `off` angelegt. */
+  get entry() {
+    var _a;
+    const memory = Memory;
+    return (_a = memory.profiler) != null ? _a : memory.profiler = { mode: "off" };
+  }
+  /** Der gespiegelte Zustand. Billig — nur ein Feldzugriff. */
+  get mode() {
+    return this.mirroredMode;
+  }
+  /** Setzt den Zustand in `Memory` und im Spiegel. */
+  set mode(mode) {
+    this.entry.mode = mode;
+    this.mirroredMode = mode;
+  }
+  /** Spiegelt den Zustand aus `Memory`. Einmal je Tick, als erstes. */
+  syncFromMemory() {
+    this.mirroredMode = this.entry.mode;
+    return this.mirroredMode;
+  }
+  /** Startet die Detailmessung für `ticks` Ticks und merkt den Rückkehrzustand. */
+  startDetail(ticks) {
+    const entry = this.entry;
+    if (entry.detailUntil === void 0) {
+      entry.detailReturnTo = this.mirroredMode;
+    }
+    entry.detailUntil = Game.time + ticks;
+    entry.mode = "full";
+    this.mirroredMode = "full";
+  }
+  /**
+   * Bricht eine laufende Detailmessung ab, **ohne** den Rückkehrzustand
+   * anzuwenden. Für einen Zustandswechsel über Konsole oder Flagge: wer
+   * ausdrücklich `off`, `light` oder `full` verlangt, will nicht, dass die
+   * Detailmessung Ticks später ihren alten Zustand zurückholt.
+   */
+  cancelDetail() {
+    const entry = this.entry;
+    delete entry.detailUntil;
+    delete entry.detailReturnTo;
+  }
+  /** Läuft gerade eine Detailmessung? */
+  detailActive() {
+    return this.entry.detailUntil !== void 0;
+  }
+  /** Restticks der Detailmessung, 0 wenn sie nicht läuft. */
+  detailRemaining() {
+    const until = this.entry.detailUntil;
+    if (until === void 0) {
+      return 0;
+    }
+    const remaining = until - Game.time;
+    return remaining > 0 ? remaining : 0;
+  }
+  /**
+   * Liefert `true` genau in dem Tick, in dem die Detailmessung abgelaufen ist,
+   * und stellt dabei den Rückkehrzustand wieder her. Danach `false`.
+   */
+  expireDetail() {
+    var _a;
+    const entry = this.entry;
+    if (entry.detailUntil === void 0 || Game.time < entry.detailUntil) {
+      return false;
+    }
+    const returnTo = (_a = entry.detailReturnTo) != null ? _a : "off";
+    this.cancelDetail();
+    entry.mode = returnTo;
+    this.mirroredMode = returnTo;
+    return true;
+  }
+  /** Hält ein Fenster als benannte Grundlinie fest. */
+  saveBaseline(name, baseline) {
+    var _a, _b;
+    const baselines = (_b = (_a = this.entry).baselines) != null ? _b : _a.baselines = {};
+    baselines[name] = baseline;
+    const names = Object.keys(baselines);
+    if (names.length <= _ProfilerState.MAX_BASELINES) {
+      return;
+    }
+    let oldestName = names[0];
+    for (const candidate of names) {
+      if (baselines[candidate].tick < baselines[oldestName].tick) {
+        oldestName = candidate;
+      }
+    }
+    delete baselines[oldestName];
+  }
+  /** Alle festgehaltenen Grundlinien, leeres Objekt statt `undefined`. */
+  readBaselines() {
+    var _a;
+    return (_a = this.entry.baselines) != null ? _a : {};
+  }
+  /** Zuletzt verarbeitete Farbe der Schalterflagge, `undefined` wenn noch keine. */
+  get flagColor() {
+    return this.entry.flagColor;
+  }
+  /** Merkt eine Flaggenfarbe als verarbeitet, damit sie keine Flanke mehr auslöst. */
+  set flagColor(color) {
+    this.entry.flagColor = color;
+  }
+};
+/** Höchstzahl gespeicherter Grundlinien, damit `Memory.profiler` klein bleibt. */
+__publicField(_ProfilerState, "MAX_BASELINES", 8);
+var ProfilerState = _ProfilerState;
+
 // src/profiler/window.ts
-var openSections = /* @__PURE__ */ new Map();
 function createEmptySnapshot() {
   return {
     startTick: 0,
@@ -1425,7 +2244,6 @@ function createEmptySnapshot() {
     creepDetail: {}
   };
 }
-var windowState = createEmptySnapshot();
 function record(map, key, cpu) {
   const existing = map[key];
   if (existing === void 0) {
@@ -1455,84 +2273,129 @@ function rank(map, ticks, cpuTotal) {
   entries.sort((a, b) => b.cpuPerTick - a.cpuPerTick);
   return entries;
 }
-function begin(section) {
-  if (getMode() !== "full") return;
-  openSections.set(section, Game.cpu.getUsed());
-}
-function end(section) {
-  if (getMode() !== "full") return;
-  const start = openSections.get(section);
-  if (start === void 0) return;
-  openSections.delete(section);
-  record(windowState.sections, section, Game.cpu.getUsed() - start);
-}
-function beginTick() {
-  if (getMode() === "off") return;
-  if (windowState.ticks === 0) {
-    windowState.startTick = Game.time;
+var MeasurementWindow = class {
+  constructor(state2) {
+    this.state = state2;
+    /** Startzeitpunkt (`Game.cpu.getUsed()`) je noch offener `begin()`-Messung. */
+    __publicField(this, "openSections", /* @__PURE__ */ new Map());
+    __publicField(this, "window", createEmptySnapshot());
   }
-  windowState.ticks += 1;
-}
-function endTick(creepCount) {
-  const mode = getMode();
-  if (mode === "off") return;
-  const cpu = Game.cpu.getUsed();
-  windowState.mode = mode;
-  windowState.cpuTotal += cpu;
-  if (cpu > windowState.cpuMax) windowState.cpuMax = cpu;
-  const bucket = Game.cpu.bucket;
-  windowState.bucketTotal += bucket;
-  if (bucket < windowState.bucketMin) windowState.bucketMin = bucket;
-  windowState.roomTotal += Object.keys(bot.room).length;
-  windowState.creepTotal += creepCount;
-  windowState.limit = Game.cpu.limit;
-  windowState.tickLimit = Game.cpu.tickLimit;
-}
-function recordRole(role12, cpu) {
-  record(windowState.roles, role12, cpu);
-}
-function recordMethod(key, cpu) {
-  record(windowState.methods, key, cpu);
-}
-function recordCreep(creepName, cpu) {
-  if (getMode() !== "full") return;
-  if (!detailActive()) return;
-  record(windowState.creepDetail, creepName, cpu);
-}
-function snapshot() {
-  return windowState;
-}
-function metrics(snapshotState) {
-  const ticks = snapshotState.ticks;
-  const rooms = safeDiv(snapshotState.roomTotal, ticks);
-  const creeps = safeDiv(snapshotState.creepTotal, ticks);
-  const cpuPerTick = safeDiv(snapshotState.cpuTotal, ticks);
-  return {
-    ticks,
-    mode: snapshotState.mode,
-    cpuPerTick,
-    cpuMaxTick: snapshotState.cpuMax,
-    cpuPerRoom: safeDiv(cpuPerTick, rooms),
-    cpuPerCreep: safeDiv(cpuPerTick, creeps),
-    rooms,
-    creeps,
-    bucketMean: safeDiv(snapshotState.bucketTotal, ticks),
-    bucketMin: snapshotState.bucketMin === Infinity ? 0 : snapshotState.bucketMin,
-    limit: snapshotState.limit,
-    tickLimit: snapshotState.tickLimit,
-    sections: rank(snapshotState.sections, ticks, snapshotState.cpuTotal),
-    roles: rank(snapshotState.roles, ticks, snapshotState.cpuTotal),
-    methods: rank(snapshotState.methods, ticks, snapshotState.cpuTotal),
-    creepDetail: rank(snapshotState.creepDetail, ticks, snapshotState.cpuTotal)
-  };
-}
-function reset() {
-  openSections.clear();
-  windowState = createEmptySnapshot();
-}
-function isDue() {
-  return windowState.ticks >= WINDOW_TICKS;
-}
+  /** Rohzustand des laufenden Fensters. */
+  get snapshot() {
+    return this.window;
+  }
+  /** `true`, wenn das Fenster `WINDOW_TICKS` Ticks voll hat. */
+  get isDue() {
+    return this.window.ticks >= WINDOW_TICKS;
+  }
+  /** Abschnittsmessung starten. Nur im Zustand `full` aktiv. */
+  begin(section) {
+    if (this.state.mode !== "full") return;
+    this.openSections.set(section, Game.cpu.getUsed());
+  }
+  /** Abschnittsmessung beenden und verbuchen. Gleicher Wächter wie `begin`. */
+  end(section) {
+    if (this.state.mode !== "full") return;
+    const start = this.openSections.get(section);
+    if (start === void 0) return;
+    this.openSections.delete(section);
+    record(this.window.sections, section, Game.cpu.getUsed() - start);
+  }
+  /**
+   * Tickgrenze am Anfang von `loop()`. Zählt nur den Tick fürs Fenster — bewusst
+   * **kein** `Game.cpu.getUsed()` hier. Der eine sinnvolle Gesamtwert je Tick
+   * wird zentral in `endTick` gelesen, siehe dortiger Kommentar.
+   */
+  beginTick() {
+    if (this.state.mode === "off") return;
+    if (this.window.ticks === 0) {
+      this.window.startTick = Game.time;
+    }
+    this.window.ticks += 1;
+  }
+  /**
+   * Tickende. Verbucht Gesamttick, Bucket, Räume und Creeps. Läuft in `light`
+   * und `full`, aber nicht in `off`.
+   */
+  endTick(creepCount) {
+    const mode = this.state.mode;
+    if (mode === "off") return;
+    const cpu = Game.cpu.getUsed();
+    const window = this.window;
+    window.mode = mode;
+    window.cpuTotal += cpu;
+    if (cpu > window.cpuMax) window.cpuMax = cpu;
+    const bucket = Game.cpu.bucket;
+    window.bucketTotal += bucket;
+    if (bucket < window.bucketMin) window.bucketMin = bucket;
+    window.roomTotal += Object.keys(bot.room).length;
+    window.creepTotal += creepCount;
+    window.limit = Game.cpu.limit;
+    window.tickLimit = Game.cpu.tickLimit;
+  }
+  /** Rollenzeit verbuchen. Genutzt vom Rollen-Wrapper in `decorator.ts`. */
+  recordRole(role12, cpu) {
+    record(this.window.roles, role12, cpu);
+  }
+  /** Zeit einer Klassenmethode verbuchen. Genutzt vom `@profile`-Dekorator. */
+  recordMethod(key, cpu) {
+    record(this.window.methods, key, cpu);
+  }
+  /**
+   * Zeit eines einzelnen Creeps verbuchen. Der Rollen-Wrapper in `decorator.ts`
+   * ruft das bewusst bei jedem `doJob` im Zustand `full` auf, ohne selbst nach
+   * Detailmessung zu unterscheiden. Der Vertrag in `types.ts` verlangt aber, dass
+   * `creepDetail` nur während der Detailmessung gefüllt wird (sonst landen alle
+   * ~60 Creeps jeden Tick in der sortierten Liste), also sitzt der Wächter hier.
+   * Der Zustand zuerst, damit in `light` gar nicht erst auf `Memory.profiler`
+   * zugegriffen wird.
+   */
+  recordCreep(creepName, cpu) {
+    if (this.state.mode !== "full") return;
+    if (!this.state.detailActive()) return;
+    record(this.window.creepDetail, creepName, cpu);
+  }
+  /**
+   * Leitet die Kennzahlen aus dem laufenden Fenster ab. Die einzige Stelle, die
+   * dividiert — jede Division ist gegen einen Nenner von 0 abgesichert, damit
+   * ein leeres Fenster niemals `NaN`/`Infinity` liefert.
+   */
+  metrics() {
+    const window = this.window;
+    const ticks = window.ticks;
+    const rooms = safeDiv(window.roomTotal, ticks);
+    const creeps = safeDiv(window.creepTotal, ticks);
+    const cpuPerTick = safeDiv(window.cpuTotal, ticks);
+    return {
+      ticks,
+      mode: window.mode,
+      cpuPerTick,
+      cpuMaxTick: window.cpuMax,
+      cpuPerRoom: safeDiv(cpuPerTick, rooms),
+      cpuPerCreep: safeDiv(cpuPerTick, creeps),
+      rooms,
+      creeps,
+      bucketMean: safeDiv(window.bucketTotal, ticks),
+      bucketMin: window.bucketMin === Infinity ? 0 : window.bucketMin,
+      limit: window.limit,
+      tickLimit: window.tickLimit,
+      sections: rank(window.sections, ticks, window.cpuTotal),
+      roles: rank(window.roles, ticks, window.cpuTotal),
+      methods: rank(window.methods, ticks, window.cpuTotal),
+      creepDetail: rank(window.creepDetail, ticks, window.cpuTotal)
+    };
+  }
+  /** Fenster verwerfen und neu beginnen. */
+  reset() {
+    this.openSections.clear();
+    this.window = createEmptySnapshot();
+  }
+};
+
+// src/profiler/runtime.ts
+var state = new ProfilerState();
+var measurement = new MeasurementWindow(state);
+var flagSwitch = new FlagSwitch(state);
 
 // src/profiler/decorator.ts
 function wrapFunction(obj, key, className) {
@@ -1555,12 +2418,12 @@ function wrapFunction(obj, key, className) {
   }
   Reflect.set(obj, savedName, originalFunction);
   Reflect.set(obj, key, function(...args) {
-    if (getMode() !== "full") {
+    if (state.mode !== "full") {
       return originalFunction.apply(this, args);
     }
     const start = Game.cpu.getUsed();
     const result = originalFunction.apply(this, args);
-    recordMethod(memKey, Game.cpu.getUsed() - start);
+    measurement.recordMethod(memKey, Game.cpu.getUsed() - start);
     return result;
   });
 }
@@ -1582,23 +2445,23 @@ function wrapRoles(jobs2) {
     const original = jobs2[role12];
     wrapped[role12] = {
       doJob(creep) {
-        if (getMode() !== "full") {
+        if (state.mode !== "full") {
           original.doJob(creep);
           return;
         }
         const start = Game.cpu.getUsed();
         original.doJob(creep);
         const cpu = Game.cpu.getUsed() - start;
-        recordRole(role12, cpu);
-        recordCreep(creep.name, cpu);
+        measurement.recordRole(role12, cpu);
+        measurement.recordCreep(creep.name, cpu);
       },
       spawn(spawn3, workroom) {
-        if (getMode() !== "full") {
+        if (state.mode !== "full") {
           return original.spawn(spawn3, workroom);
         }
         const start = Game.cpu.getUsed();
         const result = original.spawn(spawn3, workroom);
-        recordRole(`${role12}.spawn`, Game.cpu.getUsed() - start);
+        measurement.recordRole(`${role12}.spawn`, Game.cpu.getUsed() - start);
         return result;
       }
     };
@@ -1650,8 +2513,8 @@ var Builder = class {
     } else {
       let target = Game.getObjectById(creep.memory.id);
       if (target && target.progressTotal != void 0) {
-        let state = creep.build(target);
-        if (state === ERR_NOT_IN_RANGE) {
+        let state2 = creep.build(target);
+        if (state2 === ERR_NOT_IN_RANGE) {
           moveByMemory(creep, target.pos);
         }
         return true;
@@ -1660,15 +2523,6 @@ var Builder = class {
       }
     }
     return false;
-  }
-  _getProfil(spawn3) {
-    const totalCost = 3 * BODYPART_COST[WORK] + 2 * BODYPART_COST[CARRY] + 2 * BODYPART_COST[MOVE];
-    var maxEnergy = spawn3.room.energyCapacityAvailable;
-    var numberOfSets = Math.min(7, Math.floor(maxEnergy / totalCost));
-    if (numberOfSets == 0) {
-      return [WORK, CARRY, CARRY, MOVE, MOVE];
-    }
-    return Array(numberOfSets * 3).fill(WORK).concat(Array(numberOfSets * 2).fill(CARRY).concat(Array(numberOfSets * 2).fill(MOVE)));
   }
   /** Spawnt einen Builder für `workroom`, falls Bedarf, Baustellen und freie Kapazität es erlauben. */
   spawn(spawn3, workroom) {
@@ -1688,7 +2542,7 @@ var Builder = class {
       sites = room.find(FIND_CONSTRUCTION_SITES).length;
     if (sites == 0 || Math.max(sites / 5, 1) <= count)
       return false;
-    return spawn(spawn3, this._getProfil(spawn3), role + "_" + Game.time, { role, workroom, home: spawn3.room.name });
+    return spawn(spawn3, BODIES.builder.build(spawn3.room.energyCapacityAvailable), role + "_" + Game.time, { role, workroom, home: spawn3.room.name });
   }
 };
 Builder = __decorateClass([
@@ -1718,23 +2572,20 @@ var Claimer = class {
         }
         return;
       }
-      var state = creep.reserveController(controller);
-      if (state === ERR_NOT_IN_RANGE) {
+      var state2 = creep.reserveController(controller);
+      if (state2 === ERR_NOT_IN_RANGE) {
         moveByMemory2(creep, controller.pos);
-      } else if (state == ERR_INVALID_TARGET) {
+      } else if (state2 == ERR_INVALID_TARGET) {
         creep.say("\u{1FA93}");
         creep.attackController(controller);
         Memory.rooms[creep.memory.workroom].claimed = false;
-      } else if (state == OK) {
+      } else if (state2 == OK) {
         Memory.rooms[creep.memory.workroom].claimed = true;
       }
       if (controller.sign.username != creep.owner.username) {
         creep.signController(controller, "\u2694");
       }
     }
-  }
-  _getProfil() {
-    return [CLAIM, CLAIM, MOVE, MOVE];
   }
   /** Spawnt einen Claimer für `workroom`, falls Bedarf besteht und keiner unterwegs ist. */
   spawn(spawn3, workroom) {
@@ -1746,7 +2597,7 @@ var Claimer = class {
       return false;
     if (1 <= count)
       return false;
-    return spawn(spawn3, this._getProfil(), role2 + "_" + Game.time, { role: role2, workroom, home: spawn3.room.name });
+    return spawn(spawn3, CLAIMER_BODY, role2 + "_" + Game.time, { role: role2, workroom, home: spawn3.room.name });
   }
 };
 Claimer = __decorateClass([
@@ -1771,6 +2622,9 @@ var NEVER_SELL = {
   "XGH2O": true,
   "XGHO2": true
 };
+function linksDeliver(workroom) {
+  return usesLinks(workroom) && new LinkList(workroom).spawnLink !== null;
+}
 var Debitor = class {
   /** Holt Energie/Mineralien aus dem Arbeitsraum und transportiert sie in den Heimatraum. */
   doJob(creep) {
@@ -1894,48 +2748,44 @@ var Debitor = class {
    *
    * @param {StructureSpawn} spawn
    */
-  getProfil(spawn3, workroom, mineraltype, containerId) {
-    if (mineraltype == RESOURCE_ENERGY) {
-      if (spawn3.room.name != workroom) {
-        var carry = Memory.rooms[workroom].needDebitorSize;
-        var distances = Memory.rooms[workroom].distances;
-        var c = 1;
-        if (!carry && distances) {
-          var length = Math.ceil(distances.length * 0.5);
-          var meridian = distances.sort(function(a, b) {
-            return a - b;
-          })[length];
-          carry = Math.ceil(2 * meridian / 5);
-          var max = Math.min(25, parseInt(spawn3.room.energyCapacityAvailable / 100));
-          if (max >= carry) {
-            Memory.rooms[workroom].needDebitors = 1;
-          } else {
-            c = Memory.rooms[workroom].needDebitors = Math.ceil(carry / max);
-            carry = Math.ceil(carry / c);
-          }
-          if (length > 30) {
-            Memory.rooms[workroom].needDebitorSize = carry;
-            delete Memory.rooms[workroom].distances;
-          }
-        }
-        return Array(carry).fill(CARRY).concat(Array(carry).fill(MOVE));
-      }
-      if (containerId == "" || spawn3.room.name != workroom) {
-        var max = Math.min(Math.max(parseInt(spawn3.room.energyCapacityAvailable / 100), 1), 20);
-        return Array(max).fill(CARRY).concat(Array(max).fill(MOVE));
-      }
-      var max = Math.min(25, parseInt(spawn3.room.energyCapacityAvailable / 100));
-      return Array(max).fill(CARRY).concat(Array(max).fill(MOVE));
-    } else {
-      var mineral = 2;
-      return Array(mineral).fill(CARRY).concat(Array(mineral).fill(MOVE));
+  bodyFor(spawn3, workroom, mineraltype, containerId) {
+    if (mineraltype != RESOURCE_ENERGY) {
+      return carryMove(2);
     }
+    if (spawn3.room.name != workroom) {
+      var carry = Memory.rooms[workroom].needDebitorSize;
+      var distances = Memory.rooms[workroom].distances;
+      var c = 1;
+      if (!carry && distances) {
+        var length = Math.ceil(distances.length * 0.5);
+        var meridian = distances.sort(function(a, b) {
+          return a - b;
+        })[length];
+        carry = Math.ceil(2 * meridian / 5);
+        var max = BODIES.debitor.setsFor(spawn3.room.energyCapacityAvailable);
+        if (max >= carry) {
+          Memory.rooms[workroom].needDebitors = 1;
+        } else {
+          c = Memory.rooms[workroom].needDebitors = Math.ceil(carry / max);
+          carry = Math.ceil(carry / c);
+        }
+        if (length > 30) {
+          Memory.rooms[workroom].needDebitorSize = carry;
+          delete Memory.rooms[workroom].distances;
+        }
+      }
+      return carryMove(carry);
+    }
+    if (containerId == "") {
+      return BODIES.debitorWithoutContainer.build(spawn3.room.energyCapacityAvailable);
+    }
+    return BODIES.debitor.build(spawn3.room.energyCapacityAvailable);
   }
   /** Spawnt einen Debitor für `workroom`, falls Bedarf besteht (inklusive Freelancer- und Notfallmodus). */
   spawn(spawn3, workroom) {
     if (bot.room[workroom].transferEnergie && spawn3.room.name != workroom || spawn3.room.name != workroom && !Memory.rooms[workroom].claimed)
       return false;
-    if (bot.room[workroom].sendDebitor && bot.room[workroom].sendMiner && (!Memory.rooms[workroom].hasLinks || !bot.room[workroom].useLinks)) {
+    if (bot.room[workroom].sendDebitor && bot.room[workroom].sendMiner && (!Memory.rooms[workroom].hasLinks || !linksDeliver(workroom))) {
       for (var id in bot.room[workroom].energySources) {
         if (!Game.getObjectById(bot.room[workroom].energySources[id]))
           continue;
@@ -1979,7 +2829,7 @@ var Debitor = class {
       });
       if (link.length > 0) {
         Memory.rooms[workroom].hasLinks = true;
-        if (Memory.rooms[workroom].useLinks)
+        if (linksDeliver(workroom))
           return false;
       }
     } else {
@@ -1993,7 +2843,7 @@ var Debitor = class {
       bot.logWorkroom(workroom, "3");
       containerId = "";
     }
-    var profil = this.getProfil(spawn3, workroom, mineraltype, containerId);
+    var profil = this.bodyFor(spawn3, workroom, mineraltype, containerId);
     bot.logWorkroom(workroom, "4");
     if (!spawn(spawn3, profil, role3 + "_" + Game.time, { role: role3, harvest: true, workroom, home: spawn3.room.name, mineral: mineraltype, container: containerId, notfall: false })) {
       if (_.filter(Game.creeps, (creep) => creep.memory.role == role3 && creep.memory.workroom == workroom).length == 0 && spawn3.room.name == workroom) {
@@ -2092,14 +2942,6 @@ var Defender = class {
       creep.suicide();
     }
   }
-  _getProfil(spawn3) {
-    const totalCost = BODYPART_COST[TOUGH] + 2 * BODYPART_COST[MOVE] + BODYPART_COST[ATTACK] + BODYPART_COST[RANGED_ATTACK];
-    var max = Math.min(5, parseInt(spawn3.room.energyAvailable / totalCost));
-    if (max == 0 || max == null) {
-      return [MOVE, MOVE, ATTACK, RANGED_ATTACK];
-    }
-    return Array(max).fill(TOUGH).concat(Array(max * 2).fill(MOVE).concat(Array(max).fill(ATTACK)).concat(Array(max).fill(RANGED_ATTACK)));
-  }
   /** Spawnt einen Defender für `workroom`, falls Verteidigungsbedarf besteht und das Limit nicht erreicht ist. */
   spawn(spawn3, workroom) {
     if (!Memory.rooms[workroom].needDefence && !Memory.rooms[workroom].invaderCore || !bot.room[workroom].sendDefender)
@@ -2107,7 +2949,7 @@ var Defender = class {
     var count = _.filter(Game.creeps, (creep) => creep.memory.role == role4 && creep.memory.workroom == workroom).length;
     if (Memory.rooms[workroom].needDefence && 2 <= count || Memory.rooms[workroom].invaderCore && 4 <= count)
       return false;
-    if (spawn(spawn3, this._getProfil(spawn3), role4 + "_" + Game.time, { role: role4, workroom, home: spawn3.room.name })) {
+    if (spawn(spawn3, BODIES.defender.build(spawn3.room.energyAvailable), role4 + "_" + Game.time, { role: role4, workroom, home: spawn3.room.name })) {
       Memory.cOfDefender += 1;
       return true;
     }
@@ -2134,17 +2976,14 @@ var ExtUpgrader = class {
     }
     upgradeController(creep);
   }
-  _getProfil(spawn3, workroom) {
-    var numberOfSets = 0;
-    var multi = Game.rooms[workroom] && Game.rooms[workroom].controller.level >= 6 ? 1 : 2;
-    const totalCost = multi * BODYPART_COST[WORK] + 2 * BODYPART_COST[CARRY] + BODYPART_COST[MOVE];
-    var maxEnergy = spawn3.room.energyCapacityAvailable;
-    numberOfSets = Math.min(9, Math.floor(maxEnergy / totalCost));
-    if (numberOfSets == 0) {
-      return [WORK, CARRY, MOVE, MOVE];
-    }
-    var carry = Math.min(numberOfSets * 2, 16);
-    return Array(numberOfSets * multi).fill(WORK).concat(Array(carry).fill(CARRY).concat(Array(numberOfSets).fill(MOVE)));
+  /**
+   * Ab RCL6 des Arbeitsraums reicht ein WORK je Satz. Ohne Sicht dort gilt das
+   * größere Profil — dann ist der Ausbaustand unbekannt.
+   */
+  bodyFor(spawn3, workroom) {
+    const rcl6 = Game.rooms[workroom] && Game.rooms[workroom].controller.level >= 6;
+    const profil = rcl6 ? BODIES.extupgraderRcl6 : BODIES.extupgrader;
+    return profil.build(spawn3.room.energyCapacityAvailable);
   }
   /** Spawnt einen Extupgrader für `workroom`, falls Bedarf besteht und noch nicht genug unterwegs sind. */
   spawn(spawn3, workroom) {
@@ -2159,7 +2998,7 @@ var ExtUpgrader = class {
     ).length;
     if (uppis <= count)
       return false;
-    var profil = this._getProfil(spawn3, workroom);
+    var profil = this.bodyFor(spawn3, workroom);
     return spawn(spawn3, profil, role5 + "_" + Game.time, { role: role5, workroom, home: spawn3.room.name, repairs: 0 });
   }
 };
@@ -2170,14 +3009,14 @@ var extupgrader_default = new ExtUpgrader();
 
 // src/roles/linkkeeper.ts
 var role6 = "linkkeeper";
-var blockingStructureTypes = OBSTACLE_OBJECT_TYPES;
+var blockingStructureTypes2 = OBSTACLE_OBJECT_TYPES;
 var LinkKeeper = class {
   /** Bewegt den Creep auf seinen Standplatz zwischen Link und Storage und pendelt dort Energie um. */
   doJob(creep) {
     if (goToWorkroom2(creep)) return;
     if (!creep.memory.post) {
       const storage2 = creep.room.storage;
-      const link2 = storage2 ? Game.getObjectById(bot.room[creep.memory.workroom].spawnLink) : null;
+      const link2 = storage2 ? new LinkList(creep.memory.workroom).spawnLink : null;
       const post2 = link2 && storage2 ? this._findPost(link2, storage2, creep.memory.workroom) : null;
       if (!post2) {
         creep.say("\u2753");
@@ -2192,7 +3031,7 @@ var LinkKeeper = class {
     }
     const storage = creep.room.storage;
     if (!storage) return;
-    const link = Game.getObjectById(bot.room[creep.memory.workroom].spawnLink);
+    const link = new LinkList(creep.memory.workroom).spawnLink;
     if (!link) return;
     const carrying = creep.store.getUsedCapacity(RESOURCE_ENERGY);
     const inLink = link.store.getUsedCapacity(RESOURCE_ENERGY);
@@ -2216,28 +3055,18 @@ var LinkKeeper = class {
         const pos = new RoomPosition(x, y, roomName);
         if (!pos.isNearTo(storage.pos)) continue;
         if ((terrain.get(x, y) & TERRAIN_MASK_WALL) !== 0) continue;
-        const blocked = pos.lookFor(LOOK_STRUCTURES).some((s) => blockingStructureTypes.includes(s.structureType)) || pos.lookFor(LOOK_CONSTRUCTION_SITES).some((s) => blockingStructureTypes.includes(s.structureType));
+        const blocked = pos.lookFor(LOOK_STRUCTURES).some((s) => blockingStructureTypes2.includes(s.structureType)) || pos.lookFor(LOOK_CONSTRUCTION_SITES).some((s) => blockingStructureTypes2.includes(s.structureType));
         if (blocked) continue;
         return pos;
       }
     }
     return null;
   }
-  _getProfil(spawn3) {
-    const maxCarryParts = Math.ceil(LINK_CAPACITY / CARRY_CAPACITY);
-    const fullProfil = Array(maxCarryParts).fill(CARRY).concat([MOVE]);
-    const fullCost = maxCarryParts * BODYPART_COST[CARRY] + BODYPART_COST[MOVE];
-    if (spawn3.room.energyCapacityAvailable >= fullCost) {
-      return fullProfil;
-    }
-    const affordableCarryParts = Math.max(1, Math.floor((spawn3.room.energyCapacityAvailable - BODYPART_COST[MOVE]) / BODYPART_COST[CARRY]));
-    return Array(affordableCarryParts).fill(CARRY).concat([MOVE]);
-  }
   /** Spawnt den einzigen Linkkeeper für `workroom`, falls Links dort genutzt werden und noch keiner lebt. */
   spawn(spawn3, workroom) {
     if (!bot.room[workroom].sendLinkkeeper)
       return false;
-    if (!bot.room[workroom].useLinks || !bot.room[workroom].spawnLink)
+    if (!usesLinks(workroom) || !new LinkList(workroom).spawnLink)
       return false;
     if (spawn3.room.name != workroom)
       return false;
@@ -2245,7 +3074,7 @@ var LinkKeeper = class {
       return false;
     if (_.filter(Game.creeps, (creep) => creep.memory.role == role6 && creep.memory.workroom == workroom).length >= 1)
       return false;
-    return spawn(spawn3, this._getProfil(spawn3), role6 + "_" + Game.time, { role: role6, workroom, home: spawn3.room.name });
+    return spawn(spawn3, BODIES.linkkeeper.build(spawn3.room.energyCapacityAvailable), role6 + "_" + Game.time, { role: role6, workroom, home: spawn3.room.name });
   }
 };
 LinkKeeper = __decorateClass([
@@ -2259,10 +3088,7 @@ var Miner = class {
   _clearMemory(creep) {
     delete creep.memory.pos;
     delete creep.memory._move;
-    delete creep.memory.path;
-    delete creep.memory.pathTarget;
-    delete creep.memory.lastPos;
-    delete creep.memory.dontMove;
+    new PathMemory(creep.memory).clear();
   }
   /** Bewegt den Miner zur Quelle, baut/repariert dort Container bzw. Link und erntet. */
   doJob(creep) {
@@ -2309,18 +3135,18 @@ var Miner = class {
               }
             }
             for (var spot of adjacentSpots) {
-              var state = spot.createConstructionSite(STRUCTURE_CONTAINER);
-              if (state === OK) {
+              var state2 = spot.createConstructionSite(STRUCTURE_CONTAINER);
+              if (state2 === OK) {
                 return;
               }
-              if (state === ERR_FULL) {
+              if (state2 === ERR_FULL) {
                 finalLocation = adjacentSpots.find(
                   (p) => p.lookFor(LOOK_TERRAIN)[0] !== "wall"
                 );
                 creep.memory.pos = finalLocation;
                 return;
               }
-              creep.say(state);
+              creep.say(state2);
             }
             return;
           }
@@ -2330,8 +3156,8 @@ var Miner = class {
       }
       if (creep.pos.x == creep.memory.pos.x && creep.pos.y == creep.memory.pos.y) {
         var source = creep.pos.findClosestByPath(creep.memory.mineEnergy ? FIND_SOURCES : FIND_MINERALS);
-        var state = creep.harvest(source);
-        if (state === ERR_NOT_IN_RANGE) {
+        var state2 = creep.harvest(source);
+        if (state2 === ERR_NOT_IN_RANGE) {
           creep.say("\u2049");
         } else {
           creep.memory.source = source.id;
@@ -2430,21 +3256,8 @@ var Miner = class {
         }
         if (creep.memory.link && creep.store.getFreeCapacity() == 0) {
           var link = Game.getObjectById(creep.memory.link);
-          if (link != null && link.cooldown < 1 && creep.transfer(link, RESOURCE_ENERGY) == ERR_FULL) {
-            var target;
-            if (creep.room.storage && creep.room.storage.store.getUsedCapacity() * 0.5 > creep.room.storage.store.getFreeCapacity()) {
-              target = Game.getObjectById(bot.room[creep.room.name].controllerLink);
-            } else {
-              target = Game.getObjectById(bot.room[creep.room.name].targetLinks[[Math.floor(Math.random() * bot.room[creep.room.name].targetLinks.length)]]);
-            }
-            if (target && target.store.getFreeCapacity(RESOURCE_ENERGY) > 50) {
-              link.transferEnergy(target);
-            } else {
-              if (container && container.store.getFreeCapacity() == 0 && creep.store.getFreeCapacity() == 0) {
-                creep.say("\u{1F6AF}");
-                return;
-              }
-            }
+          if (link) {
+            creep.transfer(link, RESOURCE_ENERGY);
           }
         }
       } else {
@@ -2487,26 +3300,17 @@ var Miner = class {
         creep.say("\u{1F634}");
         return;
       }
-      var state = creep.harvest(source2);
-      if (state != OK) {
-        if (state == ERR_TIRED || state == ERR_NOT_ENOUGH_ENERGY) {
+      var state2 = creep.harvest(source2);
+      if (state2 != OK) {
+        if (state2 == ERR_TIRED || state2 == ERR_NOT_ENOUGH_ENERGY) {
           creep.say("\u{1F634}");
-        } else if (state == ERR_NO_BODYPART) {
+        } else if (state2 == ERR_NO_BODYPART) {
           creep.suicide();
         } else {
-          creep.say(state + " :(");
+          creep.say(state2 + " :(");
         }
       }
     }
-  }
-  _getProfil(spawn3, workroom) {
-    const totalCost = 3 * BODYPART_COST[WORK] + BODYPART_COST[CARRY] + 2 * BODYPART_COST[MOVE];
-    var maxEnergy = spawn3.room.energyCapacityAvailable;
-    var numberOfSets = Math.min(8, Math.floor(maxEnergy / totalCost));
-    if (numberOfSets == 0) {
-      return [WORK, WORK, CARRY, MOVE];
-    }
-    return Array(numberOfSets * 3).fill(WORK).concat(Array(numberOfSets).fill(CARRY).concat(Array(numberOfSets * 2).fill(MOVE)));
   }
   /** Spawnt einen Miner für die nächste fällige Energie- oder Mineralquelle in `workroom`. */
   spawn(spawn3, workroom) {
@@ -2546,7 +3350,7 @@ var Miner = class {
       Memory.rooms[spawn3.room.name].aktivPrioSpawn = false;
       return false;
     }
-    if (!spawn(spawn3, this._getProfil(spawn3, workroom), role7 + "_" + Game.time, { role: role7, workroom, home: spawn3.room.name, source, mineEnergy, notfall: false })) {
+    if (!spawn(spawn3, BODIES.miner.build(spawn3.room.energyCapacityAvailable), role7 + "_" + Game.time, { role: role7, workroom, home: spawn3.room.name, source, mineEnergy, notfall: false })) {
       Memory.rooms[spawn3.room.name].aktivPrioSpawn = true;
       Memory.rooms[spawn3.room.name].aktivPrioSpawnCount = (Memory.rooms[spawn3.room.name].aktivPrioSpawnCount || 0) + 1;
       if (Memory.rooms[spawn3.room.name].aktivPrioSpawnCount > 25) {
@@ -2611,8 +3415,8 @@ var Repairer = class {
     } else {
       let target = Game.getObjectById(creep.memory.prioId);
       if (target && target.hits < target.hitsMax) {
-        let state = creep.repair(target);
-        if (state === ERR_NOT_IN_RANGE) {
+        let state2 = creep.repair(target);
+        if (state2 === ERR_NOT_IN_RANGE) {
           moveByMemory2(creep, target.pos);
         }
         return true;
@@ -2646,8 +3450,8 @@ var Repairer = class {
     } else {
       let target = Game.getObjectById(creep.memory.id);
       if (target && target.hits < target.hitsMax) {
-        let state = creep.repair(target);
-        if (state === ERR_NOT_IN_RANGE) {
+        let state2 = creep.repair(target);
+        if (state2 === ERR_NOT_IN_RANGE) {
           moveByMemory2(creep, target.pos);
         }
         return true;
@@ -2656,15 +3460,6 @@ var Repairer = class {
       creep.memory.id = null;
     }
     return false;
-  }
-  _getProfil(spawn3) {
-    const totalCost = 3 * BODYPART_COST[WORK] + 2 * BODYPART_COST[CARRY] + 2 * BODYPART_COST[MOVE];
-    var maxEnergy = spawn3.room.energyCapacityAvailable;
-    const numberOfSets = Math.min(3, Math.floor(maxEnergy / totalCost));
-    if (numberOfSets == 0) {
-      return [WORK, CARRY, CARRY, MOVE, MOVE];
-    }
-    return Array(numberOfSets * 3).fill(WORK).concat(Array(numberOfSets * 2).fill(CARRY).concat(Array(numberOfSets * 2).fill(MOVE)));
   }
   /** Spawnt einen Repairer für `workroom`, falls Bedarf besteht und noch nicht genug unterwegs sind. */
   spawn(spawn3, workroom) {
@@ -2688,7 +3483,7 @@ var Repairer = class {
     });
     if (structuresToRepair.length <= 1)
       return false;
-    return spawn(spawn3, this._getProfil(spawn3), role8 + "_" + Game.time, { role: role8, workroom, home: spawn3.room.name, repairs: 0 });
+    return spawn(spawn3, BODIES.repairer.build(spawn3.room.energyCapacityAvailable), role8 + "_" + Game.time, { role: role8, workroom, home: spawn3.room.name, repairs: 0 });
   }
 };
 Repairer = __decorateClass([
@@ -2743,10 +3538,6 @@ var Transfer = class {
    *
    * @param {StructureSpawn} spawn
    */
-  getProfil(spawn3) {
-    var max = Math.min(25, parseInt(spawn3.room.energyCapacityAvailable / 100));
-    return Array(max).fill(CARRY).concat(Array(max).fill(MOVE));
-  }
   /** Spawnt einen Transfer für `workroom`, falls Bedarf besteht und im Heimatraum genug Energie im Storage liegt. */
   spawn(spawn3, workroom) {
     if (!bot.room[workroom].transferEnergie || spawn3.room.name == workroom || !Memory.rooms[workroom].claimed)
@@ -2773,7 +3564,7 @@ var Transfer = class {
     var storage = Game.rooms[spawn3.room.name].storage;
     if (storage && storage.store[RESOURCE_ENERGY] < 1e4 || !storage)
       return false;
-    var profil = this.getProfil(spawn3);
+    var profil = BODIES.transfer.build(spawn3.room.energyCapacityAvailable);
     return spawn(spawn3, profil, role9 + "_" + Game.time, { role: role9, harvest: true, workroom, home: spawn3.room.name, mineral: mineraltype });
   }
 };
@@ -2790,7 +3581,7 @@ var Upgrader = class {
     if (creep.memory.sparmodus && Game.time % creep.room.controller.level != 0) return;
     creep.checkHarvest();
     if (creep.memory.harvest) {
-      if (!creep.memory.noLink && bot.room[creep.memory.workroom].controllerLink && (creep.room.controller.my && creep.room.controller.level >= 5)) {
+      if (!creep.memory.noLink && new LinkList(creep.memory.workroom).controllerLink && (creep.room.controller.my && creep.room.controller.level >= 5)) {
         if (harvestControllerLink(creep, RESOURCE_ENERGY)) return;
       } else {
         if (harvestRoomStorage(creep, RESOURCE_ENERGY))
@@ -2818,16 +3609,13 @@ var Upgrader = class {
       creep.memory.sparmodus = creep.room.controller.level > 5;
     }
   }
-  _getProfil(spawn3, workroom) {
-    var numberOfSets = 0;
-    var multi = Game.rooms[workroom].controller.level > 7 ? 0.5 : 2;
-    const totalCost = multi * BODYPART_COST[WORK] + 2 * BODYPART_COST[CARRY] + 2 * BODYPART_COST[MOVE];
-    var maxEnergy = spawn3.room.energyCapacityAvailable;
-    numberOfSets = Math.min(Game.rooms[workroom].controller.level > 7 ? 9 : 8, Math.floor(maxEnergy / totalCost));
-    if (numberOfSets == 0) {
-      return [WORK, CARRY, MOVE, MOVE];
-    }
-    return Array(Math.floor(numberOfSets * multi)).fill(WORK).concat(Array(numberOfSets * 2).fill(CARRY).concat(Array(numberOfSets * 2).fill(MOVE)));
+  /**
+   * Ab RCL8 nimmt der Controller nur noch 15 Energie je Tick an; dort gilt das
+   * sparsame Profil mit einem halben WORK je Satz.
+   */
+  bodyFor(spawn3, workroom) {
+    const profil = Game.rooms[workroom].controller.level > 7 ? BODIES.upgraderRcl8 : BODIES.upgrader;
+    return profil.build(spawn3.room.energyCapacityAvailable);
   }
   /** Spawnt einen Upgrader für `workroom`, falls die konfigurierte Anzahl noch nicht erreicht ist. */
   spawn(spawn3, workroom) {
@@ -2844,7 +3632,7 @@ var Upgrader = class {
     ).length;
     if (uppis <= count)
       return false;
-    var profil = this._getProfil(spawn3, workroom);
+    var profil = this.bodyFor(spawn3, workroom);
     return spawn(spawn3, profil, role10 + "_" + Game.time, { role: role10, workroom, home: spawn3.room.name, repairs: 0, noLink: false });
   }
 };
@@ -2914,15 +3702,6 @@ var Wally = class {
       return false;
     }
   }
-  _getProfil(spawn3) {
-    const totalCost = BODYPART_COST[WORK] + 2 * BODYPART_COST[CARRY] + BODYPART_COST[MOVE];
-    var maxEnergy = spawn3.room.energyCapacityAvailable;
-    const numberOfSets = Math.min(9, Math.floor(maxEnergy / totalCost));
-    if (numberOfSets == 0) {
-      return [WORK, CARRY, CARRY, MOVE, MOVE];
-    }
-    return Array(numberOfSets).fill(WORK).concat(Array(2 * numberOfSets).fill(CARRY).concat(Array(numberOfSets).fill(MOVE)));
-  }
   /** Spawnt einen Wallrepairer für `workroom`, falls Bedarf, Rumpfbudget und Energiereserve passen. */
   spawn(spawn3, workroom) {
     if (spawn3.room.name != workroom && !Memory.rooms[workroom].claimed)
@@ -2941,7 +3720,7 @@ var Wally = class {
     var storage = Game.rooms[workroom].storage;
     if (storage && storage.store[RESOURCE_ENERGY] < 5e4 || !storage)
       return false;
-    var p = this._getProfil(spawn3);
+    var p = BODIES.wally.build(spawn3.room.energyCapacityAvailable);
     return spawn(spawn3, p, role11 + "_" + Game.time, { role: role11, workroom, home: spawn3.room.name });
   }
 };
@@ -3007,8 +3786,235 @@ function spawn2() {
   }
 }
 
-// src/profiler/report.ts
+// src/profiler/history.ts
+var HISTORY_SEGMENT = 99;
+var HISTORY_MAX_ENTRIES = 1e3;
+var MAX_SEGMENT_CHARS = 100 * 1024;
+var FIELD_COUNT = 11;
+function hasRawMemory() {
+  return typeof RawMemory !== "undefined";
+}
+function requestSegment() {
+  if (!hasRawMemory()) return;
+  RawMemory.setActiveSegments([HISTORY_SEGMENT]);
+}
+function isAvailable() {
+  if (!hasRawMemory()) return false;
+  return RawMemory.segments[HISTORY_SEGMENT] !== void 0;
+}
+function buildEntry(metrics) {
+  return {
+    tick: Game.time,
+    ticks: metrics.ticks,
+    mode: metrics.mode,
+    cpuPerTick: metrics.cpuPerTick,
+    cpuMaxTick: metrics.cpuMaxTick,
+    cpuPerRoom: metrics.cpuPerRoom,
+    cpuPerCreep: metrics.cpuPerCreep,
+    bucketMean: metrics.bucketMean,
+    bucketMin: metrics.bucketMin,
+    rooms: metrics.rooms,
+    creeps: metrics.creeps
+  };
+}
+function serializeEntry(entry) {
+  return [
+    entry.tick.toFixed(2),
+    entry.ticks.toFixed(2),
+    entry.mode,
+    entry.cpuPerTick.toFixed(2),
+    entry.cpuMaxTick.toFixed(2),
+    entry.cpuPerRoom.toFixed(2),
+    entry.cpuPerCreep.toFixed(2),
+    entry.bucketMean.toFixed(2),
+    entry.bucketMin.toFixed(2),
+    entry.rooms.toFixed(2),
+    entry.creeps.toFixed(2)
+  ].join(";");
+}
+function parseEntry(line) {
+  const fields = line.split(";");
+  if (fields.length !== FIELD_COUNT) return void 0;
+  const mode = fields[2];
+  const numberFields = [
+    fields[0],
+    fields[1],
+    fields[3],
+    fields[4],
+    fields[5],
+    fields[6],
+    fields[7],
+    fields[8],
+    fields[9],
+    fields[10]
+  ].map(Number);
+  if (numberFields.some((value) => !Number.isFinite(value))) return void 0;
+  if (mode.length === 0) return void 0;
+  const [tick2, ticks, cpuPerTick, cpuMaxTick, cpuPerRoom, cpuPerCreep, bucketMean, bucketMin, rooms, creeps] = numberFields;
+  return {
+    tick: tick2,
+    ticks,
+    mode,
+    cpuPerTick,
+    cpuMaxTick,
+    cpuPerRoom,
+    cpuPerCreep,
+    bucketMean,
+    bucketMin,
+    rooms,
+    creeps
+  };
+}
+function read() {
+  if (!isAvailable()) return [];
+  const raw = RawMemory.segments[HISTORY_SEGMENT];
+  if (raw === void 0 || raw.length === 0) return [];
+  const entries = [];
+  for (const line of raw.split("\n")) {
+    if (line.length === 0) continue;
+    const entry = parseEntry(line);
+    if (entry !== void 0) entries.push(entry);
+  }
+  return entries;
+}
+function append(metrics) {
+  if (!isAvailable()) return false;
+  const entries = read();
+  entries.push(buildEntry(metrics));
+  while (entries.length > HISTORY_MAX_ENTRIES) entries.shift();
+  let serialized = entries.map(serializeEntry).join("\n");
+  while (serialized.length > MAX_SEGMENT_CHARS && entries.length > 0) {
+    entries.shift();
+    serialized = entries.map(serializeEntry).join("\n");
+  }
+  RawMemory.segments[HISTORY_SEGMENT] = serialized;
+  return true;
+}
 function fmt(value, decimals = 2) {
+  if (!Number.isFinite(value)) return "-";
+  return value.toFixed(decimals);
+}
+var COLUMN_WIDTHS = {
+  tick: 8,
+  ticks: 6,
+  mode: 6,
+  cpuPerTick: 9,
+  cpuMaxTick: 8,
+  cpuPerRoom: 9,
+  cpuPerCreep: 10,
+  bucketMean: 10,
+  bucketMin: 11,
+  rooms: 6,
+  creeps: 7
+};
+function formatRow(entry) {
+  return [
+    fmt(entry.tick, 0).padStart(COLUMN_WIDTHS.tick),
+    fmt(entry.ticks, 0).padStart(COLUMN_WIDTHS.ticks),
+    entry.mode.padStart(COLUMN_WIDTHS.mode),
+    fmt(entry.cpuPerTick).padStart(COLUMN_WIDTHS.cpuPerTick),
+    fmt(entry.cpuMaxTick).padStart(COLUMN_WIDTHS.cpuMaxTick),
+    fmt(entry.cpuPerRoom).padStart(COLUMN_WIDTHS.cpuPerRoom),
+    fmt(entry.cpuPerCreep).padStart(COLUMN_WIDTHS.cpuPerCreep),
+    fmt(entry.bucketMean, 0).padStart(COLUMN_WIDTHS.bucketMean),
+    fmt(entry.bucketMin, 0).padStart(COLUMN_WIDTHS.bucketMin),
+    fmt(entry.rooms).padStart(COLUMN_WIDTHS.rooms),
+    fmt(entry.creeps).padStart(COLUMN_WIDTHS.creeps)
+  ].join("  ");
+}
+function format(entries) {
+  if (entries.length === 0) {
+    return "Kein Verlauf vorhanden. Mit prof.light() oder prof.on() messen \u2014 je volles Fenster (100 Ticks) kommt eine Zeile dazu.";
+  }
+  const header = [
+    "Tick".padStart(COLUMN_WIDTHS.tick),
+    "Ticks".padStart(COLUMN_WIDTHS.ticks),
+    "Modus".padStart(COLUMN_WIDTHS.mode),
+    "CPU/Tick".padStart(COLUMN_WIDTHS.cpuPerTick),
+    "CPU/Max".padStart(COLUMN_WIDTHS.cpuMaxTick),
+    "CPU/Raum".padStart(COLUMN_WIDTHS.cpuPerRoom),
+    "CPU/Creep".padStart(COLUMN_WIDTHS.cpuPerCreep),
+    "Bucket-\xD8".padStart(COLUMN_WIDTHS.bucketMean),
+    "Bucket-Min".padStart(COLUMN_WIDTHS.bucketMin),
+    "R\xE4ume".padStart(COLUMN_WIDTHS.rooms),
+    "Creeps".padStart(COLUMN_WIDTHS.creeps)
+  ].join("  ");
+  const separator = "-".repeat(header.length);
+  const rows = entries.map(formatRow);
+  return [header, separator, ...rows].join("\n");
+}
+
+// src/profiler/mail.ts
+var NOTIFY_MAX_CHARS = 1e3;
+var NOTIFY_MAX_PER_TICK = 20;
+function prefixLength(digitWidth) {
+  return 4 + 2 * digitWidth;
+}
+function greedySplitLines(lines, maxContentChars) {
+  const blocks = [];
+  let current = "";
+  for (const line of lines) {
+    if (line.length > maxContentChars) {
+      if (current.length > 0) {
+        blocks.push(current);
+        current = "";
+      }
+      let rest = line;
+      while (rest.length > 0) {
+        blocks.push(rest.slice(0, maxContentChars));
+        rest = rest.slice(maxContentChars);
+      }
+      continue;
+    }
+    const candidate = current.length === 0 ? line : `${current}
+${line}`;
+    if (candidate.length <= maxContentChars) {
+      current = candidate;
+    } else {
+      blocks.push(current);
+      current = line;
+    }
+  }
+  if (current.length > 0) blocks.push(current);
+  return blocks;
+}
+function splitForNotify(text, maxChars = NOTIFY_MAX_CHARS) {
+  if (text.trim().length === 0) return [];
+  const lines = text.split("\n");
+  let digitWidth = 1;
+  let blocks = [];
+  for (let iteration = 0; iteration < 5; iteration += 1) {
+    const maxContentChars = Math.max(1, maxChars - prefixLength(digitWidth));
+    blocks = greedySplitLines(lines, maxContentChars);
+    const neededWidth = String(blocks.length).length;
+    if (neededWidth === digitWidth) break;
+    digitWidth = neededWidth;
+  }
+  const total = blocks.length;
+  return blocks.map((block, index) => `[${index + 1}/${total}] ${block}`);
+}
+function mailReport(title, text) {
+  if (text.trim().length === 0) {
+    return "Leerer Bericht, nichts verschickt.";
+  }
+  const blocks = splitForNotify(`${title}
+${text}`);
+  if (blocks.length === 0) {
+    return "Leerer Bericht, nichts verschickt.";
+  }
+  const toSend = blocks.slice(0, NOTIFY_MAX_PER_TICK);
+  for (const block of toSend) {
+    Game.notify(block, 0);
+  }
+  const omitted = blocks.length - toSend.length;
+  if (omitted > 0) {
+    return `Bericht als ${toSend.length} E-Mail(s) verschickt, ${omitted} Block(e) weggelassen (Limit ${NOTIFY_MAX_PER_TICK} je Tick).`;
+  }
+  return `Bericht als ${toSend.length} E-Mail(s) verschickt.`;
+}
+
+// src/profiler/report.ts
+function fmt2(value, decimals = 2) {
   if (!Number.isFinite(value)) return "-";
   return value.toFixed(decimals);
 }
@@ -3020,9 +4026,9 @@ function topEntries(entries, count) {
   if (entries.length === 0) return "-";
   return entries.slice(0, count).map((entry) => `${entry.name} ${fmtPercent(entry.share)}`).join(", ");
 }
-function formatWindowLine(metrics2) {
-  const top = topEntries(metrics2.roles, 3);
-  return `[prof] Fenster=${fmt(metrics2.ticks, 0)}T | CPU/Tick=${fmt(metrics2.cpuPerTick)} | CPU/Raum=${fmt(metrics2.cpuPerRoom)} | CPU/Creep=${fmt(metrics2.cpuPerCreep)} | Bucket~${fmt(metrics2.bucketMean, 0)} (min ${fmt(metrics2.bucketMin, 0)}) | Limit=${fmt(metrics2.limit, 0)} | Top: ${top}`;
+function formatWindowLine(metrics) {
+  const top = topEntries(metrics.roles, 3);
+  return `[prof] Fenster=${fmt2(metrics.ticks, 0)}T | CPU/Tick=${fmt2(metrics.cpuPerTick)} | CPU/Raum=${fmt2(metrics.cpuPerRoom)} | CPU/Creep=${fmt2(metrics.cpuPerCreep)} | Bucket~${fmt2(metrics.bucketMean, 0)} (min ${fmt2(metrics.bucketMin, 0)}) | Limit=${fmt2(metrics.limit, 0)} | Top: ${top}`;
 }
 var NUMBER_COLUMN_WIDTHS = {
   cpuPerTick: 9,
@@ -3034,10 +4040,10 @@ var NUMBER_COLUMN_WIDTHS = {
 function formatRankedRow(entry, widths) {
   return [
     entry.name.padEnd(widths.name),
-    fmt(entry.cpuPerTick).padStart(widths.cpuPerTick),
-    fmt(entry.cpuPerCall).padStart(widths.cpuPerCall),
-    fmt(entry.callsPerTick).padStart(widths.callsPerTick),
-    fmt(entry.max).padStart(widths.max),
+    fmt2(entry.cpuPerTick).padStart(widths.cpuPerTick),
+    fmt2(entry.cpuPerCall).padStart(widths.cpuPerCall),
+    fmt2(entry.callsPerTick).padStart(widths.callsPerTick),
+    fmt2(entry.max).padStart(widths.max),
     fmtPercent(entry.share).padStart(widths.share)
   ].join("  ");
 }
@@ -3058,12 +4064,12 @@ function formatRankedBlock(title, entries) {
   const rows = sorted.map((entry) => formatRankedRow(entry, widths));
   return [`== ${title} ==`, header, separator, ...rows].join("\n");
 }
-function formatDetailReport(metrics2) {
+function formatDetailReport(metrics) {
   const blocks = [
-    formatRankedBlock("Abschnitte", metrics2.sections),
-    formatRankedBlock("Rollen", metrics2.roles),
-    formatRankedBlock("Methoden", metrics2.methods),
-    formatRankedBlock("Creeps", metrics2.creepDetail)
+    formatRankedBlock("Abschnitte", metrics.sections),
+    formatRankedBlock("Rollen", metrics.roles),
+    formatRankedBlock("Methoden", metrics.methods),
+    formatRankedBlock("Creeps", metrics.creepDetail)
   ].filter((block) => block.length > 0);
   if (blocks.length === 0) {
     return "Keine Detaildaten im laufenden Fenster. Mit prof.detail() eine Messung starten.";
@@ -3081,12 +4087,12 @@ var BASELINE_NUMBER_WIDTHS = {
 function formatBaselineRow(row, widths) {
   return [
     row.name.padEnd(widths.name),
-    fmt(row.tick, 0).padStart(widths.tick),
-    fmt(row.ticks, 0).padStart(widths.ticks),
-    fmt(row.cpuPerTick).padStart(widths.cpuPerTick),
-    fmt(row.cpuPerRoom).padStart(widths.cpuPerRoom),
-    fmt(row.cpuPerCreep).padStart(widths.cpuPerCreep),
-    fmt(row.bucketMean).padStart(widths.bucketMean)
+    fmt2(row.tick, 0).padStart(widths.tick),
+    fmt2(row.ticks, 0).padStart(widths.ticks),
+    fmt2(row.cpuPerTick).padStart(widths.cpuPerTick),
+    fmt2(row.cpuPerRoom).padStart(widths.cpuPerRoom),
+    fmt2(row.cpuPerCreep).padStart(widths.cpuPerCreep),
+    fmt2(row.bucketMean).padStart(widths.bucketMean)
   ].join("  ");
 }
 function formatBaselines(baselines, current) {
@@ -3132,6 +4138,100 @@ function formatBaselines(baselines, current) {
   const dataRows = rows.map((row) => formatBaselineRow(row, widths));
   return [header, separator, ...dataRows].join("\n");
 }
+function fmtSigned(value, decimals = 2) {
+  if (!Number.isFinite(value)) return "-";
+  const sign = value >= 0 ? "+" : "";
+  return `${sign}${value.toFixed(decimals)}`;
+}
+function buildOverallRows(baseline, current) {
+  const metrics = [
+    ["cpuPerTick", baseline.cpuPerTick, current.cpuPerTick],
+    ["cpuPerRoom", baseline.cpuPerRoom, current.cpuPerRoom],
+    ["cpuPerCreep", baseline.cpuPerCreep, current.cpuPerCreep],
+    ["bucketMean", baseline.bucketMean, current.bucketMean]
+  ];
+  return metrics.map(([entryName, before, after]) => ({ name: entryName, before, after, diff: after - before })).sort((a, b) => Math.abs(b.diff) - Math.abs(a.diff));
+}
+function buildComparisonRows(before, after) {
+  const afterByName = new Map(after.map((entry) => [entry.name, entry.cpuPerTick]));
+  const names = /* @__PURE__ */ new Set([...Object.keys(before != null ? before : {}), ...afterByName.keys()]);
+  const rows = [...names].map((entryName) => {
+    const beforeValue = before == null ? void 0 : before[entryName];
+    const afterValue = afterByName.get(entryName);
+    const hasBefore = beforeValue !== void 0;
+    const hasAfter = afterValue !== void 0;
+    const beforeNumber = beforeValue != null ? beforeValue : 0;
+    const afterNumber = afterValue != null ? afterValue : 0;
+    const row = {
+      name: entryName,
+      before: beforeNumber,
+      after: afterNumber,
+      diff: afterNumber - beforeNumber
+    };
+    if (hasBefore && !hasAfter) row.status = "weggefallen";
+    if (!hasBefore && hasAfter) row.status = "neu";
+    return row;
+  });
+  return rows.sort((a, b) => Math.abs(b.diff) - Math.abs(a.diff));
+}
+function formatComparisonRow(row, widths) {
+  var _a;
+  const note = (_a = row.status) != null ? _a : "";
+  return [
+    row.name.padEnd(widths.name),
+    fmt2(row.before).padStart(widths.before),
+    fmt2(row.after).padStart(widths.after),
+    fmtSigned(row.diff).padStart(widths.diff),
+    note.padEnd(widths.note)
+  ].join("  ").trimEnd();
+}
+function formatComparisonBlock(title, rows) {
+  if (rows.length === 0) return "";
+  const nameWidth = Math.max("Name".length, ...rows.map((row) => row.name.length));
+  const beforeWidth = Math.max("Vorher".length, ...rows.map((row) => fmt2(row.before).length));
+  const afterWidth = Math.max("Jetzt".length, ...rows.map((row) => fmt2(row.after).length));
+  const diffWidth = Math.max("Diff".length, ...rows.map((row) => fmtSigned(row.diff).length));
+  const noteWidth = Math.max("Hinweis".length, ...rows.map((row) => {
+    var _a;
+    return ((_a = row.status) != null ? _a : "").length;
+  }));
+  const widths = {
+    name: nameWidth,
+    before: beforeWidth,
+    after: afterWidth,
+    diff: diffWidth,
+    note: noteWidth
+  };
+  const header = [
+    "Name".padEnd(widths.name),
+    "Vorher".padStart(widths.before),
+    "Jetzt".padStart(widths.after),
+    "Diff".padStart(widths.diff),
+    "Hinweis".padEnd(widths.note)
+  ].join("  ").trimEnd();
+  const separator = "-".repeat(header.length);
+  const dataRows = rows.map((row) => formatComparisonRow(row, widths));
+  return [`== ${title} ==`, header, separator, ...dataRows].join("\n");
+}
+function formatComparison(name, baseline, current) {
+  const header = `Vergleich "${name}" (Grundlinie Tick ${fmt2(baseline.tick, 0)}, ${fmt2(baseline.ticks, 0)} Ticks) vs. jetzt (${fmt2(current.ticks, 0)} Ticks)`;
+  const blocks = [header, formatComparisonBlock("Gesamt", buildOverallRows(baseline, current))];
+  const baselineHasDetail = baseline.sections !== void 0 || baseline.roles !== void 0;
+  const currentHasDetail = current.mode === "full";
+  if (!baselineHasDetail) {
+    blocks.push(
+      "Die Grundlinie kennt nur Gesamtzahlen (Zustand light bei ihrer Aufnahme). F\xFCr einen Vergleich je Abschnitt und Rolle ist eine neue Grundlinie im Zustand full n\xF6tig."
+    );
+  } else if (!currentHasDetail) {
+    blocks.push(
+      "Das laufende Fenster kennt keine Abschnitte und Rollen (Zustand light). F\xFCr den Vergleich mit prof.on() messen."
+    );
+  } else {
+    blocks.push(formatComparisonBlock("Abschnitte", buildComparisonRows(baseline.sections, current.sections)));
+    blocks.push(formatComparisonBlock("Rollen", buildComparisonRows(baseline.roles, current.roles)));
+  }
+  return blocks.filter((block) => block.length > 0).join("\n\n");
+}
 
 // src/profiler/stats.ts
 var statsMemory = Memory;
@@ -3142,24 +4242,24 @@ function set(target, key, value) {
   if (!isWritable(value)) return;
   target[key] = value;
 }
-function writeStats(metrics2) {
+function writeStats(metrics) {
   const stats = {};
-  set(stats, "cpu.getUsed", metrics2.cpuPerTick);
-  set(stats, "cpu.limit", metrics2.limit);
-  set(stats, "cpu.tickLimit", metrics2.tickLimit);
-  set(stats, "cpu.bucket", metrics2.bucketMean);
-  set(stats, "profiler.ticks", metrics2.ticks);
-  set(stats, "profiler.cpuPerTick", metrics2.cpuPerTick);
-  set(stats, "profiler.cpuMaxTick", metrics2.cpuMaxTick);
-  set(stats, "profiler.cpuPerRoom", metrics2.cpuPerRoom);
-  set(stats, "profiler.cpuPerCreep", metrics2.cpuPerCreep);
-  set(stats, "profiler.rooms", metrics2.rooms);
-  set(stats, "profiler.creeps", metrics2.creeps);
-  set(stats, "profiler.bucketMin", metrics2.bucketMin);
-  for (const section of metrics2.sections) {
+  set(stats, "cpu.getUsed", metrics.cpuPerTick);
+  set(stats, "cpu.limit", metrics.limit);
+  set(stats, "cpu.tickLimit", metrics.tickLimit);
+  set(stats, "cpu.bucket", metrics.bucketMean);
+  set(stats, "profiler.ticks", metrics.ticks);
+  set(stats, "profiler.cpuPerTick", metrics.cpuPerTick);
+  set(stats, "profiler.cpuMaxTick", metrics.cpuMaxTick);
+  set(stats, "profiler.cpuPerRoom", metrics.cpuPerRoom);
+  set(stats, "profiler.cpuPerCreep", metrics.cpuPerCreep);
+  set(stats, "profiler.rooms", metrics.rooms);
+  set(stats, "profiler.creeps", metrics.creeps);
+  set(stats, "profiler.bucketMin", metrics.bucketMin);
+  for (const section of metrics.sections) {
     set(stats, `profiler.section.${section.name}.cpuPerTick`, section.cpuPerTick);
   }
-  for (const role12 of metrics2.roles) {
+  for (const role12 of metrics.roles) {
     set(stats, `profiler.role.${role12.name}.cpuPerTick`, role12.cpuPerTick);
   }
   statsMemory.stats = stats;
@@ -3169,132 +4269,243 @@ function clearStats() {
 }
 
 // src/profiler/index.ts
-var begin2 = begin;
-var end2 = end;
-var lastMode = "off";
-function currentMetrics() {
-  return metrics(snapshot());
-}
-function switchMode(mode) {
-  if (getMode() === mode) return;
-  setMode(mode);
-  lastMode = mode;
-  reset();
-}
-function tick() {
-  const mode = syncFromMemory();
-  if (expireDetail()) {
-    console.log(`[prof] Detailmessung beendet.
-${formatDetailReport(currentMetrics())}`);
-    reset();
-    lastMode = getMode();
-    beginTick();
-    return;
+function toCpuMap(entries) {
+  const map = {};
+  for (const entry of entries) {
+    map[entry.name] = Math.round(entry.cpuPerTick * 100) / 100;
   }
-  if (mode !== lastMode) {
-    lastMode = mode;
-    reset();
-  }
-  beginTick();
+  return map;
 }
-function endTick2(creepCount) {
-  endTick(creepCount);
-  if (!isDue()) return;
-  const metrics2 = currentMetrics();
-  console.log(formatWindowLine(metrics2));
-  writeStats(metrics2);
-  reset();
-}
-function toBaseline(metrics2) {
-  return {
+function toBaseline(metrics) {
+  const baseline = {
     tick: Game.time,
-    ticks: metrics2.ticks,
-    mode: metrics2.mode,
-    cpuPerTick: metrics2.cpuPerTick,
-    cpuPerRoom: metrics2.cpuPerRoom,
-    cpuPerCreep: metrics2.cpuPerCreep,
-    bucketMean: metrics2.bucketMean,
-    rooms: metrics2.rooms,
-    creeps: metrics2.creeps
+    ticks: metrics.ticks,
+    mode: metrics.mode,
+    cpuPerTick: metrics.cpuPerTick,
+    cpuPerRoom: metrics.cpuPerRoom,
+    cpuPerCreep: metrics.cpuPerCreep,
+    bucketMean: metrics.bucketMean,
+    rooms: metrics.rooms,
+    creeps: metrics.creeps
   };
+  if (metrics.mode === "full") {
+    baseline.sections = toCpuMap(metrics.sections);
+    baseline.roles = toCpuMap(metrics.roles);
+  }
+  return baseline;
 }
-var handle = {
+var Profiler = class {
+  constructor(state2, measurement2, flagSwitch2) {
+    this.state = state2;
+    this.measurement = measurement2;
+    this.flagSwitch = flagSwitch2;
+    /**
+     * Zustand des letzten Ticks. Wechselt der Zustand, wird das laufende Fenster
+     * verworfen — sonst mischte ein Fenster Ticks aus `light` und `full` und die
+     * abgeleiteten Zahlen wären nicht vergleichbar.
+     */
+    __publicField(this, "lastMode", "off");
+  }
+  /**
+   * Tickgrenze am Anfang von `loop()`. Spiegelt den über Konsole oder Flagge
+   * gesetzten Zustand aus `Memory` und beendet eine abgelaufene Detailmessung.
+   */
+  tick() {
+    this.state.syncFromMemory();
+    if (this.state.mode !== "off") {
+      requestSegment();
+    }
+    this.applyFlagRequest();
+    this.drawFlagLegend();
+    if (this.state.expireDetail()) {
+      console.log(
+        `[prof] Detailmessung beendet.
+${formatDetailReport(this.measurement.metrics())}`
+      );
+      this.lastMode = this.state.mode;
+      this.flagSwitch.acknowledge(this.lastMode);
+      this.measurement.reset();
+      this.measurement.beginTick();
+      return;
+    }
+    if (this.state.mode !== this.lastMode) {
+      this.lastMode = this.state.mode;
+      this.measurement.reset();
+    }
+    this.measurement.beginTick();
+  }
+  /** Tickende. Verbucht den Tick und gibt das Fenster aus, sobald es voll ist. */
+  endTick(creepCount) {
+    this.measurement.endTick(creepCount);
+    if (!this.measurement.isDue) return;
+    const metrics = this.measurement.metrics();
+    console.log(formatWindowLine(metrics));
+    writeStats(metrics);
+    append(metrics);
+    this.measurement.reset();
+  }
   on() {
-    switchMode("full");
+    this.switchMode("full");
     return "Profiler: full \u2014 Gesamttick, Abschnitte und Rollen. Fensterzeile alle 100 Ticks.";
-  },
+  }
   light() {
-    switchMode("light");
+    this.switchMode("light");
     return "Profiler: light \u2014 nur Gesamttick, Bucket, CPU pro Raum und pro Creep.";
-  },
+  }
   off() {
-    switchMode("off");
+    this.switchMode("off");
     clearStats();
     return "Profiler: aus. Es l\xE4uft kein Game.cpu.getUsed() mehr.";
-  },
+  }
   status() {
-    const mode = getMode();
-    const metrics2 = currentMetrics();
-    const detail = detailActive() ? ` | Detailmessung noch ${detailRemaining()} Ticks` : "";
-    return `Profiler: ${mode} | Fenster ${metrics2.ticks}/100 Ticks${detail}`;
-  },
+    const detail = this.state.detailActive() ? ` | Detailmessung noch ${this.state.detailRemaining()} Ticks` : "";
+    const flag = this.flagSwitch.describe();
+    const switchState = flag !== null ? ` | ${flag}` : "";
+    return `Profiler: ${this.state.mode} | Fenster ${this.measurement.snapshot.ticks}/100 Ticks${detail}${switchState}`;
+  }
   report() {
-    const metrics2 = currentMetrics();
-    if (metrics2.ticks === 0) {
+    const metrics = this.measurement.metrics();
+    if (metrics.ticks === 0) {
       return "Kein gemessener Tick im Fenster. Mit prof.light() oder prof.on() einschalten.";
     }
-    const line = formatWindowLine(metrics2);
-    if (metrics2.sections.length === 0 && metrics2.roles.length === 0) {
+    const line = formatWindowLine(metrics);
+    if (metrics.sections.length === 0 && metrics.roles.length === 0) {
       return line;
     }
     return `${line}
-${formatDetailReport(metrics2)}`;
-  },
+${formatDetailReport(metrics)}`;
+  }
   reset() {
-    reset();
+    this.measurement.reset();
     return "Fenster verworfen, Messung beginnt neu.";
-  },
+  }
   detail(ticks = DEFAULT_DETAIL_TICKS) {
     if (!Number.isFinite(ticks) || ticks < 1) {
       return `Ung\xFCltige Tickzahl. Beispiel: prof.detail(${DEFAULT_DETAIL_TICKS})`;
     }
-    const returnTo = getMode();
-    startDetail(Math.floor(ticks));
-    lastMode = "full";
-    reset();
+    const returnTo = this.state.mode;
+    this.state.startDetail(Math.floor(ticks));
+    this.lastMode = "full";
+    this.measurement.reset();
+    this.flagSwitch.acknowledge("detail");
     return `Detailmessung f\xFCr ${Math.floor(ticks)} Ticks gestartet, danach zur\xFCck auf ${returnTo}.`;
-  },
+  }
   baseline(name) {
     if (!name) {
       return 'Name fehlt. Beispiel: prof.baseline("vor-plan-02")';
     }
-    const metrics2 = currentMetrics();
-    if (metrics2.ticks === 0) {
+    const metrics = this.measurement.metrics();
+    if (metrics.ticks === 0) {
       return "Kein gemessener Tick im Fenster \u2014 es gibt nichts festzuhalten.";
     }
-    if (metrics2.ticks < 1e3) {
-      saveBaseline(name, toBaseline(metrics2));
-      return `Grundlinie "${name}" gespeichert \u2014 Achtung, nur ${metrics2.ticks} Ticks. F\xFCr einen belastbaren Vergleich mindestens 1000 Ticks messen.`;
+    this.state.saveBaseline(name, toBaseline(metrics));
+    if (metrics.ticks < 1e3) {
+      return `Grundlinie "${name}" gespeichert \u2014 Achtung, nur ${metrics.ticks} Ticks. F\xFCr einen belastbaren Vergleich mindestens 1000 Ticks messen.`;
     }
-    saveBaseline(name, toBaseline(metrics2));
-    return `Grundlinie "${name}" \xFCber ${metrics2.ticks} Ticks gespeichert.`;
-  },
+    return `Grundlinie "${name}" \xFCber ${metrics.ticks} Ticks gespeichert.`;
+  }
   baselines() {
-    const metrics2 = currentMetrics();
-    return formatBaselines(readBaselines(), metrics2.ticks > 0 ? metrics2 : null);
+    const metrics = this.measurement.metrics();
+    return formatBaselines(this.state.readBaselines(), metrics.ticks > 0 ? metrics : null);
+  }
+  compare(name) {
+    if (!name) {
+      return 'Name fehlt. Beispiel: prof.compare("vor-linknetz")';
+    }
+    const baseline = this.state.readBaselines()[name];
+    if (!baseline) {
+      return `Keine Grundlinie "${name}". Vorhandene zeigt prof.baselines().`;
+    }
+    const metrics = this.measurement.metrics();
+    if (metrics.ticks === 0) {
+      return "Kein gemessener Tick im Fenster \u2014 es gibt nichts zu vergleichen.";
+    }
+    return formatComparison(name, baseline, metrics);
+  }
+  mail() {
+    const report = this.report();
+    return mailReport(`[prof] Bericht Tick ${Game.time}`, report);
+  }
+  history() {
+    if (!isAvailable()) {
+      requestSegment();
+      return "Verlaufssegment angefordert. prof.history() im n\xE4chsten Tick noch einmal aufrufen.";
+    }
+    return format(read());
+  }
+  /**
+   * Wechselt den Zustand und beginnt ein frisches Fenster.
+   *
+   * Ein ausdrücklicher Zustandswechsel beendet außerdem eine laufende
+   * Detailmessung: wer `off`, `light` oder `full` verlangt, will nicht, dass ihm
+   * Ticks später die Selbstabschaltung den alten Zustand zurückholt.
+   */
+  switchMode(mode) {
+    if (this.state.detailActive()) {
+      this.state.cancelDetail();
+      console.log(
+        "[prof] Laufende Detailmessung abgebrochen, kein Abschlussbericht \u2014 prof.report() zeigt das Fenster."
+      );
+    }
+    if (this.state.mode !== mode) {
+      this.state.mode = mode;
+      this.lastMode = mode;
+      this.measurement.reset();
+    }
+    this.flagSwitch.acknowledge(mode);
+  }
+  /** Führt aus, was die Schalterflagge verlangt — nur bei einer Farbänderung. */
+  applyFlagRequest() {
+    const request = this.flagSwitch.readRequest();
+    if (request === null) return;
+    if (request === "detail") {
+      console.log(`[prof] Flagge: ${this.detail()}`);
+      return;
+    }
+    const message = request === "off" ? this.off() : request === "light" ? this.light() : this.on();
+    console.log(`[prof] Flagge: ${message}`);
+  }
+  /**
+   * Zeichnet die Legende neben die Schalterflagge.
+   *
+   * Bewusst aus dem Rohzustand statt aus `metrics()`: die Kennzahlen sortieren
+   * vier Ranglisten, und das jeden Tick nur für eine Textzeile zu tun wäre genau
+   * die Art Kosten, die der Profiler aufspüren soll.
+   */
+  drawFlagLegend() {
+    const window = this.measurement.snapshot;
+    this.flagSwitch.draw({
+      mode: this.state.mode,
+      ticks: window.ticks,
+      cpuPerTick: window.ticks > 0 ? window.cpuTotal / window.ticks : 0,
+      detailRemaining: this.state.detailRemaining()
+    });
   }
 };
-bot.prof = handle;
+var profiler = new Profiler(state, measurement, flagSwitch);
+bot.prof = profiler;
+function tick() {
+  profiler.tick();
+}
+function endTick(creepCount) {
+  profiler.endTick(creepCount);
+}
+function begin(section) {
+  measurement.begin(section);
+}
+function end(section) {
+  measurement.end(section);
+}
 
 // src/controller/timing.ts
 var botMemory3 = Memory;
 function controll() {
   const tick2 = Game.time;
   init();
-  begin2(SECTION.tower);
+  begin(SECTION.tower);
   tower();
-  end2(SECTION.tower);
-  begin2(SECTION.terminal);
+  end(SECTION.tower);
+  begin(SECTION.terminal);
   const terminalIds = botMemory3.terminals;
   if (terminalIds && terminalIds.length > 0) {
     const terminalId = terminalIds[Game.time % terminalIds.length];
@@ -3311,30 +4522,36 @@ function controll() {
       }
     }
   }
-  end2(SECTION.terminal);
+  end(SECTION.terminal);
+  begin(SECTION.links);
+  if (tick2 % 1e3 === 0) {
+    discoverAll();
+  }
+  sendAll();
+  end(SECTION.links);
   if (tick2 % 3 === 0 && Game.cpu.bucket === 1e4) {
-    begin2(SECTION.pixel);
+    begin(SECTION.pixel);
     Game.cpu.generatePixel();
-    end2(SECTION.pixel);
+    end(SECTION.pixel);
   }
   if (tick2 % 5 === 0) {
-    begin2(SECTION.spawn);
+    begin(SECTION.spawn);
     spawn2();
-    end2(SECTION.spawn);
+    end(SECTION.spawn);
   }
   if (tick2 % 7 === 0) {
-    begin2(SECTION.defence);
+    begin(SECTION.defence);
     check();
-    end2(SECTION.defence);
+    end(SECTION.defence);
   }
   if (tick2 % 11 === 0) {
-    begin2(SECTION.status);
+    begin(SECTION.status);
     writeStatus();
-    end2(SECTION.status);
+    end(SECTION.status);
   }
-  begin2(SECTION.daily);
+  begin(SECTION.daily);
   daylie();
-  end2(SECTION.daily);
+  end(SECTION.daily);
 }
 function daylie() {
   const dayTicks = 86400 / 3;
@@ -3355,7 +4572,14 @@ function daylie() {
       findAndSaveTerminals();
       return;
     case 5:
+      begin(SECTION.roads);
       rebuildRoads();
+      end(SECTION.roads);
+      return;
+    case 6:
+      begin(SECTION.linkplan);
+      planReceiverLinks();
+      end(SECTION.linkplan);
       return;
   }
 }
@@ -3363,29 +4587,27 @@ function daylie() {
 // src/prototypes/creep-checks.ts
 function installCreepChecks() {
   Creep.prototype.checkHarvest = function(action, action2) {
+    const pathCache = new PathMemory(this.memory);
     if (!this.memory.harvest && this.store.getUsedCapacity() === 0) {
       if (typeof action == "function")
         action.call(this);
       this.memory.harvest = true;
       this.memory.fromId = null;
       this.say("\u{1F6D2}");
-      delete this.memory.path;
-      delete this.memory.pathTarget;
+      pathCache.forgetPath();
     }
     if (this.memory.harvest && this.store.getFreeCapacity() === 0) {
       if (typeof action2 == "function")
         action2.call(this);
       this.memory.harvest = false;
       delete this.memory.useRoomSource;
-      delete this.memory.path;
-      delete this.memory.pathTarget;
+      pathCache.forgetPath();
       delete this.memory.useContainer;
     }
     if (this.memory.harvest && this.store.getUsedCapacity() > 0 && this.memory.mineral !== "energy") {
       this.memory.harvest = false;
       delete this.memory.useRoomSource;
-      delete this.memory.path;
-      delete this.memory.pathTarget;
+      pathCache.forgetPath();
       delete this.memory.useContainer;
     }
   };
@@ -3619,7 +4841,7 @@ var measuredJobs = wrapRoles(jobs);
 function loop() {
   var _a, _b, _c;
   tick();
-  begin2(SECTION.rooms);
+  begin(SECTION.rooms);
   for (const name in bot.room) {
     const room = Game.rooms[name];
     try {
@@ -3646,8 +4868,8 @@ function loop() {
       );
     }
   }
-  end2(SECTION.rooms);
-  begin2(SECTION.creeps);
+  end(SECTION.rooms);
+  begin(SECTION.creeps);
   let processedCreeps = 0;
   for (const name in Memory.creeps) {
     const creep = Game.creeps[name];
@@ -3684,8 +4906,8 @@ ${(_b = error == null ? void 0 : error.stack) != null ? _b : String(error)}`
       );
     }
   }
-  end2(SECTION.creeps);
-  begin2(SECTION.timing);
+  end(SECTION.creeps);
+  begin(SECTION.timing);
   try {
     controll();
   } catch (error) {
@@ -3695,8 +4917,8 @@ ${(_b = error == null ? void 0 : error.stack) != null ? _b : String(error)}`
 ${(_c = error == null ? void 0 : error.stack) != null ? _c : String(error)}`
     );
   }
-  end2(SECTION.timing);
-  endTick2(processedCreeps);
+  end(SECTION.timing);
+  endTick(processedCreeps);
 }
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {

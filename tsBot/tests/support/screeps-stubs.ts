@@ -49,6 +49,7 @@ export const SCREEPS_CONSTANTS: Record<string, unknown> = {
   ERR_INVALID_ARGS: -10,
   ERR_TIRED: -11,
   ERR_NO_BODYPART: -12,
+  ERR_RCL_NOT_ENOUGH: -14,
 
   // Suchtypen. Die Werte sind die der API; für die Stubs zählt allein, dass sie
   // eindeutig sind — `find` antwortet hier aus einer Tabelle.
@@ -62,6 +63,7 @@ export const SCREEPS_CONSTANTS: Record<string, unknown> = {
   FIND_FLAGS: 110,
   FIND_CONSTRUCTION_SITES: 111,
   FIND_MY_SPAWNS: 112,
+  FIND_MINERALS: 116,
   FIND_NUKES: 117,
   FIND_TOMBSTONES: 118,
   FIND_RUINS: 123,
@@ -129,7 +131,25 @@ export const SCREEPS_CONSTANTS: Record<string, unknown> = {
   },
   MAX_CREEP_SIZE: 50,
   LINK_CAPACITY: 800,
+  LINK_LOSS_RATIO: 0.03,
   CARRY_CAPACITY: 50,
+
+  TERRAIN_MASK_WALL: 1,
+  TERRAIN_MASK_SWAMP: 2,
+
+  LOOK_STRUCTURES: "structure",
+  LOOK_CONSTRUCTION_SITES: "constructionSite",
+  LOOK_TERRAIN: "terrain",
+
+  /**
+   * Wie viele Bauwerke je RCL erlaubt sind — hier nur die Zeile, die der
+   * Linkplaner liest. Die Werte stehen in
+   * `docs/knowledge/mechanics/structures-rcl.md`: Links gibt es ab RCL5,
+   * dann 2, 3, 4 und ab RCL8 sechs Stück.
+   */
+  CONTROLLER_STRUCTURES: {
+    link: { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 2, 6: 3, 7: 4, 8: 6 },
+  },
 
   ...Object.fromEntries(
     Object.entries(COLOR).map(([name, value]) => [`COLOR_${name.toUpperCase()}`, value]),
@@ -165,6 +185,46 @@ export type SetColorCall = [number, number | undefined];
 /** Alle `setColor`-Aufrufe seit dem letzten `resetWorld()`. */
 export const setColorCalls: SetColorCall[] = [];
 
+/** Eine über `Game.notify` verschickte Meldung. */
+export interface Notification {
+  message: string;
+  groupInterval: number | undefined;
+}
+
+/** Alle `Game.notify`-Aufrufe seit dem letzten `resetWorld()`. */
+export const notifications: Notification[] = [];
+
+/**
+ * Zustand von `RawMemory`. `segments` enthält nur die **aktiven** Segmente — im
+ * Spiel ist ein Segment erst im Tick nach `setActiveSegments` lesbar, und ein
+ * Schreibzugriff auf ein inaktives Segment verpufft. `stored` ist der
+ * dauerhafte Inhalt dahinter, den ein Test setzen und prüfen kann.
+ */
+export const rawMemory = {
+  stored: {} as Record<number, string>,
+  activeIds: [] as number[],
+  setActiveSegmentsCalls: [] as number[][],
+};
+
+/**
+ * Stellt einen Tickwechsel für die Segmente nach: was in einem aktiven Segment
+ * steht, wird dauerhaft übernommen, danach sind die zuletzt angeforderten
+ * Segmente lesbar. Genau in dieser Reihenfolge, sonst ginge ein Schreibzugriff
+ * aus dem laufenden Tick verloren.
+ */
+export function advanceSegmentTick(): void {
+  const segments = anyGlobal.RawMemory.segments as Record<number, string>;
+
+  for (const key of Object.keys(segments)) {
+    rawMemory.stored[Number(key)] = segments[Number(key)]!;
+    delete segments[Number(key)];
+  }
+
+  for (const id of rawMemory.activeIds) {
+    segments[id] = rawMemory.stored[id] ?? "";
+  }
+}
+
 export interface FlagStub {
   name: string;
   color: number;
@@ -183,6 +243,14 @@ export const cpu = {
   limit: 20,
   tickLimit: 500,
   getUsedCalls: 0,
+  /**
+   * Wie oft `Game.cpu.generatePixel()` gerufen wurde.
+   *
+   * Ohne diesen Stub wirft `controller/timing.ts` bei `Game.time % 3 === 0` und
+   * vollem Bucket — ein Test müsste seinen Tick sonst um die Pixelerzeugung
+   * herumlegen, statt sie zu prüfen.
+   */
+  generatePixelCalls: 0,
 };
 
 let installed = false;
@@ -239,8 +307,22 @@ export function installGlobals(): void {
       get tickLimit(): number {
         return cpu.tickLimit;
       },
+      generatePixel(): number {
+        cpu.generatePixelCalls += 1;
+        return anyGlobal.OK;
+      },
     },
-    notify: () => undefined,
+    notify: (message: string, groupInterval?: number) =>
+      void notifications.push({ message, groupInterval }),
+  };
+
+  anyGlobal.RawMemory = {
+    segments: {} as Record<number, string>,
+    setActiveSegments(ids: number[]): void {
+      // Spätere Aufrufe überschreiben frühere — wie in der API.
+      rawMemory.activeIds = [...ids];
+      rawMemory.setActiveSegmentsCalls.push([...ids]);
+    },
   };
 }
 
@@ -248,6 +330,11 @@ export function installGlobals(): void {
 export function resetWorld(): void {
   for (const key of Object.keys(anyGlobal.Memory)) delete anyGlobal.Memory[key];
   for (const key of Object.keys(anyGlobal.Game.flags)) delete anyGlobal.Game.flags[key];
+  // Räume und Creeps gehören genauso geleert wie die Flaggen: ein Raum aus dem
+  // vorigen Test bleibt sonst sichtbar, und ein Test für „keine Sicht auf den
+  // Raum" prüft dann das Gegenteil dessen, was er behauptet.
+  for (const key of Object.keys(anyGlobal.Game.rooms)) delete anyGlobal.Game.rooms[key];
+  for (const key of Object.keys(anyGlobal.Game.creeps)) delete anyGlobal.Game.creeps[key];
   for (const key of Object.keys(anyGlobal.room)) delete anyGlobal.room[key];
   anyGlobal.Game.time = 1000;
   drawnCircles.length = 0;
@@ -256,8 +343,16 @@ export function resetWorld(): void {
   cpu.limit = 20;
   cpu.tickLimit = 500;
   cpu.getUsedCalls = 0;
+  cpu.generatePixelCalls = 0;
   drawnTexts.length = 0;
   setColorCalls.length = 0;
+  notifications.length = 0;
+
+  const segments = anyGlobal.RawMemory.segments as Record<number, string>;
+  for (const key of Object.keys(segments)) delete segments[Number(key)];
+  for (const key of Object.keys(rawMemory.stored)) delete rawMemory.stored[Number(key)];
+  rawMemory.activeIds.length = 0;
+  rawMemory.setActiveSegmentsCalls.length = 0;
 }
 
 /** Trägt Räume in `global.room` ein, als hätte `config.ts` sie definiert. */
