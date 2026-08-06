@@ -1,10 +1,16 @@
 # Plan 05: CPU-Verteilung über den Tick
 
 Status: **Schritte 1 bis 5 gebaut** (2026-08-06, siehe `docs/aenderungen.md`),
-Wirkung noch nicht gemessen. Befund 6
-(`range` an Pfadsuchen) ebenfalls offen — er braucht eine Einzelprüfung je
-Aufrufstelle, ob der Creep ein Feld früher noch in Reichweite seines
-`transfer`/`withdraw` steht.
+Wirkung noch nicht gemessen. **Befund 6 teilweise gebaut**: `moveByMemory` hat
+jetzt einen `range`-Parameter, und die neun Aufrufstellen mit Aktionsreichweite
+1 (vier Ketten in `creep/target.ts`, `TransportToHomeContainer`, beide Zweige
+von `upgradeController`, zwei Aufrufe in `roles/claimer.ts`) übergeben `1`
+(Commits `d7e3d6f`, `a84ebb1`, `b6e09d0`, `9d48874`, `a5c32b3`, `474dade`).
+**Offen bleibt `range: 3`** für `build`, `repair` und `upgradeController` — das
+braucht zuerst ein `PathMemory`, das die Reichweite mitschlüsselt, weil der
+Cache heute nur auf die Zielposition schlüsselt (`path-memory.ts:78-87`). Das
+ist die Runde, die `wally` billiger macht (Mauern sind nicht betretbar, dort
+liegt der größte Einzelgewinn).
 
 Nachtrag zu Schritt 3: Plan nennt „Türme **und Notfall-Spawn**". Umgesetzt sind
 nur die Türme. Einen eigenen Einstieg für den Notfallspawn gibt es nicht, und
@@ -123,6 +129,14 @@ Stelle nur umsortiert und **nicht** geändert, weil ein `range` das Zielverhalte
 ändert: der Creep bleibt dann ein Feld früher stehen, und ob jede aufrufende
 Stelle damit noch in Reichweite ihres `transfer`/`withdraw` ist, muss einzeln
 geprüft werden. Gehört gemessen (Plan 01) und dann gezielt geändert.
+
+**Beantwortet am 2026-08-06:** Geprüft und `range: 1` gezielt an neun Stellen
+ergänzt — allen Ketten, deren Aktion selbst Reichweite 1 hat (`transfer`,
+`withdraw`, `upgradeController`, `signController`). Am Verhalten ändert sich
+dort nichts: der Creep ruft seine Aktion ohnehin jeden Tick neu auf, und
+`moveByMemory` wird nicht mehr gerufen, sobald sie auf Reichweite 1 gelingt —
+der letzte Schritt wurde also auch vorher nie gegangen. `range: 3` für `build`,
+`repair` und `upgradeController` bleibt offen, siehe Statuskopf oben.
 
 ## Vorgehen
 

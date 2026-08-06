@@ -1,9 +1,11 @@
 # Plan 04: RCL8-Upgrader und das GCL-Nadelöhr
 
-Status: **Punkt 1 und 2 gebaut** (2026-08-06, siehe `docs/aenderungen.md`),
-Wirkung noch nicht gemessen. **Punkt 3 offen** — die Tickdrossel bei RCL 6 und 7
-ist unangetastet, sie kostet dort echten RCL-Fortschritt und braucht eine eigene
-Messung.
+Status: **Alle drei Punkte gebaut** (2026-08-06, siehe `docs/aenderungen.md`),
+Wirkung noch nicht gemessen. **Punkt 3 ist entschieden**: die Tickdrossel
+(`sparmodus`) entfällt unterhalb von RCL 8 vollständig, der Upgrader arbeitet
+dort ab jetzt in jedem Tick (Commit `366ae98`). Zu messen bleibt
+`controller.progress` je 1000 Ticks in den Räumen unter RCL 8, dazu
+`storage.store.energy` als Gegenprobe.
 
 Die offene Frage unten wurde nach dem Vorschlag dieses Plans entschieden: 250 000
 bleibt die Spawnschwelle, 100 000 ist die Arbeitsuntergrenze
@@ -77,6 +79,16 @@ Bei über 250 000 Energie im Storage — also klarem Überschuss — tröpfelt e
 3. **Sparmodus bei RCL6 und RCL7 überprüfen.** Dort greift dieselbe Drossel mit
    Faktor 1/6 bzw. 1/7, und dort kostet sie echten RCL-Fortschritt, nicht nur
    GCL. Das ist ein eigener Schritt mit eigener Messung.
+
+   **Entschieden am 2026-08-06 (Commit `366ae98`):** die Tickdrossel entfällt
+   unterhalb von RCL 8 vollständig, statt sie nur zu überprüfen. Der Upgrader
+   arbeitet unter RCL 8 jetzt in jedem Tick; `BODIES.upgrader` (zwei WORK je
+   Satz, bis zu acht Sätze) liefert damit bis 16 WORK durchgehend bei RCL 7 und
+   rund 10 bei RCL 6, statt zuvor ~2,3 beziehungsweise ~1,7 Energie je Tick im
+   Mittel — Faktor 6 bis 7. Bewusste Kehrseite: unter RCL 8 gibt es dabei keine
+   Vorratsschwelle, der Upgrader zieht zuerst am Storage. Details in
+   `docs/aenderungen.md`, Runde „Der Upgrader drosselt nur bei voller
+   Ausbaustufe".
 
 ## Risiko
 

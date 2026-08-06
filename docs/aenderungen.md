@@ -950,3 +950,168 @@ Aufräumrunde gehören:
    Regel wie beim Repairer-Creep". Das stimmt nicht: `repairer.ts` sortiert nach
    **absolutem** Schaden, `defence.ts` nach **anteiligem**. Nur der Kommentar
    wurde korrigiert, der Code blieb.
+
+## Runde 2026-08-06: Pfadsuche mit Reichweite (Plan 05, Befund 6)
+
+Anlass ist der in der Runde vom 2026-08-04 offen gelassene Befund 6 aus
+[Plan 05](plans/05-cpu-verteilung.md): `moveByMemory` suchte bisher ohne
+`range`. Für nicht betretbare Ziele — Storage, Link, Terminal, Spawn,
+Extension, Tower und Lab — sucht `findPathTo` dort ein Feld, das kein Creep je
+erreicht, erschöpft ihre Ops mit der aussichtslosen Restsuche und liefert am
+Ende den Weg zum nächstgelegenen erreichbaren Feld. Die Wissensbasis nennt das
+als Anti-Pattern (`docs/knowledge/efficiency/cpu-pathfinding.md`, Zeilen 53 und
+140).
+
+| Was | Warum | Wirkung |
+| --- | --- | --- |
+| `moveByMemory` (`creep/goto.ts`) nimmt einen optionalen dritten Parameter `range` (Vorgabe `0`) und reicht ihn an **beide** `findPathTo`-Aufrufe durch, auch den im `isStuck`-Zweig. | Ein einziger Umschalter statt zwei Codepfaden — der Stau-Ausweichzweig sucht auf dieselbe Reichweite wie der reguläre. | Ohne übergebene Reichweite unverändert `range: 0`; kein bestehender Aufrufer, der nichts übergibt, ändert sich. |
+| Neun Aufrufstellen übergeben jetzt `1`: die vier Ketten in `creep/target.ts` (`collectFrom`, `transferTo`, `deliverTo`, `withdrawFrom`), `TransportToHomeContainer` in `creep/transport.ts`, beide Zweige von `upgradeController` in `creep/base.ts` (Bewegung zum Controller und Signieren) und die zwei Aufrufe in `roles/claimer.ts`. | Alle neun Ziele gehören zu einer Aktion mit Reichweite 1 (`transfer`, `withdraw`, `upgradeController`, `signController`) und sind dabei nicht betretbar. | Weniger Ops je Pfadsuche an diesen neun Stellen — die Kennzahl dafür ist CPU/Aufruf, nicht die Summe (siehe unten). |
+
+**Am Verhalten ändert sich nichts.** Alle neun Stellen sitzen im
+`ERR_NOT_IN_RANGE`-Zweig einer Aktion mit Reichweite 1, und der Creep ruft
+dieselbe Aktion in jedem folgenden Tick erneut auf. Sobald er auf Reichweite 1
+steht, liefert die Aktion `OK`, und `moveByMemory` wird für dieses Ziel gar
+nicht mehr aufgerufen — der letzte Schritt bis auf das Zielfeld selbst wurde
+also auch **vorher schon nie gegangen**. Der `range`-Parameter ändert nur, wie
+viele Ops die Pfadsuche verbraucht, nicht wo der Creep stehen bleibt.
+
+**Die harte Grenze des Umfangs:** `PathMemory.pathTo()`
+(`creep/path-memory.ts:78-87`) schlüsselt den gemerkten Weg nur auf die
+Zielposition, nicht auf die Reichweite. Liefe derselbe Creep dasselbe Ziel mit
+zwei verschiedenen Reichweiten an, überschrieben sich die gespeicherten Wege
+gegenseitig und lösten abwechselnd Neusuchen aus. Deshalb bekommt in dieser
+Runde **jede** Stelle `1`, keine `3` — obwohl `build`, `repair` und
+`upgradeController` fachlich schon auf Reichweite 3 gelingen. Beide Zweige von
+`upgradeController` laufen zudem im selben Tick auf dieselbe `controller.pos`;
+mit zwei unterschiedlichen Reichweiten hätten sie sich den Weg gegenseitig
+überschrieben.
+
+**Bewusst bei `range: 0` geblieben, und dauerhaft so:** `roles/linkkeeper.ts`
+und `roles/miner.ts`, weil beide die Ankunft mit `creep.pos.isEqualTo(...)`
+prüfen — der Creep muss das Feld tatsächlich betreten. Ebenso die drei Aufrufe
+in `goto.ts` selbst (Raummitte beim Raumwechsel, Flaggenfeld): beides
+betretbare Ziele.
+
+**Offen als eigener nächster Schritt:** `range: 3` für `build`, `repair` und
+`upgradeController`. Das braucht zuerst ein `PathMemory`, das die Reichweite
+mitschlüsselt — und genau das ist die Runde, die `wally` billiger macht, weil
+Mauern nicht betretbar sind und dort der größte Einzelgewinn liegt.
+
+**Erwartete Wirkung, messbar:** In `docs/profiler/detail_2_nachher.txt` — der
+letzten Messung vor dieser Änderung — steht `Debitor.doJob` mit **0,30 CPU je
+Aufruf** und 35 % Anteil an der Spitze der Methodenliste, und besteht fast nur
+aus diesen Ketten. Ebenso `Filler.doJob` (0,26) und `Claimer.doJob` (0,22). Zu
+prüfen bei der nächsten Messung ist die Kennzahl **CPU/Aufruf**, nicht die
+Summe — die hängt an der Creepzahl. `Miner.doJob` (0,08) sollte sich **nicht**
+ändern: der Miner läuft auf einen Standplatz und bleibt auf Reichweite 0.
+Ändert sich dort etwas, wurde eine Stelle erwischt, die nicht gemeint war.
+
+`tests/creep-goto.test.ts` deckt die neue Reichweite ab.
+
+**Commits:** `d7e3d6f`, `a84ebb1`, `b6e09d0`, `9d48874`, `a5c32b3`, `474dade`.
+
+## Runde 2026-08-06: Der Upgrader drosselt nur bei voller Ausbaustufe (Plan 04, Punkt 3)
+
+**Verhaltensänderung an der Energiewirtschaft, keine CPU-Änderung.** Damit ist
+Punkt 3 aus [Plan 04](plans/04-rcl8-upgrader-und-gcl.md) entschieden und
+gebaut.
+
+Bisher setzte `Upgrader.doJob` nach jedem erfolgreichen Upgrade
+`creep.memory.sparmodus = controller.level > 5`, und `_mayWork` ließ einen
+Creep mit gesetztem Flag nur in einem von `controller.level` Ticks arbeiten —
+bei RCL 6 also einem von sechs, bei RCL 7 einem von sieben. Jetzt wird unter
+RCL 8 **nicht** mehr gedrosselt; erst ab RCL 8 drosselt der Vorrat
+(`RCL8_WORK_RESERVE`, 100 000 Energie im Storage, beziehungsweise
+`DOWNGRADE_ALARM`, `ticksToDowngrade < 100 000`).
+
+Warum: Entscheidung des Betreibers. Plan 04 Punkt 3 stellte genau diese Frage
+und ließ sie offen — anders als bei RCL 8 kostet die Drossel bei RCL 6 und 7
+echten RCL-Fortschritt, nicht nur GCL.
+
+Der Umbau setzt in `_mayWork` an und **nicht** am Schreiben des Flags. Das ist
+Absicht und gehört dokumentiert: `sparmodus` steht im Creep-Memory des
+laufenden Spiels. Ein Creep, der zum Umstellungszeitpunkt lebt und
+`sparmodus: true` trägt, arbeitet ab dem nächsten Tick ungedrosselt weiter —
+kein Migrationsschritt, kein Sonderfall. Das Flag wird nirgends mehr gelesen
+und bewusst nicht gelöscht. Genau das sichert ein neuer Test in
+`tests/roles-upgrader.test.ts` ab.
+
+Erwartete Wirkung, mit Zahlen: `BODIES.upgrader` sind zwei WORK je Satz bei
+maximal acht Sätzen, also bis **16 WORK** bei RCL 7 und rund **10** bei RCL 6.
+Statt ~2,3 beziehungsweise ~1,7 Energie je Tick im Mittel (16 bzw. 10 WORK,
+gedrosselt auf ein Siebtel bzw. Sechstel der Ticks) werden daraus **16
+beziehungsweise 10 durchgehend** — Faktor 6 bis 7.
+
+Die Kehrseite, die ausdrücklich gewollt ist und **nicht** als Lücke gelesen
+werden darf: unter RCL 8 gibt es **keine** Vorratsschwelle, der Upgrader zieht
+dort zuerst am Storage. `RCL8_WORK_RESERVE` schützt nur Stufe 8. Eine Schwelle
+darunter wäre wieder ein Sparmodus unter voller Stufe und damit das Gegenteil
+der Entscheidung.
+
+Zu messen: `controller.progress` je 1000 Ticks in den Räumen unter RCL 8, und
+dort die Entwicklung von `storage.store.energy`. Kippt das Storage, ist die
+Nachrüstung einer Untergrenze eine eigene kleine Runde.
+
+**Commit:** `366ae98`.
+
+## Runde 2026-08-06: Aufräumflagge für aufgegebene Räume
+
+Anlass ist eine echte Beobachtung des Betreibers: Nach dem Aufgeben von Raum
+E59N4 meldete `writeStatus()` über lange Zeit weiter „PrioSpawn im Raum
+E59N4“. Ursache ist eine Asymmetrie, die mehr betrifft als diesen einen Fall:
+**`writeStatus()` (`controller/memory.ts:82`) berichtet über alle Einträge in
+`Memory.rooms`, während jeder Mechanismus, der diese Flags pflegt, nur über
+`bot.room` läuft.** Ein aus der Config entfernter Raum behält seine Flags.
+Abgeräumt wird das allein von `clear()` (`controller/memory.ts:63`) — und das
+läuft nur bei `Game.time % 28800 === 0`, also **einem Tick je Tagesdurchgang**,
+zusätzlich gesperrt durch `cpuBudget.mayRunLow()`. Ein verpasster Tick kostet
+einen ganzen Tag. Dazu leben die Creeps des aufgegebenen Raums bis zu 1500
+Ticks weiter und arbeiten ins Leere.
+
+Neu ist `controller/cleanup.ts`, verdrahtet in `controller/timing.ts::controll()`
+direkt vor dem Spawncontroller. Bedienung: eine Flagge namens `cleanup`, Ort
+und Raum sind gleichgültig, `Game.flags` ist weltweit. **Gelb**
+(`COLOR_YELLOW`) berichtet in die Konsole, was gelöscht *würde*, und ändert
+nichts. **Rot** (`COLOR_RED`) führt es aus, meldet das Ergebnis und entfernt
+die Flagge selbst. Jede andere Farbe meldet nur, welche Farben belegt sind.
+
+Ausgelöst wird nur bei einer **Farbänderung** — eine stehen gelassene Flagge
+tut in jedem weiteren Tick nichts. Die zuletzt verarbeitete Farbe liegt in
+`Memory.cleanup.flagColor`, nicht im Heap, damit ein Global-Reset nicht erneut
+auslöst. Das ist dasselbe Flankenmuster wie bei der Profilerflagge `prof`
+(`profiler/flag.ts`, Runde 2026-08-04).
+
+Das Kriterium für Creeps ist eine ausdrückliche Entscheidung des Betreibers:
+getötet wird, wessen `workroom` **oder** `home` nicht in `bot.room` steht —
+nicht und. Das trifft auch einen Creep, dessen `home` verwaist ist, während
+sein `workroom` noch lebt und er dort gerade nützlich arbeitet. Bewusst so; ein
+UND wäre eine andere Regel gewesen. Fehlt `workroom` oder `home` im Memory
+ganz, gilt der Creep ebenfalls als betroffen — ohne Heimat oder Arbeitsraum ist
+er ohnehin nicht zuzuordnen.
+
+Zwei Entwurfsentscheidungen, die sonst als Versehen gelesen würden:
+
+1. Das Löschen des Raum-Memory ruft das bestehende `clear()` auf, statt eine
+   zweite Löschregel zu schreiben. Nebenwirkung: `clear()` entfernt dabei auch
+   die `roads`-Liste konfigurierter Räume ohne `saveRoads` — reguläres
+   Tagesverhalten, hier nur vorgezogen.
+2. `Memory.creeps[name]` wird **nicht** sofort gelöscht, es wird nur
+   `creep.suicide()` gerufen. Der Creep stirbt am Tickende, und `main.ts` räumt
+   das Creep-Memory ohnehin auf. Ein sofortiges Löschen ließe einen noch
+   lebenden Creep im nächsten Tick mit leerem Memory in seine Rolle laufen.
+
+Was die Flagge **nicht** ist: die Behebung der Asymmetrie zwischen
+`writeStatus()` und den pflegenden Mechanismen. Sie ist der Knopf dagegen. Ob
+`clear()` zusätzlich häufiger laufen sollte, ist offen und wird entschieden,
+wenn der gelbe Bericht zeigt, wie viel Altlast wirklich im Memory liegt.
+
+Verdrahtung: `cleanupController.check()` läuft in `controll()` **jeden Tick und
+ungetaktet**, vor dem Spawncontroller, damit ein Aufräumen noch im selben Tick
+wirkt und nicht erst nach dessen Entscheidungen. Ohne gesetzte Flagge kostet
+der Aufruf nur einen Zugriff auf `Game.flags` und einen Farbvergleich — kein
+`find`, keine Schleife über `Game.creeps`, kein Zugriff auf `Memory.rooms`.
+
+`tests/controller-cleanup.test.ts` (neu) deckt Bericht, Ausführung und
+Flankensteuerung ab.
+
+**Commit:** `741b41a`.
