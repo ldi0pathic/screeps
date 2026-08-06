@@ -44,6 +44,25 @@ function reportError(kind: string, message: string): void {
   Game.notify(message, 180);
 }
 
+/**
+ * Führt einen Abschnitt des Schedulers gemessen aus und hält einen Fehler darin
+ * vom Rest des Ticks fern.
+ *
+ * Kritischer und regulärer Teil benutzen bewusst **denselben** Messabschnitt
+ * (`SECTION.timing`), damit die Zahlen beider Hälften vergleichbar bleiben.
+ * `end()` steht hinter dem `catch`: ein geworfener Fehler hat CPU gekostet und
+ * gehört mitgezählt.
+ */
+function runTimed(kind: string, label: string, step: () => void): void {
+  prof.begin(prof.SECTION.timing);
+  try {
+    step();
+  } catch (error) {
+    reportError(kind, `${label}\n${(error as Error)?.stack ?? String(error)}`);
+  }
+  prof.end(prof.SECTION.timing);
+}
+
 // Registriert die Prototyp-Erweiterungen vor dem ersten Tick.
 // Reihenfolge wie in `prod/prototype.js`: erst die Creep-Checks, dann der Markt.
 installCreepChecks();
@@ -62,19 +81,10 @@ export function loop(): void {
 
   // Zuerst, nicht zuletzt: Raum-Memory und Türme. Greift das CPU-Limit während
   // der Creep-Schleife, bricht das Spiel den Tick ab und alles Spätere fällt
-  // stillschweigend aus — Turmfeuer darf davon nie betroffen sein. Derselbe
-  // Messabschnitt wie der Rest des Schedulers, damit die Zahlen vergleichbar
-  // bleiben.
-  prof.begin(prof.SECTION.timing);
-  try {
+  // stillschweigend aus — Turmfeuer darf davon nie betroffen sein.
+  runTimed("timing.kritisch", "controller/timing (kritischer Teil)", () => {
     timer.controllCritical();
-  } catch (error) {
-    reportError(
-      "timing.kritisch",
-      `controller/timing (kritischer Teil)\n${(error as Error)?.stack ?? String(error)}`,
-    );
-  }
-  prof.end(prof.SECTION.timing);
+  });
 
   prof.begin(prof.SECTION.rooms);
   for (const name in bot.room) {
@@ -160,16 +170,9 @@ export function loop(): void {
   }
   prof.end(prof.SECTION.creeps);
 
-  prof.begin(prof.SECTION.timing);
-  try {
+  runTimed("timing", "controller/timing", () => {
     timer.controll();
-  } catch (error) {
-    reportError(
-      "timing",
-      `controller/timing\n${(error as Error)?.stack ?? String(error)}`,
-    );
-  }
-  prof.end(prof.SECTION.timing);
+  });
 
   // Muss die letzte Anweisung sein: `Game.cpu.getUsed()` wird hier als
   // Gesamtwert des Ticks gelesen. Was danach käme, wäre nicht mitgezählt.

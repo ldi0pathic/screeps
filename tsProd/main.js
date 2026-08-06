@@ -1,4 +1,4 @@
-// Build: 2026-08-06 19:15:37 +02:00
+// Build: 2026-08-06 19:17:47 +02:00
 "use strict";
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
@@ -132,9 +132,6 @@ bot.room = {
     sendBuilder: true,
     sendDefender: true,
     sendClaimer: false,
-    // Muss an sein, sobald der Raum Links nutzt (ab RCL5): seit dem Entfernen
-    // von `harvestSpawnLink` leert niemand sonst den Link in der Basis, und ein
-    // voller Empfänger-Link blockiert alle Quell-Links, die auf ihn senden.
     sendLinkkeeper: true,
     saveRoads: true,
     //mining
@@ -159,9 +156,6 @@ bot.room = {
     sendBuilder: true,
     sendDefender: true,
     sendClaimer: false,
-    // Muss an sein, sobald der Raum Links nutzt (ab RCL5): seit dem Entfernen
-    // von `harvestSpawnLink` leert niemand sonst den Link in der Basis, und ein
-    // voller Empfänger-Link blockiert alle Quell-Links, die auf ihn senden.
     sendLinkkeeper: true,
     saveRoads: true,
     //mining
@@ -208,9 +202,6 @@ bot.room = {
     sendBuilder: true,
     sendDefender: true,
     sendClaimer: false,
-    // Muss an sein, sobald der Raum Links nutzt (ab RCL5): seit dem Entfernen
-    // von `harvestSpawnLink` leert niemand sonst den Link in der Basis, und ein
-    // voller Empfänger-Link blockiert alle Quell-Links, die auf ihn senden.
     sendLinkkeeper: true,
     saveRoads: true,
     //mining
@@ -278,9 +269,6 @@ bot.room = {
     sendBuilder: true,
     sendDefender: true,
     sendClaimer: false,
-    // Muss an sein, sobald der Raum Links nutzt (ab RCL5): seit dem Entfernen
-    // von `harvestSpawnLink` leert niemand sonst den Link in der Basis, und ein
-    // voller Empfänger-Link blockiert alle Quell-Links, die auf ihn senden.
     sendLinkkeeper: true,
     saveRoads: true,
     //mining
@@ -5148,23 +5136,26 @@ function reportError(kind, message) {
   reportedErrors.add(kind);
   Game.notify(message, 180);
 }
+function runTimed(kind, label, step) {
+  var _a;
+  begin(SECTION.timing);
+  try {
+    step();
+  } catch (error) {
+    reportError(kind, `${label}
+${(_a = error == null ? void 0 : error.stack) != null ? _a : String(error)}`);
+  }
+  end(SECTION.timing);
+}
 installCreepChecks();
 installTerminalMarket();
 var measuredJobs = wrapRoles(jobs);
 function loop() {
-  var _a, _b, _c, _d;
+  var _a, _b;
   tick();
-  begin(SECTION.timing);
-  try {
+  runTimed("timing.kritisch", "controller/timing (kritischer Teil)", () => {
     controllCritical();
-  } catch (error) {
-    reportError(
-      "timing.kritisch",
-      `controller/timing (kritischer Teil)
-${(_a = error == null ? void 0 : error.stack) != null ? _a : String(error)}`
-    );
-  }
-  end(SECTION.timing);
+  });
   begin(SECTION.rooms);
   for (const name in bot.room) {
     const room = Game.rooms[name];
@@ -5183,7 +5174,7 @@ ${(_a = error == null ? void 0 : error.stack) != null ? _a : String(error)}`
       botMemory4.init = false;
       init();
     }
-    if ((_b = room == null ? void 0 : room.controller) == null ? void 0 : _b.my) {
+    if ((_a = room == null ? void 0 : room.controller) == null ? void 0 : _a.my) {
       new RoomVisual(name).text(
         `${room.energyAvailable}/${room.energyCapacityAvailable}`,
         2,
@@ -5226,22 +5217,14 @@ ${(_a = error == null ? void 0 : error.stack) != null ? _a : String(error)}`
       reportError(
         `rolle:${creepMemory.role}`,
         `Job: ${creepMemory.role} (${name})
-${(_c = error == null ? void 0 : error.stack) != null ? _c : String(error)}`
+${(_b = error == null ? void 0 : error.stack) != null ? _b : String(error)}`
       );
     }
   }
   end(SECTION.creeps);
-  begin(SECTION.timing);
-  try {
+  runTimed("timing", "controller/timing", () => {
     controll();
-  } catch (error) {
-    reportError(
-      "timing",
-      `controller/timing
-${(_d = error == null ? void 0 : error.stack) != null ? _d : String(error)}`
-    );
-  }
-  end(SECTION.timing);
+  });
   endTick(processedCreeps);
 }
 // Annotate the CommonJS export names for ESM import in node:
