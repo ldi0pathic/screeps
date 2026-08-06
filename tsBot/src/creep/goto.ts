@@ -93,12 +93,13 @@ export function goToWorkroom(creep: Creep): boolean {
  * Rückgabewert: `true` bedeutet „für diesen Tick ist der Creep versorgt" — die
  * Rollen brechen daraufhin ihre Arbeit ab. `false` heißt, es gab keinen
  * Ortswechsel, der Creep kann etwas anderes tun.
+ *
+ * `range` schlüsselt nicht in den Cache: `PathMemory` merkt sich den Weg nur
+ * zur Zielposition (`src/creep/path-memory.ts:78-87`), nicht zur Reichweite.
+ * Läuft derselbe Creep dasselbe Ziel mit wechselnder Reichweite an,
+ * überschreiben sich die gespeicherten Wege gegenseitig und lösen abwechselnd
+ * Neusuchen aus.
  */
-// `range` schlüsselt nicht in den Cache: `PathMemory` merkt sich den Weg nur
-// zur Zielposition (`src/creep/path-memory.ts:78-87`), nicht zur Reichweite.
-// Läuft derselbe Creep dasselbe Ziel mit wechselnder Reichweite an,
-// überschreiben sich die gespeicherten Wege gegenseitig und lösen abwechselnd
-// Neusuchen aus.
 export function moveByMemory(creep: Creep, target: RoomPosition, range: number = 0): boolean {
     const cache = new PathMemory(creep.memory);
 

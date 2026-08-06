@@ -288,7 +288,7 @@ test("eine übergebene Reichweite kommt an der Suche an", async () => {
   assert.equal(pathSearches[0]!.range, 1);
 });
 
-test("der Stau-Zweig sucht mit derselben Reichweite wie die reguläre Suche", async () => {
+test("ab vier Ticks Stillstand wird mit derselben Reichweite neu gesucht", async () => {
   const { moveByMemory } = await goto();
 
   const creep = stubCreep(10, 10, "E58N6", {
@@ -305,6 +305,6 @@ test("der Stau-Zweig sucht mit derselben Reichweite wie die reguläre Suche", as
   // `pathTarget`. Suchte er mit einer anderen Reichweite als die reguläre
   // Suche, läge im Cache ein Weg zu einem anderen Endpunkt als der, den der
   // nächste Tick unter demselben `pathTarget` erwartet.
-  assert.equal(pathSearches[0]!.ignoreCreeps, false);
+  assert.equal(pathSearches[0]!.ignoreCreeps, false, "nur im Stau wird um andere Creeps herum gesucht");
   assert.equal(pathSearches[0]!.range, 1);
 });

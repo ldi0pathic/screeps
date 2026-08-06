@@ -162,7 +162,12 @@ test("rot loescht das verwaiste Raum-Memory, suizidiert betroffene Creeps und en
 test("rot laesst Creeps eines konfigurierten Raums in Ruhe", async () => {
   const { check } = await loadCleanup();
   stubRooms("E58N6");
-  const { suicideCalls } = stubCreep("upgrader_1", { workroom: "E58N6", home: "E58N6" });
+  // Ein verwaister Raum mit einem betroffenen Creep im selben Lauf: erst damit
+  // greift `execute()` ueberhaupt (`hasNothingToDo()` sonst sofort `true`), und
+  // der Test belegt echte Selektivitaet statt nur eines No-Op-Durchlaufs.
+  stubOrphanedRoomMemory("E59N4");
+  const { suicideCalls: configuredRoomCalls } = stubCreep("upgrader_1", { workroom: "E58N6", home: "E58N6" });
+  const { suicideCalls: orphanedRoomCalls } = stubCreep("miner_1", { workroom: "E59N4", home: "E59N4" });
   stubCleanupFlag(COLOR.red);
 
   const console1 = captureConsole();
@@ -172,7 +177,8 @@ test("rot laesst Creeps eines konfigurierten Raums in Ruhe", async () => {
     console1.restore();
   }
 
-  assert.equal(suicideCalls.length, 0, "ein Creep eines konfigurierten Raums bleibt am Leben");
+  assert.equal(orphanedRoomCalls.length, 1, "der Creep aus dem verwaisten Raum wird suizidiert");
+  assert.equal(configuredRoomCalls.length, 0, "ein Creep eines konfigurierten Raums bleibt am Leben");
 });
 
 test("das Kriterium: workroom ODER home nicht in bot.room, nicht UND", async () => {

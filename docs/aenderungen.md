@@ -965,15 +965,18 @@ als Anti-Pattern (`docs/knowledge/efficiency/cpu-pathfinding.md`, Zeilen 53 und
 | Was | Warum | Wirkung |
 | --- | --- | --- |
 | `moveByMemory` (`creep/goto.ts`) nimmt einen optionalen dritten Parameter `range` (Vorgabe `0`) und reicht ihn an **beide** `findPathTo`-Aufrufe durch, auch den im `isStuck`-Zweig. | Ein einziger Umschalter statt zwei Codepfaden — der Stau-Ausweichzweig sucht auf dieselbe Reichweite wie der reguläre. | Ohne übergebene Reichweite unverändert `range: 0`; kein bestehender Aufrufer, der nichts übergibt, ändert sich. |
-| Neun Aufrufstellen übergeben jetzt `1`: die vier Ketten in `creep/target.ts` (`collectFrom`, `transferTo`, `deliverTo`, `withdrawFrom`), `TransportToHomeContainer` in `creep/transport.ts`, beide Zweige von `upgradeController` in `creep/base.ts` (Bewegung zum Controller und Signieren) und die zwei Aufrufe in `roles/claimer.ts`. | Alle neun Ziele gehören zu einer Aktion mit Reichweite 1 (`transfer`, `withdraw`, `upgradeController`, `signController`) und sind dabei nicht betretbar. | Weniger Ops je Pfadsuche an diesen neun Stellen — die Kennzahl dafür ist CPU/Aufruf, nicht die Summe (siehe unten). |
+| Neun Aufrufstellen übergeben jetzt `1`: die vier Ketten in `creep/target.ts` (`collectFrom`, `transferTo`, `deliverTo`, `withdrawFrom`), `TransportToHomeContainer` in `creep/transport.ts`, beide Zweige von `upgradeController` in `creep/base.ts` (Bewegung zum Controller und Signieren) und die zwei Aufrufe in `roles/claimer.ts`. | Sieben Ziele gehören zu einer Aktion mit Reichweite 1 (`pickup`, `withdraw`, `transfer`, `claimController`, `reserveController`, `signController`) und sind dabei nicht betretbar; die zwei Zweige von `upgradeController` sind ein Sonderfall — `upgradeController` selbst gelingt schon auf Reichweite 3 (siehe unten). | Weniger Ops je Pfadsuche an diesen neun Stellen — die Kennzahl dafür ist CPU/Aufruf, nicht die Summe (siehe unten). |
 
-**Am Verhalten ändert sich nichts.** Alle neun Stellen sitzen im
+**Am Verhalten ändert sich nichts.** Sieben der neun Stellen sitzen im
 `ERR_NOT_IN_RANGE`-Zweig einer Aktion mit Reichweite 1, und der Creep ruft
 dieselbe Aktion in jedem folgenden Tick erneut auf. Sobald er auf Reichweite 1
 steht, liefert die Aktion `OK`, und `moveByMemory` wird für dieses Ziel gar
 nicht mehr aufgerufen — der letzte Schritt bis auf das Zielfeld selbst wurde
-also auch **vorher schon nie gegangen**. Der `range`-Parameter ändert nur, wie
-viele Ops die Pfadsuche verbraucht, nicht wo der Creep stehen bleibt.
+also auch **vorher schon nie gegangen**. Die restlichen zwei Stellen, beide
+Zweige von `upgradeController`, sind der Sonderfall im nächsten Absatz: auch
+dort ändert `range: 1` nichts am Verhalten, nur aus einem anderen Grund.
+Der `range`-Parameter ändert nur, wie viele Ops die Pfadsuche verbraucht, nicht
+wo der Creep stehen bleibt.
 
 **Die harte Grenze des Umfangs:** `PathMemory.pathTo()`
 (`creep/path-memory.ts:78-87`) schlüsselt den gemerkten Weg nur auf die

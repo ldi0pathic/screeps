@@ -296,13 +296,18 @@ export function upgradeController(creep: Creep): boolean | void {
     if (state === ERR_NOT_IN_RANGE ||
         (state === ERR_INVALID_TARGET && controller.upgradeBlocked > 0)) {
 
-        // Der Controller ist nicht betretbar. Ohne range sucht die Pathfinding dort
-        // vergeblich; mit range=1 endet die Suche früher. Ein Weg auf range=1 führt
-        // durch Reichweite 3 hindurch; upgradeController antwortet dort mit OK, dann
-        // wird dieser Zweig nicht mehr betreten — der Creep hält weiterhin drei Felder
-        // vor dem Controller an, nur die Suche ist schneller. PathMemory cacht nur auf
-        // die Zielposition, mit verschiedenen Reichweiten würden die zwei Zweige den Weg
-        // gegenseitig überschreiben. Eine echte range=3 braucht PathMemory mit Reichweite.
+        // Der Controller ist nicht betretbar. Ohne `range` sucht die Pfadsuche dort
+        // vergeblich; mit `range: 1` endet sie früher. Ein Weg auf Reichweite 1 führt
+        // durch Reichweite 3 hindurch, wo `upgradeController` schon `OK` liefert –
+        // dieser Zweig wird dann nicht mehr betreten, der Creep hält also weiterhin
+        // drei Felder vor dem Controller an.
+        //
+        // `PathMemory` cacht den Weg nur auf die Zielposition. Laufen beide Zweige im
+        // selben Tick mit unterschiedlichen Reichweiten auf `controller.pos`,
+        // überschreiben sie sich den Weg gegenseitig.
+        //
+        // Eine echte Reichweite 3 braucht deshalb zuerst ein `PathMemory`, das die
+        // Reichweite mitschlüsselt.
         creepBaseGoTo.moveByMemory(creep,controller.pos, 1);
 
     }
