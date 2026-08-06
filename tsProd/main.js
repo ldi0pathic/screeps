@@ -1,4 +1,4 @@
-// Build: 2026-08-06 19:18:15 +02:00
+// Build: 2026-08-06 19:20:16 +02:00
 "use strict";
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
@@ -646,12 +646,28 @@ function usesLinks(roomName) {
   }
   return ((_c = (_b = CONTROLLER_STRUCTURES == null ? void 0 : CONTROLLER_STRUCTURES[STRUCTURE_LINK]) == null ? void 0 : _b[controller.level]) != null ? _c : 0) > 0;
 }
-var LinkList = class {
+var LinkList = class _LinkList {
   constructor(roomName) {
     this.roomName = roomName;
   }
   get roomMemory() {
     return Memory.rooms[this.roomName];
+  }
+  /**
+   * Alle Links des Raums, frisch über die Live-Geometrie gesucht — bewusst
+   * ohne Bezug zur klassifizierten Liste im Memory. Genutzt von `discover()`
+   * selbst und vom Linkplaner (`link-planner.ts`), der bei jedem Aufruf neu
+   * sucht statt einen Cache zu lesen (`build*Link`/`freeLinkSlots` laufen in
+   * der Tagessequenz, nicht bei jedem Tick).
+   *
+   * Statisch, weil die Suche den Raum als Argument bekommt und `roomName` der
+   * Instanz nicht braucht — sonst müsste der Aufrufer eine Instanz nur anlegen,
+   * um sie wegzuwerfen.
+   */
+  static allLinks(room) {
+    return room.find(FIND_MY_STRUCTURES, {
+      filter: (structure) => structure.structureType === STRUCTURE_LINK
+    });
   }
   /** Kennt der Bot den Raum überhaupt? Ohne Raum-Memory gibt es nichts zu tun. */
   get isRoomKnown() {
@@ -674,9 +690,7 @@ var LinkList = class {
     if (!memory) {
       return;
     }
-    const links = room.find(FIND_MY_STRUCTURES, {
-      filter: (structure) => structure.structureType === STRUCTURE_LINK
-    });
+    const links = _LinkList.allLinks(room);
     const remaining = new Set(links.map((link) => link.id));
     const controllerId = this.resolveController(room, links);
     if (controllerId) {
@@ -829,7 +843,7 @@ var LinkPlanner = class {
   /** Wie viele Links in diesem Raum noch gebaut werden dürfen, abzüglich vorhandener und geplanter. */
   freeLinkSlots(room, level) {
     const allowed = this.allowedLinks(level);
-    const built = room.find(FIND_MY_STRUCTURES, { filter: (s) => s.structureType === STRUCTURE_LINK }).length;
+    const built = LinkList.allLinks(room).length;
     const sites = room.find(FIND_CONSTRUCTION_SITES, { filter: (s) => s.structureType === STRUCTURE_LINK }).length;
     return allowed - built - sites;
   }
@@ -866,7 +880,7 @@ var LinkPlanner = class {
   }
   /** Steht (gebaut oder als Baustelle) bereits ein Link in `range` um `pos`? */
   hasLinkNear(room, pos, range) {
-    const links = room.find(FIND_MY_STRUCTURES, { filter: (s) => s.structureType === STRUCTURE_LINK });
+    const links = LinkList.allLinks(room);
     if (links.some((link) => link.pos.getRangeTo(pos) <= range)) return true;
     const sites = room.find(FIND_CONSTRUCTION_SITES, { filter: (s) => s.structureType === STRUCTURE_LINK });
     return sites.some((site) => site.pos.getRangeTo(pos) <= range);
@@ -980,7 +994,7 @@ var LinkPlanner = class {
   }
   /** Alle gebauten Links des Raums, die weder Controller- noch Storage-Empfänger sind. */
   sendingLinks(room, controller, storage) {
-    const links = room.find(FIND_MY_STRUCTURES, { filter: (s) => s.structureType === STRUCTURE_LINK });
+    const links = LinkList.allLinks(room);
     return links.filter((link) => {
       if (link.pos.getRangeTo(controller.pos) <= 3) return false;
       if (storage && link.pos.getRangeTo(storage.pos) <= 2) return false;

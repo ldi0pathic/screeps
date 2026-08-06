@@ -21,7 +21,7 @@
  */
 
 import { bot } from "../globals";
-import { usesLinks } from "./link-list";
+import { LinkList, usesLinks } from "./link-list";
 
 // Straße, Container und Rampart tauchen hier bewusst nicht auf – sie
 // blockieren einen Linkplatz nicht. OBSTACLE_OBJECT_TYPES ist die von Screeps
@@ -73,7 +73,7 @@ export class LinkPlanner {
   /** Wie viele Links in diesem Raum noch gebaut werden dürfen, abzüglich vorhandener und geplanter. */
   private freeLinkSlots(room: Room, level: number): number {
     const allowed = this.allowedLinks(level);
-    const built = room.find(FIND_MY_STRUCTURES, { filter: (s: any) => s.structureType === STRUCTURE_LINK }).length;
+    const built = LinkList.allLinks(room).length;
     const sites = room.find(FIND_CONSTRUCTION_SITES, { filter: (s: any) => s.structureType === STRUCTURE_LINK }).length;
 
     return allowed - built - sites;
@@ -120,7 +120,7 @@ export class LinkPlanner {
 
   /** Steht (gebaut oder als Baustelle) bereits ein Link in `range` um `pos`? */
   private hasLinkNear(room: Room, pos: RoomPosition, range: number): boolean {
-    const links = room.find(FIND_MY_STRUCTURES, { filter: (s: any) => s.structureType === STRUCTURE_LINK }) as StructureLink[];
+    const links = LinkList.allLinks(room);
     if (links.some(link => link.pos.getRangeTo(pos) <= range)) return true;
 
     const sites = room.find(FIND_CONSTRUCTION_SITES, { filter: (s: any) => s.structureType === STRUCTURE_LINK });
@@ -270,7 +270,7 @@ export class LinkPlanner {
 
   /** Alle gebauten Links des Raums, die weder Controller- noch Storage-Empfänger sind. */
   private sendingLinks(room: Room, controller: StructureController, storage: StructureStorage | undefined): StructureLink[] {
-    const links = room.find(FIND_MY_STRUCTURES, { filter: (s: any) => s.structureType === STRUCTURE_LINK }) as StructureLink[];
+    const links = LinkList.allLinks(room);
 
     return links.filter(link => {
       if (link.pos.getRangeTo(controller.pos) <= 3) return false;
