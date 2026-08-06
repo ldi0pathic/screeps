@@ -167,12 +167,27 @@ function reportUnknownColor(): void {
 /**
  * Einstiegspunkt für den Scheduler (`controller/timing.ts`), ein Aufruf je
  * Tick genügt. Ohne gesetzte Flagge kostet der Aufruf nur den Zugriff auf
- * `Game.flags[FLAG_NAME]` und den Farbvergleich — kein `find`, keine Schleife
- * über `Game.creeps`, kein Zugriff auf `Memory.rooms`.
+ * `Game.flags[FLAG_NAME]`, den Farbvergleich und — genehmigte Abweichung von
+ * der Kostenvorgabe im Auftrag, siehe Kommentar am `if (!flag)`-Zweig unten —
+ * einen Lesezugriff auf `Memory`. Kein `find`, keine Schleife über
+ * `Game.creeps`, kein Zugriff auf `Memory.rooms`.
  */
 export function check(): void {
   const flag = Game.flags[FLAG_NAME];
-  if (!flag) return;
+  if (!flag) {
+    // Ohne stehende Flagge darf keine gemerkte Farbe überdauern: sonst könnte
+    // ein gemerktes Rot aus einem fehlgeschlagenen `remove()` (siehe unten)
+    // dauerhaft verhindern, dass eine später neu gesetzte **rote** Flagge
+    // auslöst — und genauso, wenn der Betreiber die Flagge von Hand entfernt.
+    // Das kostet einen zusätzlichen Lesezugriff auf `Memory`, wo die
+    // Kostenvorgabe im Auftrag eigentlich nur `Game.flags` erlaubt — bei einer
+    // Aktion, die Creeps tötet, wiegt die Korrektheit der Zustandsmaschine
+    // aber mehr als ein Property-Zugriff (siehe Codereview).
+    if (rememberedColor() !== undefined) {
+      remember(undefined);
+    }
+    return;
+  }
 
   const previous = rememberedColor();
   if (flag.color === previous) return;
@@ -185,10 +200,23 @@ export function check(): void {
 
   if (flag.color === COLOR_RED) {
     execute();
-    // Merken entfernen: die Flagge ist jetzt weg, eine später neu gesetzte
-    // gelbe Flagge muss wieder auslösen können.
-    remember(undefined);
-    flag.remove();
+
+    const removed = flag.remove();
+    if (removed === OK) {
+      // Merken entfernen: die Flagge ist jetzt weg, eine später neu gesetzte
+      // gelbe **oder rote** Flagge muss wieder auslösen können.
+      remember(undefined);
+    } else {
+      // `remove()` kennt laut API keinen dokumentierten Fehlercode, ist damit
+      // aber nicht ausgeschlossen. Schlägt es fehl, steht die rote Flagge
+      // weiter in `Game.flags` — wird die Farbe jetzt vergessen, sähe der
+      // nächste Tick eine Flanke (`previous === undefined`, Farbe weiter rot)
+      // und führte `execute()` ein zweites Mal aus: erneutes `clear()`,
+      // erneuter Suizidversuch an denselben Creeps. Die Farbe bleibt deshalb
+      // gemerkt, und der Betreiber erfährt, warum die Flagge noch da ist.
+      remember(flag.color);
+      console.log(`[cleanup] Flagge "${FLAG_NAME}" konnte nicht entfernt werden: ${removed}`);
+    }
     return;
   }
 

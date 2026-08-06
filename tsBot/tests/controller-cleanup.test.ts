@@ -69,6 +69,16 @@ function stubCleanupFlag(color: number): void {
   };
 }
 
+/**
+ * Rote Flagge, deren `remove()` fehlschlägt (liefert `result`, entfernt die
+ * Flagge dabei **nicht** aus `Game.flags`) — für den Nachbesserungstest zu
+ * `cleanup.ts:191`.
+ */
+function stubFailingCleanupFlag(result: number): void {
+  const flag = stubFlag(COLOR.red, { name: "cleanup" }) as any;
+  flag.remove = () => result;
+}
+
 test("ohne Flagge passiert nichts, Memory.rooms bleibt unangetastet", async () => {
   const { check } = await loadCleanup();
   stubOrphanedRoomMemory("E59N4");
@@ -206,6 +216,66 @@ test("ein fehlgeschlagener suicide() wird gemeldet", async () => {
   } finally {
     console1.restore();
   }
+});
+
+test("ein fehlgeschlagenes remove() verhindert eine zweite Ausfuehrung im Folgetick", async () => {
+  const { check } = await loadCleanup();
+  stubRooms("E58N6");
+  stubOrphanedRoomMemory("E59N4");
+  const { suicideCalls } = stubCreep("miner_1", { workroom: "E59N4", home: "E58N6" });
+  stubFailingCleanupFlag(ERR_NOT_OWNER);
+
+  const console1 = captureConsole();
+  try {
+    check();
+    assert.equal(suicideCalls.length, 1, "execute() muss beim ersten Aufruf laufen");
+    assert.ok(
+      console1.lines.some(
+        line => line.includes("konnte nicht entfernt werden") && line.includes(String(ERR_NOT_OWNER)),
+      ),
+      "ein fehlgeschlagenes remove() gehoert mit Rueckgabecode in die Konsole",
+    );
+
+    // Ohne meine Nachbesserung liefe hier ein zweites clear() und ein zweiter
+    // Suizidversuch an demselben Creep, weil die Farbe nach dem fehlgeschlagenen
+    // remove() sonst nicht mehr gemerkt waere.
+    check();
+    assert.equal(
+      suicideCalls.length,
+      1,
+      "ohne erfolgreiches remove() darf execute() im Folgetick nicht erneut laufen",
+    );
+  } finally {
+    console1.restore();
+  }
+
+  assert.ok(game().flags.cleanup, "die Flagge steht nach fehlgeschlagenem remove() weiterhin");
+});
+
+test("nach fehlgeschlagenem remove() und manuellem Entfernen der Flagge loest eine neu gesetzte rote Flagge wieder aus", async () => {
+  const { check } = await loadCleanup();
+  stubRooms("E58N6");
+  stubOrphanedRoomMemory("E59N4");
+  const { suicideCalls } = stubCreep("miner_1", { workroom: "E59N4", home: "E58N6" });
+  stubFailingCleanupFlag(ERR_NOT_OWNER);
+
+  const console1 = captureConsole();
+  try {
+    check();
+    assert.equal(suicideCalls.length, 1);
+  } finally {
+    console1.restore();
+  }
+
+  // Der Betreiber entfernt die stehen gebliebene Flagge von Hand.
+  removeFlag("cleanup");
+  check();
+  assert.equal(memory().cleanup, undefined, "ohne Flagge muss eine gemerkte Farbe verworfen werden");
+
+  // Neu gesetzte rote Flagge: muss wieder ausloesen, obwohl zuvor Rot gemerkt war.
+  stubCleanupFlag(COLOR.red);
+  check();
+  assert.equal(suicideCalls.length, 2, "die neu gesetzte rote Flagge muss execute() erneut ausloesen");
 });
 
 test("eine unbelegte Farbe aendert nichts", async () => {
