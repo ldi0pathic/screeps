@@ -1,6 +1,20 @@
 # Plan 02: Strukturerkennung statt Hand-IDs
 
-Status: **Vorschlag.** Verhaltensänderung: **ja** — braucht Zustimmung.
+Status: **Schritt 1 und 2 gebaut** (2026-08-06, siehe `docs/aenderungen.md`),
+Wirkung noch nicht gemessen.
+
+- **Schritt 1** (Quellen und Minerale): `controller/room-inventory.ts`.
+- **Schritt 2** (Links geometrisch zuordnen): schon mit Plan 09 erledigt —
+  `controller/link-list.ts` klassifiziert nach Lage, `targetLinks`, `spawnLink`
+  und `controllerLink` sind aus der Config verschwunden.
+- **Schritt 3** ist damit teilweise beantwortet: die Link-Felder wurden
+  **entfernt**, `energySources`/`mineralSources` bleiben als Übersteuerung
+  stehen. Offen sind noch `mineralContainerId` und `prioBuildings`.
+
+Die offene Frage unten wurde nach dem Vorschlag dieses Plans entschieden:
+stehen lassen, aber als Ausnahme kennzeichnen. Die Umstellung wirkt zuerst nur
+dort, wo heute nichts konfiguriert ist — das hält das Risiko beherrschbar und
+erlaubt es, eine Fehlerkennung im Spiel sofort zu übergehen.
 
 ## Problem
 

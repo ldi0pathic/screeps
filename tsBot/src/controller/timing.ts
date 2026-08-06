@@ -4,6 +4,7 @@ import * as linkPlannerController from "./link-planner";
 import * as linksController from "./links";
 import * as memoryController from "./memory";
 import * as rebuildController from "./rebuild";
+import * as roomInventoryController from "./room-inventory";
 import * as spawnController from "./spawn";
 import { bot } from "../globals";
 // Messpunkte für den CPU-Profiler: klammern die Abschnitte des Schedulers ein.
@@ -139,6 +140,9 @@ const DAY_TICKS = 86_400 / 3;
  * übrigen laufen unter `timing.daily`.
  */
 const STAGGERED_DAILY_JOBS: Array<{ section?: string; run: (roomName: string) => void }> = [
+  // Zuerst: ohne Quellenliste spawnt in einem frisch geclaimten Raum kein Miner.
+  // Nach der ersten Erhebung kostet der Job nur noch einen Blick ins Memory.
+  { run: roomInventoryController.discover },
   { run: memoryController.findAndSaveRoomWalls },
   { run: memoryController.findAndSaveRoomContainer },
   { run: memoryController.findAndSaveRoomTower },

@@ -7,6 +7,7 @@
  */
 
 import { bot } from "../globals";
+import { energySources, mineralSources } from "../controller/room-inventory";
 import * as creepBase from "../creep/base";
 import { BODIES } from "../creep/bodies";
 import { PathMemory } from "../creep/path-memory";
@@ -444,25 +445,25 @@ export class Miner implements CreepRole {
         if(spawn.room.name != workroom && !Memory.rooms[workroom]!.claimed && !bot.room[workroom]!.claim)
             return false;
 
-        for(var id in bot.room[workroom]!.energySources)
+        for(const sourceId of energySources(workroom))
         {
-            if(!Game.getObjectById((bot.room[workroom]!.energySources as any)[id]))
+            if(!Game.getObjectById(sourceId))
                 continue;
 
-            if(this._spawn(spawn,workroom, (bot.room[workroom]!.energySources as any)[id], true))
+            if(this._spawn(spawn,workroom, sourceId, true))
                 return true;
         }
 
         var room = Game.rooms[workroom];
         if(room && room.controller && room.controller.my && room.controller.level >= 6)
         {
-            for(var id in bot.room[workroom]!.mineralSources)
+            for(const sourceId of mineralSources(workroom))
             {
-               var mineral: any =  Game.getObjectById((bot.room[workroom]!.mineralSources as any)[id]);
+               var mineral: any =  Game.getObjectById(sourceId);
                if(!mineral || mineral.mineralAmount < 1)
                     return false;
 
-                if(this._spawn(spawn,workroom, (bot.room[workroom]!.mineralSources as any)[id], false))
+                if(this._spawn(spawn,workroom, sourceId, false))
                     return true;
             }
         }

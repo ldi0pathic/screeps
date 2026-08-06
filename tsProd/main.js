@@ -1,4 +1,4 @@
-// Build: 2026-08-06 02:30:04 +02:00
+// Build: 2026-08-06 02:38:01 +02:00
 "use strict";
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
@@ -358,13 +358,13 @@ function init() {
   }
   (_b = botMemory.rooms) != null ? _b : botMemory.rooms = {};
   for (const name in botGlobal.room) {
-    const roomMemory = ensureRoomMemory(name);
-    roomMemory.aktivPrioSpawn = Boolean(roomMemory.aktivPrioSpawn);
-    roomMemory.hasLinks = Boolean(roomMemory.hasLinks);
-    roomMemory.needDefence = Boolean(roomMemory.needDefence);
-    roomMemory.invaderCore = Boolean(roomMemory.invaderCore);
-    roomMemory.nuke = Boolean(roomMemory.nuke);
-    (_c = roomMemory.aktivPrioSpawnCount) != null ? _c : roomMemory.aktivPrioSpawnCount = 0;
+    const roomMemory2 = ensureRoomMemory(name);
+    roomMemory2.aktivPrioSpawn = Boolean(roomMemory2.aktivPrioSpawn);
+    roomMemory2.hasLinks = Boolean(roomMemory2.hasLinks);
+    roomMemory2.needDefence = Boolean(roomMemory2.needDefence);
+    roomMemory2.invaderCore = Boolean(roomMemory2.invaderCore);
+    roomMemory2.nuke = Boolean(roomMemory2.nuke);
+    (_c = roomMemory2.aktivPrioSpawnCount) != null ? _c : roomMemory2.aktivPrioSpawnCount = 0;
     botMemory.init = true;
   }
 }
@@ -378,21 +378,21 @@ function clear() {
       delete botMemory.rooms[name];
       continue;
     }
-    const roomMemory = botMemory.rooms[name];
-    if (!config.saveRoads && (roomMemory == null ? void 0 : roomMemory.roads)) {
-      delete roomMemory.roads;
+    const roomMemory2 = botMemory.rooms[name];
+    if (!config.saveRoads && (roomMemory2 == null ? void 0 : roomMemory2.roads)) {
+      delete roomMemory2.roads;
     }
   }
 }
 function writeStatus() {
   let message = "";
   for (const room in botMemory.rooms) {
-    const roomMemory = botMemory.rooms[room];
-    if (roomMemory == null ? void 0 : roomMemory.aktivPrioSpawn) message += `PrioSpawn im Raum ${room}
+    const roomMemory2 = botMemory.rooms[room];
+    if (roomMemory2 == null ? void 0 : roomMemory2.aktivPrioSpawn) message += `PrioSpawn im Raum ${room}
 `;
-    if (roomMemory == null ? void 0 : roomMemory.needDefence) message += `Angriff im Raum ${room}
+    if (roomMemory2 == null ? void 0 : roomMemory2.needDefence) message += `Angriff im Raum ${room}
 `;
-    if (roomMemory == null ? void 0 : roomMemory.invaderCore) message += `Core im Raum ${room}
+    if (roomMemory2 == null ? void 0 : roomMemory2.invaderCore) message += `Core im Raum ${room}
 `;
   }
   if (message) console.log(message);
@@ -1120,19 +1120,54 @@ function rebuildRoads(onlyRoom) {
     if (!(config == null ? void 0 : config.saveRoads) || !room || ((_a = room.controller) == null ? void 0 : _a.level) === void 0 || room.controller.level < 7) {
       continue;
     }
-    const roomMemory = botMemory2.rooms[name];
-    if (!(roomMemory == null ? void 0 : roomMemory.roads)) continue;
+    const roomMemory2 = botMemory2.rooms[name];
+    if (!(roomMemory2 == null ? void 0 : roomMemory2.roads)) continue;
     let freeSlots = 10 - room.find(FIND_CONSTRUCTION_SITES).length;
     if (freeSlots <= 0) continue;
-    for (const roadMemory of roomMemory.roads) {
+    for (const roadMemory of roomMemory2.roads) {
       if (freeSlots <= 0) break;
       if (Game.getObjectById(roadMemory.id)) continue;
       const result = new RoomPosition(roadMemory.pos.x, roadMemory.pos.y, name).createConstructionSite(STRUCTURE_ROAD);
       if (result === OK) {
-        roomMemory.autobuild = ((_b = roomMemory.autobuild) != null ? _b : 0) + 1;
+        roomMemory2.autobuild = ((_b = roomMemory2.autobuild) != null ? _b : 0) + 1;
         freeSlots--;
       }
     }
+  }
+}
+
+// src/controller/room-inventory.ts
+function roomMemory(roomName) {
+  var _a, _b;
+  (_b = (_a = Memory.rooms)[roomName]) != null ? _b : _a[roomName] = {};
+  return Memory.rooms[roomName];
+}
+function energySources(roomName) {
+  var _a, _b, _c;
+  const configured = (_a = bot.room[roomName]) == null ? void 0 : _a.energySources;
+  if (configured && configured.length > 0) return configured;
+  return (_c = (_b = Memory.rooms[roomName]) == null ? void 0 : _b.energySources) != null ? _c : [];
+}
+function mineralSources(roomName) {
+  var _a, _b, _c;
+  const configured = (_a = bot.room[roomName]) == null ? void 0 : _a.mineralSources;
+  if (configured && configured.length > 0) return configured;
+  return (_c = (_b = Memory.rooms[roomName]) == null ? void 0 : _b.mineralSources) != null ? _c : [];
+}
+function discover(onlyRoom) {
+  for (const name in bot.room) {
+    if (onlyRoom && name !== onlyRoom) continue;
+    const config = bot.room[name];
+    if (!config) continue;
+    const room = Game.rooms[config.room];
+    if (!room) continue;
+    const memory = roomMemory(name);
+    if (memory.energySources && memory.mineralSources) continue;
+    memory.energySources = room.find(FIND_SOURCES).map((source) => source.id);
+    memory.mineralSources = room.find(FIND_MINERALS).map((mineral) => mineral.id);
+    console.log(
+      `[${name}] Vorkommen erhoben: ${memory.energySources.length} Quellen, ${memory.mineralSources.length} Minerale`
+    );
   }
 }
 
@@ -1535,12 +1570,12 @@ function TransportToHomeContainer(creep, type, mul) {
 function TransportToHomeTerminal(creep) {
   if (!creep.room.controller.my || creep.room.controller.level < 6)
     return false;
-  const roomMemory = Memory.rooms[creep.memory.workroom];
+  const roomMemory2 = Memory.rooms[creep.memory.workroom];
   var terminal;
-  if (roomMemory.terminalId) {
-    terminal = Game.getObjectById(roomMemory.terminalId);
+  if (roomMemory2.terminalId) {
+    terminal = Game.getObjectById(roomMemory2.terminalId);
     if (!terminal) {
-      delete roomMemory.terminalId;
+      delete roomMemory2.terminalId;
       return false;
     }
   } else {
@@ -1553,7 +1588,7 @@ function TransportToHomeTerminal(creep) {
       }
     );
     if (target.length > 0) {
-      roomMemory.terminalId = target[0].id;
+      roomMemory2.terminalId = target[0].id;
       terminal = target[0];
     }
   }
@@ -2877,10 +2912,10 @@ var Debitor = class {
     if (spawn3.room.name == workroom && spawn3.room.storage)
       return false;
     if (bot.room[workroom].sendDebitor && bot.room[workroom].sendMiner && (!Memory.rooms[workroom].hasLinks || !linksDeliver(workroom))) {
-      for (var id in bot.room[workroom].energySources) {
-        if (!Game.getObjectById(bot.room[workroom].energySources[id]))
+      for (const sourceId of energySources(workroom)) {
+        if (!Game.getObjectById(sourceId))
           continue;
-        if (this._spawn(spawn3, workroom, bot.room[workroom].energySources[id], RESOURCE_ENERGY))
+        if (this._spawn(spawn3, workroom, sourceId, RESOURCE_ENERGY))
           return true;
       }
     } else if (bot.room[workroom].sendFreeDebitor) {
@@ -3166,8 +3201,8 @@ var Hauler = class {
       return false;
     if (!spawn3.room.storage)
       return false;
-    for (var id in bot.room[workroom].energySources) {
-      const source = Game.getObjectById(bot.room[workroom].energySources[id]);
+    for (const sourceId of energySources(workroom)) {
+      const source = Game.getObjectById(sourceId);
       if (!source)
         continue;
       if (this._spawn(spawn3, workroom, source))
@@ -3537,19 +3572,19 @@ var Miner = class {
       return false;
     if (spawn3.room.name != workroom && !Memory.rooms[workroom].claimed && !bot.room[workroom].claim)
       return false;
-    for (var id in bot.room[workroom].energySources) {
-      if (!Game.getObjectById(bot.room[workroom].energySources[id]))
+    for (const sourceId of energySources(workroom)) {
+      if (!Game.getObjectById(sourceId))
         continue;
-      if (this._spawn(spawn3, workroom, bot.room[workroom].energySources[id], true))
+      if (this._spawn(spawn3, workroom, sourceId, true))
         return true;
     }
     var room = Game.rooms[workroom];
     if (room && room.controller && room.controller.my && room.controller.level >= 6) {
-      for (var id in bot.room[workroom].mineralSources) {
-        var mineral = Game.getObjectById(bot.room[workroom].mineralSources[id]);
+      for (const sourceId of mineralSources(workroom)) {
+        var mineral = Game.getObjectById(sourceId);
         if (!mineral || mineral.mineralAmount < 1)
           return false;
-        if (this._spawn(spawn3, workroom, bot.room[workroom].mineralSources[id], false))
+        if (this._spawn(spawn3, workroom, sourceId, false))
           return true;
       }
     }
@@ -4022,14 +4057,14 @@ function spawn2() {
         bot.logWorkroom(workroom, "Spawn Transfer");
         break;
       }
-      const roomMemory = Memory.rooms[workroom];
-      if (config.sendDefender && (roomMemory.needDefence || roomMemory.invaderCore)) {
+      const roomMemory2 = Memory.rooms[workroom];
+      if (config.sendDefender && (roomMemory2.needDefence || roomMemory2.invaderCore)) {
         jobs.defender.spawn(spawn3, workroom);
         bot.logWorkroom(workroom, "Spawn Defender");
         continue;
       }
       if (config.spawnRoom !== spawn3.room.name && config.room !== spawn3.room.name) continue;
-      if (roomMemory.invaderCore) continue;
+      if (roomMemory2.invaderCore) continue;
       bot.logWorkroom(workroom, "Spawn JobLoop");
       for (const jobName in jobs) {
         bot.logWorkroom(workroom, `Spawn Job: ${jobName}`);
@@ -4813,6 +4848,9 @@ function controll() {
 }
 var DAY_TICKS = 86400 / 3;
 var STAGGERED_DAILY_JOBS = [
+  // Zuerst: ohne Quellenliste spawnt in einem frisch geclaimten Raum kein Miner.
+  // Nach der ersten Erhebung kostet der Job nur noch einen Blick ins Memory.
+  { run: discover },
   { run: findAndSaveRoomWalls },
   { run: findAndSaveRoomContainer },
   { run: findAndSaveRoomTower },
@@ -5117,9 +5155,9 @@ ${(_a = error == null ? void 0 : error.stack) != null ? _a : String(error)}`
   for (const name in bot.room) {
     const room = Game.rooms[name];
     try {
-      const roomMemory = Memory.rooms[name];
-      if (roomMemory.nuke && roomMemory.nukepos.length > 0) {
-        for (const nuke of roomMemory.nukepos) {
+      const roomMemory2 = Memory.rooms[name];
+      if (roomMemory2.nuke && roomMemory2.nukepos.length > 0) {
+        for (const nuke of roomMemory2.nukepos) {
           new RoomVisual(name).circle(nuke.x, nuke.y, {
             fill: "transparent",
             radius: 5,

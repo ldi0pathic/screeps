@@ -735,3 +735,45 @@ und liegt deshalb fast immer bei 500 — eine Prüfung dagegen spräche nie an.
 Ausfälle werden gemeldet, aber höchstens alle 100 Ticks je Stufe: ein Ausfall
 gehört sichtbar gemacht, ein Dauerzustand darf die Konsole nicht unbrauchbar
 machen — und die Meldung selbst kostet in einem Tick, der ohnehin knapp ist.
+
+## Runde 2026-08-06: Quellen und Minerale werden erhoben, nicht konfiguriert (Plan 02, Schritt 1)
+
+Neu: `controller/room-inventory.ts` mit `energySources(raum)`,
+`mineralSources(raum)` und dem Tagesjob `discover(raum?)`. Miner, Debitor und
+Hauler lesen die Quellen jetzt von dort statt direkt aus `bot.room[...]`.
+
+**Warum das mehr ist als Aufräumen:** `controller/spawn.ts` überspringt jeden
+Raum ohne passenden `bot.room`-Eintrag vollständig. Ein frisch geclaimter Raum
+tut also gar nichts, bis jemand die Quellen-Ids von Hand nachträgt — bei zehn
+Räumen sind das rund dreißig Zeilen Handarbeit je Raum. Das ist die direkte
+Bremse für das eigentliche Ziel, viele Räume zu betreiben.
+
+**Die Config gewinnt.** Ist in `config.ts` eine Liste gesetzt und nicht leer,
+gilt sie; erst sonst entscheidet die Erhebung. Damit verhält sich jeder heute
+laufende Raum unverändert, und die Automatik greift nur dort, wo bisher nichts
+steht. Eine Fehlerkennung lässt sich außerdem im Spiel sofort übergehen, ohne
+Codeänderung. Eine **leere** Liste zählt dabei wie keine — sonst könnte ein
+Raum, in dem jemand `energySources: []` stehen ließ, nie fördern.
+
+**Keine Invalidierung, und das ist kein Versehen.** Quellen und Minerale werden
+weder zerstört noch gebaut noch verschoben. Anders als bei Containern, Türmen
+oder Links gibt es nichts, was verfallen könnte: erhoben wird einmal, danach
+kostet der Tagesjob nur noch einen Blick ins Memory. Eine gelöschte Raum-Memory
+erhebt sich beim nächsten Durchgang von selbst neu.
+
+**Sicht ist Voraussetzung**, und daraus folgt die Reihenfolge für einen neuen
+Raum: erst fährt der Claimer hin (der hängt an keiner Quellenliste), damit
+entsteht Sicht, im nächsten Tagesdurchgang stehen die Quellen im Memory, und
+erst danach spawnen Miner. Das ist die einzige Reihenfolge, die ohne Handarbeit
+auskommt.
+
+Die Schleifen in den drei Rollen wurden bei der Gelegenheit von
+`for (var id in ...)` mit `(... as any)[id]` auf `for (const sourceId of ...)`
+umgestellt — dieselben Stellen, keine Logikänderung. Insbesondere bleibt der
+Unterschied erhalten, dass der Mineralzweig des Miners bei einem nicht
+auflösbaren Vorkommen mit `return false` aus der ganzen Methode aussteigt,
+während die Energiezweige `continue` machen.
+
+**Noch offen aus Plan 02:** `mineralContainerId` und `prioBuildings` stehen
+weiter in der Config. Schritt 2 (Links geometrisch zuordnen) ist mit dem
+Linknetz aus Plan 09 bereits erledigt.

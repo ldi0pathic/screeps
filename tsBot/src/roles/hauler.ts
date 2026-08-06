@@ -16,6 +16,7 @@
  */
 
 import { bot } from "../globals";
+import { energySources } from "../controller/room-inventory";
 import { linksDeliver } from "../controller/link-list";
 import * as creepBase from "../creep/base";
 import { BODIES } from "../creep/bodies";
@@ -63,8 +64,8 @@ export class Hauler implements CreepRole {
         if (!spawn.room.storage)
             return false;
 
-        for (var id in bot.room[workroom]!.energySources) {
-            const source = Game.getObjectById((bot.room[workroom]!.energySources as any)[id]);
+        for (const sourceId of energySources(workroom)) {
+            const source = Game.getObjectById(sourceId);
             if (!source)
                 continue;
 

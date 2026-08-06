@@ -9,6 +9,7 @@
  */
 
 import { bot } from "../globals";
+import { energySources } from "../controller/room-inventory";
 import { linksDeliver } from "../controller/link-list";
 import * as creepBase from "../creep/base";
 import { BODIES } from "../creep/bodies";
@@ -261,11 +262,11 @@ export class Debitor implements CreepRole {
         // Linknetz die Energie auch wirklich abliefert. Ohne Empfänger am Storage
         // bliebe sie im Quell-Link liegen und der Raum verhungerte.
         if (bot.room[workroom]!.sendDebitor && bot.room[workroom]!.sendMiner && (!Memory.rooms[workroom]!.hasLinks || !linksDeliver(workroom))) {
-            for (var id in bot.room[workroom]!.energySources) {
-                if (!Game.getObjectById((bot.room[workroom]!.energySources as any)[id]))
+            for (const sourceId of energySources(workroom)) {
+                if (!Game.getObjectById(sourceId))
                     continue;
 
-                if (this._spawn(spawn, workroom, (bot.room[workroom]!.energySources as any)[id], RESOURCE_ENERGY))
+                if (this._spawn(spawn, workroom, sourceId, RESOURCE_ENERGY))
                     return true;
             }
         }
