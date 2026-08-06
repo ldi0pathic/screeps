@@ -3,12 +3,13 @@
  * `_mayWork`, Plan 04 `docs/plans/04-rcl8-upgrader-und-gcl.md`) sowie die
  * RCL8-Rumpfwahl in `bodyFor`.
  *
- * GCL wächst ausschließlich aus Controller-Upgrades. Bis RCL7 galt eine grobe
- * Tickdrossel (`sparmodus`: arbeiten in einem von `level` Ticks), die bei
- * RCL8 zusammen mit dem alten Rumpf nur 3 % der erlaubten Rate ausschöpfte.
- * Ab RCL8 gilt jetzt eine Vorratsdrossel: gearbeitet wird, solange der
- * Downgrade-Timer knapp wird oder das Storage einen Überschuss über
- * `RCL8_WORK_RESERVE` (100 000) hat — unabhängig von `Game.time`.
+ * GCL wächst ausschließlich aus Controller-Upgrades. Unter voller Ausbaustufe
+ * (RCL < 8) wird seit Plan 04 Punkt 3 nicht mehr gedrosselt — die frühere
+ * Tickdrossel (`sparmodus`: arbeiten in einem von `level` Ticks) kostete dort
+ * echten RCL-Fortschritt und ist entfallen; `doJob` schreibt `sparmodus` auch
+ * nicht mehr. Ab RCL8 gilt weiter eine Vorratsdrossel: gearbeitet wird,
+ * solange der Downgrade-Timer knapp wird oder das Storage einen Überschuss
+ * über `RCL8_WORK_RESERVE` (100 000) hat — unabhängig von `Game.time`.
  *
  * `_mayWork` ist privat und wird deshalb ausschließlich über `doJob` geprüft:
  * läuft die Drossel, darf **nichts** passieren (kein `checkHarvest`, keine
@@ -216,7 +217,11 @@ test("RCL8 ohne Storage: der Upgrader setzt aus, außer der Downgrade-Timer ruft
   );
 });
 
-test("unter RCL8 gilt weiter die Tickdrossel — ein voller Storage ändert daran nichts", async () => {
+test("unter RCL8 arbeitet der Creep in jedem Tick, auch mit sparmodus: true im Memory (Migration lebender Creeps)", async () => {
+  // Der wichtigste neue Fall (Plan 04, Punkt 3): ein Creep, der zum Umstellungszeitpunkt
+  // noch `sparmodus: true` im Memory trägt, darf trotzdem in jedem Tick arbeiten — die
+  // alte Tickdrossel liest das Flag nicht mehr. Unter der alten Fassung hätte dieser
+  // Test nur bei Vielfachen von 7 (14 und 21) einen Treffer gezählt, hier also 2 statt 5.
   const { Upgrader } = await loadUpgrader();
   const upgrader = new Upgrader();
 
@@ -226,20 +231,20 @@ test("unter RCL8 gilt weiter die Tickdrossel — ein voller Storage ändert dara
     memory: { sparmodus: true },
   });
 
-  anyGlobal.Game.time = 14; // Vielfaches von 7
-  upgrader.doJob(creep);
-  assert.equal(state.checkHarvestCalls, 1, "bei einem Vielfachen von level (7) arbeitet der Creep");
+  const ticks = [14, 15, 16, 20, 21];
+  for (const time of ticks) {
+    anyGlobal.Game.time = time;
+    upgrader.doJob(creep);
+  }
 
-  anyGlobal.Game.time = 15; // kein Vielfaches von 7
-  upgrader.doJob(creep);
   assert.equal(
     state.checkHarvestCalls,
-    1,
-    "sonst bleibt er untätig — auch mit vollem Storage: dieser Schritt ist ausdrücklich noch nicht angefasst (Plan 04, Punkt 3)",
+    ticks.length,
+    "der Creep arbeitet in jedem Tick, unabhängig von Game.time — die Tickdrossel greift unter RCL8 nicht mehr, auch nicht mit gesetztem sparmodus-Flag",
   );
 });
 
-test("unter RCL8 ohne sparmodus arbeitet der Creep in jedem Tick", async () => {
+test("unter RCL8 ohne sparmodus arbeitet der Creep weiterhin in jedem Tick", async () => {
   const { Upgrader } = await loadUpgrader();
   const upgrader = new Upgrader();
 
@@ -260,7 +265,8 @@ test("unter RCL8 ohne sparmodus arbeitet der Creep in jedem Tick", async () => {
 
 test("ohne Controller im Raum wird nicht gedrosselt und nichts geworfen", async () => {
   // Mehr als ein Randfall: `main.ts` wirft Rollenfehler weiter, statt sie
-  // abzufangen. Ein Upgrader mit `sparmodus` (ab Level 6 gesetzt), der durch
+  // abzufangen. Ein Upgrader mit `sparmodus: true` im Memory (früher ab Level 6
+  // gesetzt, heute nur noch als Altlast lebender Creeps möglich), der durch
   // einen Korridorraum ohne Controller läuft, rechnete vorher
   // `Game.time % controller.level` auf `undefined` — ein `TypeError`, der den
   // **kompletten Tick** abgebrochen hätte: alle Rollen nach ihm und der
