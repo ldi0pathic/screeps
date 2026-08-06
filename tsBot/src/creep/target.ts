@@ -102,7 +102,9 @@ export function collectFrom(
       // kein Creep je erreicht, und erschöpft ihre Ops mit der aussichtslosen
       // Restsuche. Am Verhalten ändert das nichts: die Aktion gelingt schon auf
       // Reichweite 1, `moveByMemory` wird dann gar nicht mehr gerufen — der
-      // letzte Schritt wurde also auch vorher nie gegangen.
+      // letzte Schritt wurde also auch vorher nie gegangen. Siehe
+      // `docs/knowledge/efficiency/cpu-pathfinding.md` und Befund 6 in
+      // `docs/plans/05-cpu-verteilung.md`.
       moveByMemory(creep, target.pos, 1);
       remembered.remember(target);
       return true;

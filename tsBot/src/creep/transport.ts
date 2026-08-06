@@ -103,7 +103,9 @@ export function TransportToHomeContainer(creep: Creep, type: string, mul?: numbe
                 // gelingt schon auf Reichweite 1 (`creep.transfer`) — `moveByMemory`
                 // wird dann nicht mehr gerufen, der letzte Schritt bis auf das Feld
                 // selbst wurde also auch vorher nie gegangen. Siehe `target.ts` für
-                // die Begründung bei den nicht betretbaren Zielen.
+                // die Begründung bei den nicht betretbaren Zielen sowie
+                // `docs/knowledge/efficiency/cpu-pathfinding.md` und Befund 6 in
+                // `docs/plans/05-cpu-verteilung.md`.
                 moveByMemory(creep, container.pos, 1);
                 return true;
 
