@@ -612,3 +612,38 @@ Beim Lesen gemeldet, **nicht** geändert: im nicht-`needDefence`-Zweig von
 `tower()` steht ein dritter Strukturscan für den regulären Reparaturmodus
 (`Game.time % 3 == 2`). Er liegt in einem anderen Zweig als die beiden oben und
 gehört in einen eigenen Schritt.
+
+## Runde 2026-08-06: Türme laufen vor der Creep-Schleife (Plan 05, Schritt 3)
+
+**Verhaltensänderung** — eine Reihenfolgeänderung im Tick, die nur im Mangelfall
+überhaupt sichtbar wird.
+
+`main.ts::loop` arbeitete erst alle Creeps ab und rief **danach**
+`timer.controll()` — und damit Türme, Spawncontroller und Verteidigungsscan.
+Greift das CPU-Limit während der Creep-Schleife, bricht das Spiel den Tick ab:
+alles Spätere findet stillschweigend nicht mehr statt, die Türme hätten in so
+einem Tick **nicht geschossen**.
+
+`timing.ts` hat dafür `controllCritical()` bekommen: Raum-Memory und Türme.
+`main.ts` ruft es als erstes, noch vor der Visualisierungsschleife. Der Rest von
+`controll()` bleibt hinter den Creeps.
+
+Zwei Entscheidungen dabei:
+
+- **Der Spawncontroller bleibt hinten.** Plan 05 nennt „Türme und Notfall-Spawn",
+  aber einen eigenen Einstieg nur für den Notfallspawn gibt es nicht — ihn
+  herauszulösen wäre ein Umbau des Spawncontrollers. Er nach vorn zu ziehen wäre
+  zudem kontraproduktiv: er läuft nur alle fünf Ticks, kostet je Aufruf ein
+  Vielfaches der Türme (5,47 gegen 0,40 gemessen) und würde die Spitze
+  vergrößern statt verkleinern. Ein Tick Verzögerung beim Spawnen ist folgenlos,
+  ein ausgelassener Turmschuss kann den Raum kosten.
+- **`memoryController.init()` wandert mit nach vorn.** Es muss vor jedem Zugriff
+  auf `Memory.rooms` laufen — auch vor der Visualisierungsschleife in `main.ts`,
+  die es bisher nur über einen `catch` nachholte.
+
+Gemessen wird beides unter demselben Profilerabschnitt `timing`, damit die
+Zahlen mit den bisherigen Fenstern vergleichbar bleiben.
+
+Nebenbei: `Game.cpu.generatePixel` fehlte im gemeinsamen Teststub. Der erste
+Test, der `controll()` aufrief, musste seinen Tick deshalb um die Pixelerzeugung
+herumlegen. Jetzt nachgetragen und mitgezählt (`cpu.generatePixelCalls`).

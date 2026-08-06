@@ -127,13 +127,23 @@ geprüft werden. Gehört gemessen (Plan 01) und dann gezielt geändert.
 - Nach Schritt 5: bei niedrigem Bucket fällt nur die niedrige Stufe aus,
   belegbar über das Log.
 
-## Offene Frage an den Betreiber
+## Pixelfrage: nach der Messung entschieden — bleibt unverändert
 
-Pixel weiter automatisch erzeugen? Drei Möglichkeiten:
+Die Messung liegt vor (`docs/profiler/`) und zeigt, dass der Puffer heute nicht
+gebraucht wird:
 
-- unverändert lassen (Bucket wird regelmäßig auf 0 gefahren),
-- nur erzeugen, wenn der Bucket eine Weile stabil voll war,
-- Pixelerzeugung abschalten und Pixel weiter nur kaufen.
+- **CPU je Tick 9,12** bei einem Limit von 20. Der teuerste gemessene Abschnitt
+  war `creeps` mit 10,01, der zweitteuerste `timing` mit 7,23 — selbst wenn
+  beide Spitzen in denselben Tick fielen, bliebe man unter dem Limit.
+- **Bucket im Mittel 2043, Minimum 1545.** Das ist die Nebenwirkung der
+  Pixelerzeugung, aber 1545 Bucket sind immer noch rund 150 Ticks Reserve bei
+  10 CPU Überziehung.
 
-Ohne die Messung aus Plan 01 lässt sich nicht sagen, wie oft der Bot den Puffer
-wirklich braucht. Vorschlag: Frage nach dem ersten Messfenster entscheiden.
+Damit bleibt die Pixelerzeugung, wie sie ist. Sie kostet Reserve, die der Bot
+derzeit nicht braucht, und Pixel sind echter Gegenwert.
+
+**Was die Entscheidung umdrehen würde**, nachprüfbar mit `prof.history()`:
+steigt `cpuMaxTick` in die Nähe von 20 oder fällt `bucketMin` unter etwa 500,
+ist der Puffer keine Rücklage mehr, sondern knapp — dann greift die mittlere
+Variante (nur erzeugen, wenn der Bucket eine Weile stabil voll war). Beide Werte
+stehen in jeder Verlaufszeile, es braucht dafür keine neue Messung.

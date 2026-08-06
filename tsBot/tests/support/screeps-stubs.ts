@@ -243,6 +243,14 @@ export const cpu = {
   limit: 20,
   tickLimit: 500,
   getUsedCalls: 0,
+  /**
+   * Wie oft `Game.cpu.generatePixel()` gerufen wurde.
+   *
+   * Ohne diesen Stub wirft `controller/timing.ts` bei `Game.time % 3 === 0` und
+   * vollem Bucket — ein Test müsste seinen Tick sonst um die Pixelerzeugung
+   * herumlegen, statt sie zu prüfen.
+   */
+  generatePixelCalls: 0,
 };
 
 let installed = false;
@@ -299,6 +307,10 @@ export function installGlobals(): void {
       get tickLimit(): number {
         return cpu.tickLimit;
       },
+      generatePixel(): number {
+        cpu.generatePixelCalls += 1;
+        return anyGlobal.OK;
+      },
     },
     notify: (message: string, groupInterval?: number) =>
       void notifications.push({ message, groupInterval }),
@@ -331,6 +343,7 @@ export function resetWorld(): void {
   cpu.limit = 20;
   cpu.tickLimit = 500;
   cpu.getUsedCalls = 0;
+  cpu.generatePixelCalls = 0;
   drawnTexts.length = 0;
   setColorCalls.length = 0;
   notifications.length = 0;

@@ -1,4 +1,4 @@
-// Build: 2026-08-06 02:05:31 +02:00
+// Build: 2026-08-06 01:56:01 +02:00
 "use strict";
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
@@ -4718,14 +4718,12 @@ function end(section) {
 
 // src/controller/timing.ts
 var botMemory3 = Memory;
-function controllCritical() {
+function controll() {
+  const tick2 = Game.time;
   init();
   begin(SECTION.tower);
   tower();
   end(SECTION.tower);
-}
-function controll() {
-  const tick2 = Game.time;
   begin(SECTION.terminal);
   const terminalIds = botMemory3.terminals;
   if (terminalIds && terminalIds.length > 0) {
@@ -5060,19 +5058,8 @@ installCreepChecks();
 installTerminalMarket();
 var measuredJobs = wrapRoles(jobs);
 function loop() {
-  var _a, _b, _c, _d;
+  var _a, _b, _c;
   tick();
-  begin(SECTION.timing);
-  try {
-    controllCritical();
-  } catch (error) {
-    reportError(
-      "timing.kritisch",
-      `controller/timing (kritischer Teil)
-${(_a = error == null ? void 0 : error.stack) != null ? _a : String(error)}`
-    );
-  }
-  end(SECTION.timing);
   begin(SECTION.rooms);
   for (const name in bot.room) {
     const room = Game.rooms[name];
@@ -5091,7 +5078,7 @@ ${(_a = error == null ? void 0 : error.stack) != null ? _a : String(error)}`
       botMemory4.init = false;
       init();
     }
-    if ((_b = room == null ? void 0 : room.controller) == null ? void 0 : _b.my) {
+    if ((_a = room == null ? void 0 : room.controller) == null ? void 0 : _a.my) {
       new RoomVisual(name).text(
         `${room.energyAvailable}/${room.energyCapacityAvailable}`,
         2,
@@ -5134,7 +5121,7 @@ ${(_a = error == null ? void 0 : error.stack) != null ? _a : String(error)}`
       reportError(
         `rolle:${creepMemory.role}`,
         `Job: ${creepMemory.role} (${name})
-${(_c = error == null ? void 0 : error.stack) != null ? _c : String(error)}`
+${(_b = error == null ? void 0 : error.stack) != null ? _b : String(error)}`
       );
     }
   }
@@ -5146,7 +5133,7 @@ ${(_c = error == null ? void 0 : error.stack) != null ? _c : String(error)}`
     reportError(
       "timing",
       `controller/timing
-${(_d = error == null ? void 0 : error.stack) != null ? _d : String(error)}`
+${(_c = error == null ? void 0 : error.stack) != null ? _c : String(error)}`
     );
   }
   end(SECTION.timing);

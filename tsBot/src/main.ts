@@ -60,6 +60,22 @@ const measuredJobs = prof.wrapRoles(jobs);
 export function loop(): void {
   prof.tick();
 
+  // Zuerst, nicht zuletzt: Raum-Memory und Türme. Greift das CPU-Limit während
+  // der Creep-Schleife, bricht das Spiel den Tick ab und alles Spätere fällt
+  // stillschweigend aus — Turmfeuer darf davon nie betroffen sein. Derselbe
+  // Messabschnitt wie der Rest des Schedulers, damit die Zahlen vergleichbar
+  // bleiben.
+  prof.begin(prof.SECTION.timing);
+  try {
+    timer.controllCritical();
+  } catch (error) {
+    reportError(
+      "timing.kritisch",
+      `controller/timing (kritischer Teil)\n${(error as Error)?.stack ?? String(error)}`,
+    );
+  }
+  prof.end(prof.SECTION.timing);
+
   prof.begin(prof.SECTION.rooms);
   for (const name in bot.room) {
     const room = Game.rooms[name];

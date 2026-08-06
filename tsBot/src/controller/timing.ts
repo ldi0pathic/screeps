@@ -18,13 +18,35 @@ type BotMemory = Memory & {
 
 const botMemory = Memory as BotMemory;
 
-export function controll(): void {
-  const tick = Game.time;
-
+/**
+ * Der Teil des Ticks, der niemals ausfallen darf — gerufen von `main.ts`
+ * **vor** der Creep-Schleife.
+ *
+ * Greift das CPU-Limit während der Creep-Schleife, bricht das Spiel den Tick
+ * ab: alles danach findet stillschweigend nicht mehr statt. Vorher lagen die
+ * Türme hinter allen Creeps und hätten in so einem Tick nicht geschossen.
+ * Turmfeuer ist taktisch — ein ausgelassener Spawn kostet einen Tick, ein
+ * ausgelassener Turmschuss kann den Raum kosten.
+ *
+ * Der Spawncontroller bleibt bewusst **hinten**: er läuft nur alle fünf Ticks,
+ * kostet je Aufruf ein Vielfaches der Türme, und ein Tick Verzögerung beim
+ * Spawnen ist folgenlos. Einen eigenen Einstieg nur für den Notfallspawn gibt
+ * es nicht; ihn herauszulösen wäre ein Umbau des Spawncontrollers und gehört
+ * in einen eigenen Schritt (Plan 05).
+ *
+ * `memoryController.init()` steht hier, weil es vor jedem Zugriff auf
+ * `Memory.rooms` laufen muss — auch vor der Visualisierungsschleife in `main.ts`.
+ */
+export function controllCritical(): void {
   memoryController.init();
+
   begin(SECTION.tower);
   defenceController.tower();
   end(SECTION.tower);
+}
+
+export function controll(): void {
+  const tick = Game.time;
 
   begin(SECTION.terminal);
   const terminalIds = botMemory.terminals;
