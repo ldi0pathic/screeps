@@ -91,92 +91,98 @@ export function writeStatus(): void {
 }
 
 /**
+ * Läuft über die verwalteten Räume (`bot.room`) und reicht Name, Konfiguration
+ * und den sichtbaren `Room` an `visit` weiter — das gemeinsame Gerüst der
+ * fünf Finder unten, die sich nur in ihrem Filter und ihrem Guard
+ * unterscheiden.
+ *
  * `onlyRoom`: Staffelung nach Plan 05 (Befund 2) — ohne Argument läuft die
  * Funktion wie bisher über alle Räume aus `bot.room` (auch für den
  * Handaufruf aus der Konsole wichtig); mit Argument bearbeitet sie genau
  * diesen einen Raum, sofern er in `bot.room` steht, sonst passiert nichts.
  * `timing.ts::daylie()` gibt so jedem (Job, Raum)-Paar seinen eigenen Tick,
  * damit die Spitzenlast pro Tick sinkt statt mit der Raumzahl zu wachsen.
- * Die übrigen Tagesjobs unten verweisen auf diesen Kommentar.
+ * `findAndSaveTerminals` und `findAndSaveRoads` reichen bewusst kein
+ * `onlyRoom` durch (`undefined`) — sie laufen ungestaffelt über alle Räume.
  */
+function forEachManagedRoom(
+  onlyRoom: string | undefined,
+  visit: (name: string, config: ManagedRoomConfig, room: Room) => void,
+): void {
+  for (const name in botGlobal.room) {
+    if (onlyRoom && name !== onlyRoom) continue;
+    const config = botGlobal.room[name];
+    if (!config) continue;
+    const room = Game.rooms[config.room];
+    if (!room) continue;
+    visit(name, config, room);
+  }
+}
+
+/** Findet Strukturen nach `filter` und liefert nur ihre Ids — das Kernstück jedes Finders. */
+function collectStructureIds(room: Room, filter: (structure: AnyStructure) => boolean): string[] {
+  return room.find(FIND_STRUCTURES, { filter }).map((structure) => structure.id);
+}
+
 export function findAndSaveRoomWalls(onlyRoom?: string): void {
   botMemory.rooms ??= {};
-  for (const name in botGlobal.room) {
-    if (onlyRoom && name !== onlyRoom) continue;
-    const config = botGlobal.room[name];
+  forEachManagedRoom(onlyRoom, (name, config, room) => {
     // Ohne `maxwallRepairer` greift der Vergleich wie in prod nicht
     // (`undefined < 1` ist false), der Raum wird also nicht übersprungen.
-    if (!config || config.maxwallRepairer! < 1) continue;
+    if (config.maxwallRepairer! < 1) return;
 
-    const room = Game.rooms[config.room];
-    if (!room) continue;
-
-    ensureRoomMemory(name).wally = room
-      .find(FIND_STRUCTURES, {
-        filter: (structure) =>
-          structure.structureType === STRUCTURE_WALL ||
-          structure.structureType === STRUCTURE_RAMPART,
-      })
-      .map((structure) => structure.id);
-  }
+    ensureRoomMemory(name).wally = collectStructureIds(
+      room,
+      (structure) => structure.structureType === STRUCTURE_WALL || structure.structureType === STRUCTURE_RAMPART,
+    );
+  });
 }
 
-// `onlyRoom`: siehe Kommentar an `findAndSaveRoomWalls`.
+// `onlyRoom`: siehe Kommentar an `forEachManagedRoom`.
 export function findAndSaveRoomContainer(onlyRoom?: string): void {
   botMemory.rooms ??= {};
-  for (const name in botGlobal.room) {
-    if (onlyRoom && name !== onlyRoom) continue;
-    const config = botGlobal.room[name];
-    if (!config) continue;
-    const room = Game.rooms[config.room];
-    if (!room) continue;
-    ensureRoomMemory(name).container = room
-      .find(FIND_STRUCTURES, { filter: { structureType: STRUCTURE_CONTAINER } })
-      .map((structure) => structure.id);
-  }
+  forEachManagedRoom(onlyRoom, (name, _config, room) => {
+    ensureRoomMemory(name).container = collectStructureIds(
+      room,
+      (structure) => structure.structureType === STRUCTURE_CONTAINER,
+    );
+  });
 }
 
-// `onlyRoom`: siehe Kommentar an `findAndSaveRoomWalls`.
+// `onlyRoom`: siehe Kommentar an `forEachManagedRoom`.
 export function findAndSaveRoomTower(onlyRoom?: string): void {
   botMemory.rooms ??= {};
-  for (const name in botGlobal.room) {
-    if (onlyRoom && name !== onlyRoom) continue;
-    const config = botGlobal.room[name];
-    if (!config) continue;
-    const room = Game.rooms[config.room];
-    if (!room) continue;
-    ensureRoomMemory(name).tower = room
-      .find(FIND_STRUCTURES, { filter: { structureType: STRUCTURE_TOWER } })
-      .map((structure) => structure.id);
-  }
+  forEachManagedRoom(onlyRoom, (name, _config, room) => {
+    ensureRoomMemory(name).tower = collectStructureIds(
+      room,
+      (structure) => structure.structureType === STRUCTURE_TOWER,
+    );
+  });
 }
 
 // Baut `Memory.terminals` in einem Zug über alle Räume auf; häppchenweise
 // wäre die Liste zwischendurch unvollständig. Kein `onlyRoom`-Parameter.
+// Andere Rückgabestruktur als die drei Finder oben (eine globale Liste statt
+// Raum-Memory), deshalb ohne `collectStructureIds`, aber mit derselben
+// Raum-Iteration wie sie.
 export function findAndSaveTerminals(): void {
   botMemory.terminals = [];
-  for (const name in botGlobal.room) {
-    const config = botGlobal.room[name];
-    if (!config) continue;
-    const room = Game.rooms[config.room];
-    if (!room) continue;
+  forEachManagedRoom(undefined, (_name, _config, room) => {
     const terminal = room.find(FIND_STRUCTURES, {
       filter: { structureType: STRUCTURE_TERMINAL },
     })[0];
-    if (terminal) botMemory.terminals.push(terminal.id);
-  }
+    if (terminal) botMemory.terminals!.push(terminal.id);
+  });
 }
 
+// Kein `onlyRoom`-Parameter — läuft wie `findAndSaveTerminals` ungestaffelt
+// über alle Räume, gesteuert vom `saveRoads`-Flag statt vom Handaufruf.
 export function findAndSaveRoads(): void {
   // Wie die drei Schwesterfunktionen: prod legt `Memory.rooms` hier zur
   // Sicherheit an, bevor geschrieben wird.
   botMemory.rooms ??= {};
-  for (const name in botGlobal.room) {
-    const config = botGlobal.room[name];
-    if (!config || !config.saveRoads) continue;
-
-    const room = Game.rooms[config.room];
-    if (!room) continue;
+  forEachManagedRoom(undefined, (name, config, room) => {
+    if (!config.saveRoads) return;
 
     const roads = room.find(FIND_STRUCTURES, {
       filter: { structureType: STRUCTURE_ROAD },
@@ -189,5 +195,5 @@ export function findAndSaveRoads(): void {
       ...roads.map((road) => ({ id: road.id, pos: road.pos, type: "b" as const })),
       ...constructionSites.map((site) => ({ id: site.id, pos: site.pos, type: "c" as const })),
     ];
-  }
+  });
 }

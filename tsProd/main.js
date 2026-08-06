@@ -1,4 +1,4 @@
-// Build: 2026-08-06 19:17:47 +02:00
+// Build: 2026-08-06 19:18:15 +02:00
 "use strict";
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
@@ -385,56 +385,58 @@ function writeStatus() {
   }
   if (message) console.log(message);
 }
-function findAndSaveRoomWalls(onlyRoom) {
-  var _a;
-  (_a = botMemory.rooms) != null ? _a : botMemory.rooms = {};
+function forEachManagedRoom(onlyRoom, visit) {
   for (const name in botGlobal.room) {
     if (onlyRoom && name !== onlyRoom) continue;
     const config = botGlobal.room[name];
-    if (!config || config.maxwallRepairer < 1) continue;
+    if (!config) continue;
     const room = Game.rooms[config.room];
     if (!room) continue;
-    ensureRoomMemory(name).wally = room.find(FIND_STRUCTURES, {
-      filter: (structure) => structure.structureType === STRUCTURE_WALL || structure.structureType === STRUCTURE_RAMPART
-    }).map((structure) => structure.id);
+    visit(name, config, room);
   }
+}
+function collectStructureIds(room, filter) {
+  return room.find(FIND_STRUCTURES, { filter }).map((structure) => structure.id);
+}
+function findAndSaveRoomWalls(onlyRoom) {
+  var _a;
+  (_a = botMemory.rooms) != null ? _a : botMemory.rooms = {};
+  forEachManagedRoom(onlyRoom, (name, config, room) => {
+    if (config.maxwallRepairer < 1) return;
+    ensureRoomMemory(name).wally = collectStructureIds(
+      room,
+      (structure) => structure.structureType === STRUCTURE_WALL || structure.structureType === STRUCTURE_RAMPART
+    );
+  });
 }
 function findAndSaveRoomContainer(onlyRoom) {
   var _a;
   (_a = botMemory.rooms) != null ? _a : botMemory.rooms = {};
-  for (const name in botGlobal.room) {
-    if (onlyRoom && name !== onlyRoom) continue;
-    const config = botGlobal.room[name];
-    if (!config) continue;
-    const room = Game.rooms[config.room];
-    if (!room) continue;
-    ensureRoomMemory(name).container = room.find(FIND_STRUCTURES, { filter: { structureType: STRUCTURE_CONTAINER } }).map((structure) => structure.id);
-  }
+  forEachManagedRoom(onlyRoom, (name, _config, room) => {
+    ensureRoomMemory(name).container = collectStructureIds(
+      room,
+      (structure) => structure.structureType === STRUCTURE_CONTAINER
+    );
+  });
 }
 function findAndSaveRoomTower(onlyRoom) {
   var _a;
   (_a = botMemory.rooms) != null ? _a : botMemory.rooms = {};
-  for (const name in botGlobal.room) {
-    if (onlyRoom && name !== onlyRoom) continue;
-    const config = botGlobal.room[name];
-    if (!config) continue;
-    const room = Game.rooms[config.room];
-    if (!room) continue;
-    ensureRoomMemory(name).tower = room.find(FIND_STRUCTURES, { filter: { structureType: STRUCTURE_TOWER } }).map((structure) => structure.id);
-  }
+  forEachManagedRoom(onlyRoom, (name, _config, room) => {
+    ensureRoomMemory(name).tower = collectStructureIds(
+      room,
+      (structure) => structure.structureType === STRUCTURE_TOWER
+    );
+  });
 }
 function findAndSaveTerminals() {
   botMemory.terminals = [];
-  for (const name in botGlobal.room) {
-    const config = botGlobal.room[name];
-    if (!config) continue;
-    const room = Game.rooms[config.room];
-    if (!room) continue;
+  forEachManagedRoom(void 0, (_name, _config, room) => {
     const terminal = room.find(FIND_STRUCTURES, {
       filter: { structureType: STRUCTURE_TERMINAL }
     })[0];
     if (terminal) botMemory.terminals.push(terminal.id);
-  }
+  });
 }
 
 // src/controller/cpu-budget.ts
