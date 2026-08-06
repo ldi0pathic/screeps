@@ -61,6 +61,23 @@ export class LinkList {
     return Memory.rooms[this.roomName] as LinkRoomMemory | undefined;
   }
 
+  /**
+   * Alle Links des Raums, frisch über die Live-Geometrie gesucht — bewusst
+   * ohne Bezug zur klassifizierten Liste im Memory. Genutzt von `discover()`
+   * selbst und vom Linkplaner (`link-planner.ts`), der bei jedem Aufruf neu
+   * sucht statt einen Cache zu lesen (`build*Link`/`freeLinkSlots` laufen in
+   * der Tagessequenz, nicht bei jedem Tick).
+   *
+   * Statisch, weil die Suche den Raum als Argument bekommt und `roomName` der
+   * Instanz nicht braucht — sonst müsste der Aufrufer eine Instanz nur anlegen,
+   * um sie wegzuwerfen.
+   */
+  static allLinks(room: Room): StructureLink[] {
+    return room.find(FIND_MY_STRUCTURES, {
+      filter: structure => structure.structureType === STRUCTURE_LINK,
+    }) as StructureLink[];
+  }
+
   /** Kennt der Bot den Raum überhaupt? Ohne Raum-Memory gibt es nichts zu tun. */
   get isRoomKnown(): boolean {
     return this.roomMemory !== undefined;
@@ -84,9 +101,7 @@ export class LinkList {
       return;
     }
 
-    const links = room.find(FIND_MY_STRUCTURES, {
-      filter: structure => structure.structureType === STRUCTURE_LINK,
-    }) as StructureLink[];
+    const links = LinkList.allLinks(room);
 
     const remaining = new Set(links.map(link => link.id));
 

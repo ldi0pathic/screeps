@@ -111,9 +111,6 @@ bot.room = {
     sendBuilder: true,
     sendDefender: true,
     sendClaimer: false,
-    // Muss an sein, sobald der Raum Links nutzt (ab RCL5): seit dem Entfernen
-    // von `harvestSpawnLink` leert niemand sonst den Link in der Basis, und ein
-    // voller Empfänger-Link blockiert alle Quell-Links, die auf ihn senden.
     sendLinkkeeper: true,
 
     saveRoads: true,
@@ -143,9 +140,6 @@ bot.room = {
     sendBuilder: true,
     sendDefender: true,
     sendClaimer: false,
-    // Muss an sein, sobald der Raum Links nutzt (ab RCL5): seit dem Entfernen
-    // von `harvestSpawnLink` leert niemand sonst den Link in der Basis, und ein
-    // voller Empfänger-Link blockiert alle Quell-Links, die auf ihn senden.
     sendLinkkeeper: true,
 
     saveRoads: true,
@@ -201,9 +195,6 @@ bot.room = {
     sendBuilder: true,
     sendDefender: true,
     sendClaimer: false,
-    // Muss an sein, sobald der Raum Links nutzt (ab RCL5): seit dem Entfernen
-    // von `harvestSpawnLink` leert niemand sonst den Link in der Basis, und ein
-    // voller Empfänger-Link blockiert alle Quell-Links, die auf ihn senden.
     sendLinkkeeper: true,
 
     saveRoads: true,
@@ -283,9 +274,6 @@ bot.room = {
     sendBuilder: true,
     sendDefender: true,
     sendClaimer: false,
-    // Muss an sein, sobald der Raum Links nutzt (ab RCL5): seit dem Entfernen
-    // von `harvestSpawnLink` leert niemand sonst den Link in der Basis, und ein
-    // voller Empfänger-Link blockiert alle Quell-Links, die auf ihn senden.
     sendLinkkeeper: true,
 
     saveRoads: true,

@@ -27,8 +27,9 @@ export interface RoomConfig {
   sendClaimer?: boolean;
   /**
    * Hält den Link in der Basis (`spawnLink`) leer und schiebt seine Energie
-   * ins Storage. Nötig, sobald der Raum Links nutzt: ein voller Empfänger-Link
-   * blockiert alle Quell-Links, die auf ihn senden.
+   * ins Storage. Muss an sein, sobald der Raum Links nutzt (ab RCL5): seit dem
+   * Entfernen von `harvestSpawnLink` leert ihn niemand sonst, und ein voller
+   * Empfänger-Link blockiert alle Quell-Links, die auf ihn senden.
    */
   sendLinkkeeper?: boolean;
   /** Ab wie vielen Feinden Verteidigung ausgelöst wird (Standard 1). */

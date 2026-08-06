@@ -862,3 +862,91 @@ gesetzt, der erste Tick rechnete also `undefined + 1` und der Zähler stand auf
 wird `null`, und `null + 1` ist 1 —, im Testgeschirr ohne diesen Umweg aber
 nicht: dort bliebe der Zähler dauerhaft `NaN`, und `RoundTrip.record` verwirft
 solche Werte. Jetzt bei Debitor **und** Transfer mit `distance: 0` initialisiert.
+
+## Runde 2026-08-06: Aufräumen und OOP (keine Verhaltensänderung)
+
+Eine reine Aufräumrunde auf eigenem Branch (`aufraeumen-und-oop`), abgezweigt von
+`analyse-vergleichsbot`. **Keine einzige Verhaltensänderung** — der Zweck war,
+Doppelungen zu entfernen und die letzten prozeduralen Module auf Klassen zu
+bringen. Der eigene Branch ist Absicht: die elf Commits der Planrunde sind im
+Spiel noch nicht gemessen (`docs/uebergabe-2026-08-06.md`), und eine
+dazwischengeschobene Umbaurunde würde diese Messung schwerer zuzuordnen machen.
+
+Abnahme bei jedem Commit: Typecheck fehlerfrei, Tests grün (239 → 254, die
+15 neuen decken den bis dahin ungetesteten Terminalmarkt ab), Build und
+Smoketest ohne Fehler.
+
+### Toter Code entfernt
+
+| Was | Wo | Beleg |
+| --- | --- | --- |
+| `Creep.checkTombstones`, `checkDrops`, `checkRuins`, `checkAllContainer` | `prototypes/creep-checks.ts`, Deklarationen in `types/screeps.d.ts` | Kein Aufrufer im Baum. Die vier schrieben ausschließlich `memory.withdraw` bzw. `memory.pickup`, und **diese beiden Schlüssel werden nirgends gelesen** — die Methoden konnten also auch indirekt nichts bewirken. `checkAllContainer` baute zusätzlich `creep/containers.ts::ContainerList` von Hand nach. |
+| Auskommentierter `checkInvasion`-Block | `roles/miner.ts` | Auskommentierter Code, siehe CLAUDE.md. |
+| `//this.goToMyHome(creep);` | `creep/base.ts` | Dito. |
+
+### Doppelungen zusammengezogen
+
+- **`controller/memory.ts`**: Die fünf Finder (`findAndSaveRoomWalls`,
+  `-Container`, `-Tower`, `findAndSaveTerminals`, `findAndSaveRoads`) schrieben
+  dieselbe Raum-Iteration fünfmal aus. Sie läuft jetzt über `forEachManagedRoom`,
+  der Kern über `collectStructureIds`. Die exportierten Signaturen sind
+  **unverändert**, weil `timing.ts::STAGGERED_DAILY_JOBS` sie so aufruft.
+  Bewusst nicht eingeebnet: der `maxwallRepairer`-Guard der Wände, das
+  `saveRoads`-Flag, das fehlende `onlyRoom` bei Terminals und Straßen, und die
+  abweichende Zielstruktur von `findAndSaveTerminals` (globale Liste statt
+  Raum-Memory). Für Wände und Straßen liegt die Sichtprüfung jetzt **vor** dem
+  jeweiligen Guard statt dahinter — beide sind reine Lesezugriffe ohne
+  Seiteneffekt, das Überspringen ist dasselbe.
+- **`controller/link-planner.ts`**: baute die Abfrage „alle Links des Raums"
+  dreimal von Hand nach, obwohl `LinkList` genau dafür da ist. Jetzt einmal als
+  `LinkList.allLinks(room)`. Bewusst **statisch** und bewusst **ohne Cache**: die
+  Suche braucht den Raum als Argument und nicht den Zustand der Instanz, und der
+  Planer soll weiterhin live suchen statt Memory zu lesen.
+- **`main.ts`**: die zwei baugleichen Timing-Klammern (kritischer und regulärer
+  Teil des Schedulers) laufen über `runTimed`. Fehlermeldungstexte und
+  Messabschnitt sind unverändert; `end()` steht weiterhin hinter dem `catch`.
+- **`config.ts`**: derselbe dreizeilige `sendLinkkeeper`-Kommentar stand
+  viermal wörtlich. Er steht jetzt einmal an der Typdefinition in `globals.ts`.
+
+### Auf Klassen umgestellt
+
+- **`controller/defence.ts` → `DefenceController`** mit `@profile`.
+  `HostileScanCache` ist jetzt privates Feld statt Modulzustand, die vier
+  gleichen Turmschleifen laufen über `resolveTowers()`. Alle 38 `var` zu
+  `const`/`let`, die drei `==` einzeln geprüft und umgestellt.
+  **Die manuelle Messklammer `begin(SECTION.defence)` in `timing.ts` bleibt
+  stehen**: `@profile` verbucht in den `methods`-Eimer unter
+  `DefenceController.check`, nicht in `sections` unter `timing.defence`. Die
+  beiden Messungen sind verschiedene Schlüssel — ohne die Klammer fiele der
+  Abschnitt „Verteidigungsscan" aus dem Bericht.
+- **`prototypes/terminal-market.ts` → `TerminalMarket`** mit `@profile`. Die
+  Prototypmethoden `sell()`/`buyPixel()` sind nur noch dünne Aufrufer, damit die
+  Ambient-Deklaration gültig bleibt. Zusammengezogen wurde allein die
+  Mittelwertbildung über die Markthistorie (`averageHistoryPrice`); die Faktoren
+  **0,7** (Verkauf) und **1,1** (Pixelkauf) bleiben bei den Aufrufern.
+  Order-Auswahl und -Sortierung von Kauf und Verkauf bleiben getrennt — die
+  Kriterien sind fachlich verschieden, und eine gemeinsame Basis hätte dort nur
+  Verzweigungen erzeugt. Vorher entstand ein Charakterisierungstest
+  (`tests/terminal-market.test.ts`, 15 Fälle), der **vor und nach** dem Umbau
+  grün war; das ist der Beleg für die Verhaltensneutralität an einer Stelle, die
+  echtes Guthaben bewegt.
+
+### Gefunden, bewusst nicht angefasst
+
+Drei Befunde, die eine Verhaltensänderung wären und deshalb nicht in eine
+Aufräumrunde gehören:
+
+1. **`roles/extupgrader.ts`** ruft `harvestRoomContainer(creep, RESOURCE_ENERGY)`
+   ohne dritten Parameter und fällt damit auf `mul = 0.5` zurück. Die fünf
+   anderen Rollen mit derselben Kette übergeben ausdrücklich `0.25`. Der
+   Extupgrader hat also die doppelt so strenge Schwelle, ohne dass ein Kommentar
+   das begründet — sieht nach Versehen aus, nicht nach Absicht.
+2. **`controller/defence.ts`** ruft `getUsedCapacity([RESOURCE_ENERGY])` mit
+   einem **Array** statt der Konstante (steht schon so in
+   `prod/controller.defence.js:190`). Das funktioniert nur, weil ein
+   einelementiges Array beim Schlüsselzugriff zu `"energy"` zerfällt. Unverändert
+   übernommen, im Code kommentiert.
+3. Der Kommentar an der Turm-Reparatursortierung behauptete, sie sei „dieselbe
+   Regel wie beim Repairer-Creep". Das stimmt nicht: `repairer.ts` sortiert nach
+   **absolutem** Schaden, `defence.ts` nach **anteiligem**. Nur der Kommentar
+   wurde korrigiert, der Code blieb.

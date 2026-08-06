@@ -1,4 +1,4 @@
-// Build: 2026-08-06 19:21:32 +02:00
+// Build: 2026-08-06 19:20:48 +02:00
 "use strict";
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
@@ -5074,69 +5074,73 @@ var NEVER_SELL2 = {
   XGH2O: true,
   XGHO2: true
 };
-var TerminalMarket = class {
-  /**
-   * Verkauft höchstens eine Ressource je Aufruf über eine Kauf-Order am Markt.
-   * Energie wird nie verkauft, sondern nur als Deckung für die Transferkosten
-   * geprüft.
-   */
-  sell(terminal) {
-    if (terminal.cooldown > 1) return;
-    const terminalEnergy = terminal.store.getUsedCapacity(RESOURCE_ENERGY);
-    if (terminalEnergy < 1e3 || terminalEnergy >= terminal.store.getUsedCapacity())
+function getFallbackPrice(resource) {
+  if (T1_BOOSTS[resource]) {
+    return 1e-3;
+  }
+  if (T1_INTERMEDIATES[resource]) {
+    return 1e-3;
+  }
+  const history = Game.market.getHistory(resource);
+  if (!history || !history.length) return null;
+  const avg = history.reduce((s, h) => s + h.avgPrice, 0) / history.length;
+  return avg * 0.7;
+}
+function installTerminalMarket() {
+  StructureTerminal.prototype.sell = function() {
+    if (this.cooldown > 1) return;
+    var terminalEnergy = this.store.getUsedCapacity(RESOURCE_ENERGY);
+    if (terminalEnergy < 1e3 || terminalEnergy >= this.store.getUsedCapacity())
       return;
-    for (const resource in terminal.store) {
+    for (var resource in this.store) {
       if (NEVER_SELL2[resource]) continue;
-      const minPrice = this.getFallbackPrice(resource);
+      var minPrice = getFallbackPrice(resource);
       if (!minPrice) continue;
-      const orders = Game.market.getAllOrders({
+      var orders = Game.market.getAllOrders({
         type: ORDER_BUY,
         resourceType: resource
       });
-      const marketOrdersWithDistances = orders.filter((o) => o.price >= minPrice).map((order) => {
-        const distance = terminal.pos.getRangeTo(
-          new RoomPosition(25, 25, order.roomName)
+      var marketOrdersWithDistances = orders.filter((o) => o.price >= minPrice).map((order2) => {
+        var distance = this.pos.getRangeTo(
+          new RoomPosition(25, 25, order2.roomName)
         );
         return {
-          order,
+          order: order2,
           distance
         };
       }).sort((a, b) => a.distance - b.distance);
-      const capa = terminal.store.getUsedCapacity(resource);
+      var capa = this.store.getUsedCapacity(resource);
       for (let i = 0; i < marketOrdersWithDistances.length; i++) {
-        const order = marketOrdersWithDistances[i].order;
-        let amount = order.amount > capa ? capa : order.amount;
-        const transferEnergyCost = Game.market.calcTransactionCost(
+        var order = marketOrdersWithDistances[i].order;
+        var amount = order.amount > capa ? capa : order.amount;
+        var transferEnergyCost = Game.market.calcTransactionCost(
           amount,
-          terminal.room.name,
+          this.room.name,
           order.roomName
         );
-        const costPerRes = transferEnergyCost / amount;
+        var costPerRes = transferEnergyCost / amount;
         if (costPerRes < 0.789) {
           if (transferEnergyCost > terminalEnergy)
             amount = Math.floor(terminalEnergy / costPerRes);
-          if (OK == Game.market.deal(order.id, amount, terminal.room.name)) {
+          if (OK == Game.market.deal(order.id, amount, this.room.name)) {
             console.log(
-              "[" + terminal.room.name + "] " + resource + " verkauft: " + amount + " zu " + order.price
+              "[" + this.room.name + "] " + resource + " verkauft: " + amount + " zu " + order.price
             );
             return;
           }
         }
       }
     }
-  }
-  /**
-   * Kauft Pixel, solange ein Angebot unter der fairen Preisgrenze liegt.
-   * Effektivpreis schließt die Transferenergie mit ein.
-   */
-  buyPixel(terminal) {
-    if (terminal.cooldown > 1) return;
-    const terminalEnergy = terminal.store.getUsedCapacity("energy");
-    const freeCapacity = terminal.store.getFreeCapacity();
+  };
+  StructureTerminal.prototype.buyPixel = function() {
+    if (this.cooldown > 1) return;
+    const terminalEnergy = this.store.getUsedCapacity("energy");
+    const freeCapacity = this.store.getFreeCapacity();
     if (terminalEnergy < 1e3 || freeCapacity <= 10) return;
     const resource = "pixel";
-    const avgPrice = this.averageHistoryPrice(resource);
-    if (avgPrice === null) return;
+    const marketHistory = Game.market.getHistory(resource);
+    if (!marketHistory || !marketHistory.length) return;
+    const avgPrice = marketHistory.reduce((sum, h) => sum + h.avgPrice, 0) / marketHistory.length;
     const fairPrice = Math.floor(avgPrice * 1.1);
     const orders = Game.market.getAllOrders({
       type: ORDER_SELL,
@@ -5146,7 +5150,7 @@ var TerminalMarket = class {
     const valid = orders.filter((o) => o.roomName).map((o) => {
       const energyCost = Game.market.calcTransactionCost(
         1,
-        terminal.room.name,
+        this.room.name,
         o.roomName
       );
       const effectivePrice = o.price + energyCost / Math.min(o.amount, 50);
@@ -5161,54 +5165,15 @@ var TerminalMarket = class {
       order.amount,
       Math.floor(Game.market.credits / order.price),
       Math.floor(
-        terminalEnergy / Game.market.calcTransactionCost(1, terminal.room.name, order.roomName)
+        terminalEnergy / Game.market.calcTransactionCost(1, this.room.name, order.roomName)
       )
     );
     if (amount <= 0) return;
-    if (OK === Game.market.deal(order.id, amount, terminal.room.name)) {
+    if (OK === Game.market.deal(order.id, amount, this.room.name)) {
       console.log(
-        `[${terminal.room.name}] Pixel Sniper: ${amount} zu ${order.price} (effektiv inkl. Energie: ${valid[0].effectivePrice.toFixed(2)})`
+        `[${this.room.name}] Pixel Sniper: ${amount} zu ${order.price} (effektiv inkl. Energie: ${valid[0].effectivePrice.toFixed(2)})`
       );
     }
-  }
-  /**
-   * Ersatzpreis für eine Ressource ohne eigene Order-Logik: T1-Boosts und
-   * ihre Zwischenprodukte sind praktisch geschenkt, sonst 70 % des
-   * Historiendurchschnitts. `null`, wenn auch das nicht zu ermitteln ist.
-   */
-  getFallbackPrice(resource) {
-    if (T1_BOOSTS[resource]) {
-      return 1e-3;
-    }
-    if (T1_INTERMEDIATES[resource]) {
-      return 1e-3;
-    }
-    const avg = this.averageHistoryPrice(resource);
-    if (avg === null) return null;
-    return avg * 0.7;
-  }
-  /**
-   * Durchschnittspreis über die komplette Markthistorie einer Ressource,
-   * `null` ohne Historie. Der Faktor auf diesen Durchschnitt (0,7 beim
-   * Verkauf, 1,1 beim Pixelkauf) bleibt bei den Aufrufern — das ist fachlich
-   * verschieden und keine Wiederholung.
-   */
-  averageHistoryPrice(resource) {
-    const history = Game.market.getHistory(resource);
-    if (!history || !history.length) return null;
-    return history.reduce((sum, entry) => sum + entry.avgPrice, 0) / history.length;
-  }
-};
-TerminalMarket = __decorateClass([
-  profile
-], TerminalMarket);
-var terminalMarket = new TerminalMarket();
-function installTerminalMarket() {
-  StructureTerminal.prototype.sell = function() {
-    terminalMarket.sell(this);
-  };
-  StructureTerminal.prototype.buyPixel = function() {
-    terminalMarket.buyPixel(this);
   };
 }
 

@@ -51,11 +51,6 @@ export class Miner implements CreepRole {
 
         if(creep.body.length > 30 && creep.memory.onPosition && Game.time % 2 == 1) return;
 
-       /* if(creep.checkInvasion()) {
-            creep.memory.onPosition = false;
-            return;
-        };*/
-
         if(!creep.memory.onPosition)
         {
             if(creepBase.goToWorkroom(creep)) return;
