@@ -265,7 +265,7 @@ export function calcProfil(creepProfile: BodyPartConstant[]): number {
 export function goToMyHome(creep: Creep) { return creepBaseGoTo.goToMyHome(creep) }
 export function goToRoomFlag(creep: Creep) { return creepBaseGoTo.goToRoomFlag(creep) }
 export function goToWorkroom(creep: Creep) { return creepBaseGoTo.goToWorkroom(creep) }
-export function moveByMemory(creep: Creep, target: RoomPosition) { return creepBaseGoTo.moveByMemory(creep, target) }
+export function moveByMemory(creep: Creep, target: RoomPosition, range?: number) { return creepBaseGoTo.moveByMemory(creep, target, range) }
 
 export function TransportEnergyToHomeSpawn(creep: Creep) { return creepBaseTransport.TransportEnergyToHomeSpawn(creep); }
 export function TransportEnergyToHomeTower(creep: Creep) { return creepBaseTransport.TransportEnergyToHomeTower(creep); }
@@ -296,7 +296,12 @@ export function upgradeController(creep: Creep): boolean | void {
     if (state === ERR_NOT_IN_RANGE ||
         (state === ERR_INVALID_TARGET && controller.upgradeBlocked > 0)) {
 
-        creepBaseGoTo.moveByMemory(creep,controller.pos);
+        // PathMemory cacht nur auf die Zielposition, nicht auf die Reichweite. Beide
+        // Zweige laufen auf controller.pos; mit verschiedenen Reichweiten würden sie
+        // den Weg gegenseitig überschreiben. Reichweite 1 ist die sichere Untergrenze,
+        // durch die upgradeController auf 3 funktioniert; eine echte 3 braucht
+        // PathMemory, die Reichweite mitschlüsselt.
+        creepBaseGoTo.moveByMemory(creep,controller.pos, 1);
 
     }
 
@@ -306,7 +311,7 @@ export function upgradeController(creep: Creep): boolean | void {
 
         var c = creep.signController(controller, '⚔')
         if (c === ERR_NOT_IN_RANGE) {
-            creepBaseGoTo.moveByMemory(creep,controller.pos);
+            creepBaseGoTo.moveByMemory(creep,controller.pos, 1);
         }
 
     }
