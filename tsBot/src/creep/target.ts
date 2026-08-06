@@ -97,7 +97,13 @@ export function collectFrom(
 ): boolean {
   switch (state) {
     case ERR_NOT_IN_RANGE:
-      moveByMemory(creep, target.pos);
+      // Reichweite 1: Storage, Link, Terminal, Spawn, Extension, Tower und Lab
+      // sind nicht betretbar, eine Suche ohne `range` sucht dort ein Feld, das
+      // kein Creep je erreicht, und erschöpft ihre Ops mit der aussichtslosen
+      // Restsuche. Am Verhalten ändert das nichts: die Aktion gelingt schon auf
+      // Reichweite 1, `moveByMemory` wird dann gar nicht mehr gerufen — der
+      // letzte Schritt wurde also auch vorher nie gegangen.
+      moveByMemory(creep, target.pos, 1);
       remembered.remember(target);
       return true;
 
@@ -131,7 +137,7 @@ export function transferTo(
 
   switch (creep.transfer(target, type as ResourceConstant)) {
     case ERR_NOT_IN_RANGE:
-      moveByMemory(creep, target.pos);
+      moveByMemory(creep, target.pos, 1);
       return true;
 
     case OK:
@@ -167,7 +173,7 @@ export function deliverTo(
 
   switch (creep.transfer(target, type as ResourceConstant)) {
     case ERR_NOT_IN_RANGE:
-      moveByMemory(creep, target.pos);
+      moveByMemory(creep, target.pos, 1);
       return true;
 
     case OK:
@@ -190,7 +196,7 @@ export function deliverTo(
 export function withdrawFrom(creep: Creep, target: Approachable, type: string): boolean {
   switch (creep.withdraw(target as unknown as Structure, type as ResourceConstant)) {
     case ERR_NOT_IN_RANGE:
-      moveByMemory(creep, target.pos);
+      moveByMemory(creep, target.pos, 1);
       return true;
 
     case OK:

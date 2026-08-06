@@ -99,7 +99,12 @@ export function TransportToHomeContainer(creep: Creep, type: string, mul?: numbe
         switch (creep.transfer(container, type as ResourceConstant))
         {
             case ERR_NOT_IN_RANGE:
-                moveByMemory(creep, container.pos);
+                // Reichweite 1: der Container ist zwar betretbar, aber die Ablieferung
+                // gelingt schon auf Reichweite 1 (`creep.transfer`) — `moveByMemory`
+                // wird dann nicht mehr gerufen, der letzte Schritt bis auf das Feld
+                // selbst wurde also auch vorher nie gegangen. Siehe `target.ts` für
+                // die Begründung bei den nicht betretbaren Zielen.
+                moveByMemory(creep, container.pos, 1);
                 return true;
 
             case OK:
