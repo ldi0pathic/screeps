@@ -8,6 +8,11 @@
  * Pfadsuche ist das Teuerste, was ein Creep je Tick tun kann — deshalb wird der
  * Weg gespeichert und nur bei Zielwechsel, Stau oder einem Fehler am Pfad neu
  * gesucht.
+ *
+ * `range` an `moveByMemory` gibt an, wie nah am Ziel die Suche enden darf.
+ * Vorgabe ist `0`, weil die meisten Ziele betretbare Felder sind — Container,
+ * Straßen, Standplätze — und `roles/linkkeeper.ts` sowie `roles/miner.ts` die
+ * Ankunft mit `creep.pos.isEqualTo(...)` prüfen.
  */
 
 import { bot } from "../globals";
@@ -27,8 +32,8 @@ interface Route {
 }
 
 /** Sucht einen Weg und serialisiert ihn. */
-function searchRoute(creep: Creep, target: RoomPosition, ignoreCreeps: boolean): Route {
-  const steps = creep.pos.findPathTo(target, { ignoreCreeps: ignoreCreeps });
+function searchRoute(creep: Creep, target: RoomPosition, ignoreCreeps: boolean, range: number): Route {
+  const steps = creep.pos.findPathTo(target, { ignoreCreeps: ignoreCreeps, range: range });
   return { serialized: Room.serializePath(steps), steps: steps };
 }
 
@@ -89,7 +94,12 @@ export function goToWorkroom(creep: Creep): boolean {
  * Rollen brechen daraufhin ihre Arbeit ab. `false` heißt, es gab keinen
  * Ortswechsel, der Creep kann etwas anderes tun.
  */
-export function moveByMemory(creep: Creep, target: RoomPosition): boolean {
+// `range` schlüsselt nicht in den Cache: `PathMemory` merkt sich den Weg nur
+// zur Zielposition (`src/creep/path-memory.ts:78-87`), nicht zur Reichweite.
+// Läuft derselbe Creep dasselbe Ziel mit wechselnder Reichweite an,
+// überschreiben sich die gespeicherten Wege gegenseitig und lösen abwechselnd
+// Neusuchen aus.
+export function moveByMemory(creep: Creep, target: RoomPosition, range: number = 0): boolean {
     const cache = new PathMemory(creep.memory);
 
     if(creep.pos.isEqualTo(target))
@@ -103,7 +113,7 @@ export function moveByMemory(creep: Creep, target: RoomPosition): boolean {
     // das alte Ziel.
     if(cache.isStuck)
     {
-        const route = searchRoute(creep, target, false);
+        const route = searchRoute(creep, target, false, range);
         cache.rememberPath(route.serialized);
         cache.resetStuck();
 
@@ -119,7 +129,7 @@ export function moveByMemory(creep: Creep, target: RoomPosition): boolean {
     }
     else
     {
-        route = searchRoute(creep, target, true);
+        route = searchRoute(creep, target, true, range);
         cache.rememberPathTo(route.serialized, target);
     }
 
