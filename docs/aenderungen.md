@@ -965,18 +965,18 @@ als Anti-Pattern (`docs/knowledge/efficiency/cpu-pathfinding.md`, Zeilen 53 und
 | Was | Warum | Wirkung |
 | --- | --- | --- |
 | `moveByMemory` (`creep/goto.ts`) nimmt einen optionalen dritten Parameter `range` (Vorgabe `0`) und reicht ihn an **beide** `findPathTo`-Aufrufe durch, auch den im `isStuck`-Zweig. | Ein einziger Umschalter statt zwei Codepfaden — der Stau-Ausweichzweig sucht auf dieselbe Reichweite wie der reguläre. | Ohne übergebene Reichweite unverändert `range: 0`; kein bestehender Aufrufer, der nichts übergibt, ändert sich. |
-| Neun Aufrufstellen übergeben jetzt `1`: die vier Ketten in `creep/target.ts` (`collectFrom`, `transferTo`, `deliverTo`, `withdrawFrom`), `TransportToHomeContainer` in `creep/transport.ts`, beide Zweige von `upgradeController` in `creep/base.ts` (Bewegung zum Controller und Signieren) und die zwei Aufrufe in `roles/claimer.ts`. | Sieben Ziele gehören zu einer Aktion mit Reichweite 1 (`pickup`, `withdraw`, `transfer`, `claimController`, `reserveController`, `signController`) und sind dabei nicht betretbar; die zwei Zweige von `upgradeController` sind ein Sonderfall — `upgradeController` selbst gelingt schon auf Reichweite 3 (siehe unten). | Weniger Ops je Pfadsuche an diesen neun Stellen — die Kennzahl dafür ist CPU/Aufruf, nicht die Summe (siehe unten). |
+| Neun Aufrufstellen übergeben jetzt `1`: die vier Ketten in `creep/target.ts` (`collectFrom`, `transferTo`, `deliverTo`, `withdrawFrom`), `TransportToHomeContainer` in `creep/transport.ts`, beide Zweige von `upgradeController` in `creep/base.ts` (Bewegung zum Controller und Signieren) und die zwei Aufrufe in `roles/claimer.ts`. | **Acht** der neun Stellen gehören zu einer Aktion mit echter Reichweite 1 (`pickup`, `withdraw`, `transfer`, `claimController`, `reserveController` und `signController` — letzteres ist der Signier-Zweig in `upgradeController`), und ihre Ziele sind dabei nicht betretbar. **Eine** Stelle ist der Sonderfall: der Bewegungszweig von `upgradeController`, dessen Aktion schon auf Reichweite 3 gelingt (siehe unten). | Weniger Ops je Pfadsuche an diesen neun Stellen — die Kennzahl dafür ist CPU/Aufruf, nicht die Summe (siehe unten). |
 
-**Am Verhalten ändert sich nichts.** Sieben der neun Stellen sitzen im
+**Am Verhalten ändert sich nichts.** **Acht** der neun Stellen sitzen im
 `ERR_NOT_IN_RANGE`-Zweig einer Aktion mit Reichweite 1, und der Creep ruft
 dieselbe Aktion in jedem folgenden Tick erneut auf. Sobald er auf Reichweite 1
 steht, liefert die Aktion `OK`, und `moveByMemory` wird für dieses Ziel gar
 nicht mehr aufgerufen — der letzte Schritt bis auf das Zielfeld selbst wurde
-also auch **vorher schon nie gegangen**. Die restlichen zwei Stellen, beide
-Zweige von `upgradeController`, sind der Sonderfall im nächsten Absatz: auch
-dort ändert `range: 1` nichts am Verhalten, nur aus einem anderen Grund.
-Der `range`-Parameter ändert nur, wie viele Ops die Pfadsuche verbraucht, nicht
-wo der Creep stehen bleibt.
+also auch **vorher schon nie gegangen**. Die **eine** übrige Stelle ist der
+Bewegungszweig von `upgradeController`; sie ist der Sonderfall im nächsten
+Absatz, und auch dort ändert `range: 1` nichts am Verhalten, nur aus einem
+anderen Grund. Der `range`-Parameter ändert nur, wie viele Ops die Pfadsuche
+verbraucht, nicht wo der Creep stehen bleibt.
 
 **Die harte Grenze des Umfangs:** `PathMemory.pathTo()`
 (`creep/path-memory.ts:78-87`) schlüsselt den gemerkten Weg nur auf die
@@ -984,10 +984,15 @@ Zielposition, nicht auf die Reichweite. Liefe derselbe Creep dasselbe Ziel mit
 zwei verschiedenen Reichweiten an, überschrieben sich die gespeicherten Wege
 gegenseitig und lösten abwechselnd Neusuchen aus. Deshalb bekommt in dieser
 Runde **jede** Stelle `1`, keine `3` — obwohl `build`, `repair` und
-`upgradeController` fachlich schon auf Reichweite 3 gelingen. Beide Zweige von
-`upgradeController` laufen zudem im selben Tick auf dieselbe `controller.pos`;
-mit zwei unterschiedlichen Reichweiten hätten sie sich den Weg gegenseitig
-überschrieben.
+`upgradeController` fachlich schon auf Reichweite 3 gelingen. Für den
+Bewegungszweig von `upgradeController` ist das sogar der **einzige** Grund: er
+läuft im selben Tick auf dieselbe `controller.pos` wie der Signier-Zweig, und
+`signController` braucht dort echte Reichweite 1. Zwei unterschiedliche
+Reichweiten auf dieselbe Position hätten sich den gemerkten Weg gegenseitig
+überschrieben — deshalb folgt der Bewegungszweig der `1` des Signier-Zweigs und
+nicht seiner eigenen `3`. Dass der Creep dadurch nicht näher heranläuft, steht
+oben: `upgradeController` liefert schon auf Reichweite 3 `OK`, der
+Bewegungszweig wird dann gar nicht mehr betreten.
 
 **Bewusst bei `range: 0` geblieben, und dauerhaft so:** `roles/linkkeeper.ts`
 und `roles/miner.ts`, weil beide die Ankunft mit `creep.pos.isEqualTo(...)`
