@@ -58,6 +58,8 @@ export function init(): void {
   }
 }
 
+// Baut `Memory.rooms` in einem Zug über alle Räume auf/ab; häppchenweise wäre
+// die Bereinigung zwischendurch unvollständig. Kein `onlyRoom`-Parameter.
 export function clear(): void {
   if (!botMemory.rooms) {
     return;
@@ -88,9 +90,19 @@ export function writeStatus(): void {
   if (message) console.log(message);
 }
 
-export function findAndSaveRoomWalls(): void {
+/**
+ * `onlyRoom`: Staffelung nach Plan 05 (Befund 2) — ohne Argument läuft die
+ * Funktion wie bisher über alle Räume aus `bot.room` (auch für den
+ * Handaufruf aus der Konsole wichtig); mit Argument bearbeitet sie genau
+ * diesen einen Raum, sofern er in `bot.room` steht, sonst passiert nichts.
+ * `timing.ts::daylie()` gibt so jedem (Job, Raum)-Paar seinen eigenen Tick,
+ * damit die Spitzenlast pro Tick sinkt statt mit der Raumzahl zu wachsen.
+ * Die übrigen Tagesjobs unten verweisen auf diesen Kommentar.
+ */
+export function findAndSaveRoomWalls(onlyRoom?: string): void {
   botMemory.rooms ??= {};
   for (const name in botGlobal.room) {
+    if (onlyRoom && name !== onlyRoom) continue;
     const config = botGlobal.room[name];
     // Ohne `maxwallRepairer` greift der Vergleich wie in prod nicht
     // (`undefined < 1` ist false), der Raum wird also nicht übersprungen.
@@ -109,9 +121,11 @@ export function findAndSaveRoomWalls(): void {
   }
 }
 
-export function findAndSaveRoomContainer(): void {
+// `onlyRoom`: siehe Kommentar an `findAndSaveRoomWalls`.
+export function findAndSaveRoomContainer(onlyRoom?: string): void {
   botMemory.rooms ??= {};
   for (const name in botGlobal.room) {
+    if (onlyRoom && name !== onlyRoom) continue;
     const config = botGlobal.room[name];
     if (!config) continue;
     const room = Game.rooms[config.room];
@@ -122,9 +136,11 @@ export function findAndSaveRoomContainer(): void {
   }
 }
 
-export function findAndSaveRoomTower(): void {
+// `onlyRoom`: siehe Kommentar an `findAndSaveRoomWalls`.
+export function findAndSaveRoomTower(onlyRoom?: string): void {
   botMemory.rooms ??= {};
   for (const name in botGlobal.room) {
+    if (onlyRoom && name !== onlyRoom) continue;
     const config = botGlobal.room[name];
     if (!config) continue;
     const room = Game.rooms[config.room];
@@ -135,6 +151,8 @@ export function findAndSaveRoomTower(): void {
   }
 }
 
+// Baut `Memory.terminals` in einem Zug über alle Räume auf; häppchenweise
+// wäre die Liste zwischendurch unvollständig. Kein `onlyRoom`-Parameter.
 export function findAndSaveTerminals(): void {
   botMemory.terminals = [];
   for (const name in botGlobal.room) {

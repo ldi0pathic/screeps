@@ -313,9 +313,18 @@ export class LinkPlanner {
   }
 }
 
-/** Plant und baut die fehlenden Empfängerlinks aller verwalteten Räume. */
-export function planReceiverLinks(): void {
+/**
+ * Plant und baut die fehlenden Empfängerlinks der verwalteten Räume.
+ *
+ * @param onlyRoom Staffelung nach Plan 05, Befund 2: ein Raum je Tick statt
+ * aller Räume im selben Tick, weil `LinkPlanner.plan()` der teuerste der
+ * Tagesjobs ist. Es geht um die Tick-Spitze, nicht um die Summe über den Tag.
+ * Ohne Argument bleibt das alte Verhalten (alle Räume in einem Durchlauf)
+ * erhalten. Ein unbekannter Raumname tut nichts und wirft nicht.
+ */
+export function planReceiverLinks(onlyRoom?: string): void {
   for (const roomName in bot.room) {
+    if (onlyRoom && roomName !== onlyRoom) continue;
     new LinkPlanner(roomName).plan();
   }
 }

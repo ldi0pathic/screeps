@@ -185,3 +185,286 @@ test("controll() macht den Rest weiter: das Statuslog läuft bei % 11", async ()
     "memoryController.writeStatus() lief bei % 11 und hat geloggt",
   );
 });
+
+/* --------------------------------------------------------------------------
+ * Plan 05, Befund 2: Staffelung des Verteidigungsscans (`defence.ts::check()`)
+ * und der Tagessequenz (`timing.ts::daylie()`).
+ *
+ * Gemeinsamer Nenner beider Prüfungen ist ein Raum-Stub, dessen `find()` jeden
+ * Aufruf protokolliert: welcher Job welchen Raum tatsächlich anfasst, lässt
+ * sich über die ersetzten Modulfunktionen (`controller/memory.ts`,
+ * `controller/rebuild.ts`, `controller/link-planner.ts`) nicht direkt
+ * beobachten, wohl aber über ihre einzige gemeinsame Wirkung: sie rufen
+ * `room.find()` auf dem ihnen übergebenen Raum auf. Ein Log genügt, um sowohl
+ * "genau ein Raum je Tick" als auch "kein Raum bleibt aus" nachzuweisen.
+ * -------------------------------------------------------------------------- */
+
+interface FindLogEntry {
+  room: string;
+  type: number;
+}
+
+/** Ein Raum, dessen `find()` jeden Aufruf protokolliert und stets leer antwortet. */
+function makeLoggingRoom(name: string, log: FindLogEntry[]): { name: string; find(type: number): unknown[] } {
+  return {
+    name,
+    find(type: number) {
+      log.push({ room: name, type });
+      return [];
+    },
+  };
+}
+
+test("defenceController.check() prüft über sieben aufeinanderfolgende Ticks jeden Raum genau einmal", async () => {
+  installGlobals();
+  const { check } = await import("../src/controller/defence");
+
+  const roomNames = Array.from({ length: 9 }, (_, i) => `D${i}`);
+  const findLog: FindLogEntry[] = [];
+  for (const name of roomNames) {
+    anyGlobal.room[name] = { room: name, spawnRoom: name, sendDefender: true };
+    memory().rooms ??= {};
+    memory().rooms[name] = {};
+    game().rooms[name] = makeLoggingRoom(name, findLog);
+  }
+
+  const handledCount = new Map(roomNames.map(name => [name, 0]));
+  const START_TICK = 2000;
+
+  for (let tick = START_TICK; tick < START_TICK + 7; tick++) {
+    game().time = tick;
+    findLog.length = 0;
+
+    check();
+
+    for (const touchedRoom of new Set(findLog.map(entry => entry.room))) {
+      handledCount.set(touchedRoom, (handledCount.get(touchedRoom) ?? 0) + 1);
+    }
+  }
+
+  for (const name of roomNames) {
+    assert.equal(handledCount.get(name), 1, `${name} wurde über sieben Ticks genau einmal geprüft`);
+  }
+});
+
+test("defenceController.check() bearbeitet in keinem einzelnen Tick alle Räume auf einmal", async () => {
+  installGlobals();
+  const { check } = await import("../src/controller/defence");
+
+  const roomNames = Array.from({ length: 9 }, (_, i) => `D${i}`);
+  const findLog: FindLogEntry[] = [];
+  for (const name of roomNames) {
+    anyGlobal.room[name] = { room: name, spawnRoom: name, sendDefender: true };
+    memory().rooms ??= {};
+    memory().rooms[name] = {};
+    game().rooms[name] = makeLoggingRoom(name, findLog);
+  }
+
+  const START_TICK = 5000;
+  for (let tick = START_TICK; tick < START_TICK + 7; tick++) {
+    game().time = tick;
+    findLog.length = 0;
+
+    check();
+
+    const touchedRooms = new Set(findLog.map(entry => entry.room));
+    assert.ok(
+      touchedRooms.size >= 1 && touchedRooms.size <= 2,
+      `Tick ${tick}: erwartet 1-2 bearbeitete Räume bei 9 Räumen und Intervall 7, waren ${touchedRooms.size}`,
+    );
+    assert.ok(
+      touchedRooms.size < roomNames.length,
+      `Tick ${tick}: nicht alle ${roomNames.length} Räume dürfen im selben Tick bearbeitet werden`,
+    );
+  }
+});
+
+test("daylie() räumt bei Slot 0 auf, ohne einen gestaffelten Job zu starten", async () => {
+  installGlobals();
+  const { daylie } = await import("../src/controller/timing");
+
+  const roomNames = ["S1", "S2"];
+  for (const name of roomNames) {
+    anyGlobal.room[name] = { room: name, spawnRoom: name, saveRoads: false };
+  }
+
+  const findLog: FindLogEntry[] = [];
+  for (const name of roomNames) game().rooms[name] = makeLoggingRoom(name, findLog);
+
+  memory().rooms = {
+    S1: { roads: [{ id: "x", pos: {}, type: "b" }] },
+    S2: {},
+    // Raum ohne zugehörige Config in `bot.room` — clear() muss ihn entfernen.
+    Ghost: {},
+  };
+
+  game().time = 28_800 * 3 + 0; // Slot 0
+
+  daylie();
+
+  assert.equal(memory().rooms.Ghost, undefined, "clear() entfernt Räume ohne Config");
+  assert.equal(memory().rooms.S1.roads, undefined, "clear() entfernt roads, wenn saveRoads=false");
+  assert.equal(findLog.length, 0, "Slot 0 löst keinen gestaffelten Job aus — kein find()-Aufruf");
+  assert.equal(memory().terminals, undefined, "Slot 0 sammelt keine Terminals");
+});
+
+test("daylie() sammelt bei Slot 1 alle Terminals in einem Zug, nicht gestaffelt", async () => {
+  installGlobals();
+  const { daylie } = await import("../src/controller/timing");
+
+  const roomNames = ["S1", "S2", "S3"];
+  for (const name of roomNames) anyGlobal.room[name] = { room: name, spawnRoom: name };
+  memory().rooms = { S1: {}, S2: {}, S3: {} };
+
+  const findLog: FindLogEntry[] = [];
+  const terminalByRoom: Record<string, { id: string }> = {
+    S1: { id: "term-S1" },
+    S2: { id: "term-S2" },
+    S3: { id: "term-S3" },
+  };
+  for (const name of roomNames) {
+    game().rooms[name] = {
+      name,
+      find(type: number) {
+        findLog.push({ room: name, type });
+        if (type === FIND_STRUCTURES) return [terminalByRoom[name]];
+        return [];
+      },
+    };
+  }
+
+  game().time = 28_800 * 4 + 1; // Slot 1
+
+  daylie();
+
+  const touchedRooms = new Set(findLog.map(entry => entry.room));
+  assert.deepEqual(
+    [...touchedRooms].sort(),
+    roomNames.slice().sort(),
+    "Slot 1 durchläuft alle Räume in einem einzigen Tick — anders als die gestaffelten Jobs",
+  );
+  assert.deepEqual(
+    (memory().terminals as string[]).slice().sort(),
+    ["term-S1", "term-S2", "term-S3"],
+    "Memory.terminals enthält nach einem Durchlauf alle Terminals",
+  );
+});
+
+test("daylie() gibt ab Slot 2 jedem (Job, Raum)-Paar genau einen eigenen Tick", async () => {
+  installGlobals();
+  const { daylie } = await import("../src/controller/timing");
+
+  const roomNames = ["A1", "A2", "A3"];
+  // Reihenfolge von STAGGERED_DAILY_JOBS in timing.ts: Wälle, Container,
+  // Türme, Straßen, Linkplaner — fünf Jobs.
+  const JOB_COUNT = 5;
+
+  for (const name of roomNames) {
+    anyGlobal.room[name] = { room: name, spawnRoom: name, maxwallRepairer: 1, saveRoads: true };
+  }
+
+  memory().rooms = {};
+  for (const name of roomNames) {
+    // `roads: []` erfüllt die Vorbedingung von rebuildRoads (roomMemory?.roads
+    // muss vorhanden sein), bleibt aber leer, damit kein RoomPosition-Stub
+    // gebraucht wird.
+    memory().rooms[name] = { roads: [] };
+  }
+
+  const findLog: FindLogEntry[] = [];
+  for (const name of roomNames) {
+    game().rooms[name] = {
+      name,
+      // level 7 erlaubt sowohl rebuildRoads (verlangt >= 7) als auch
+      // planReceiverLinks (usesLinks() verlangt ein Kontingent > 0; bei
+      // Level 7 sind das 4 Links laut CONTROLLER_STRUCTURES-Stub).
+      controller: { my: true, level: 7 },
+      find(type: number) {
+        findLog.push({ room: name, type });
+        // planReceiverLinks liest hierüber die Anzahl gebauter Links; 4
+        // Treffer gegen ein Kontingent von 4 lassen freeSlots auf 0 fallen,
+        // sodass der Job direkt danach abbricht — ohne RoomPosition-Stub.
+        if (type === FIND_MY_STRUCTURES) {
+          return [
+            { structureType: STRUCTURE_LINK },
+            { structureType: STRUCTURE_LINK },
+            { structureType: STRUCTURE_LINK },
+            { structureType: STRUCTURE_LINK },
+          ];
+        }
+        return [];
+      },
+    };
+  }
+
+  const DAY_BASE = 28_800 * 5;
+  const touchesPerRoom = new Map(roomNames.map(name => [name, 0]));
+  const roomsPerJobWindow: string[][] = Array.from({ length: JOB_COUNT }, () => []);
+
+  for (let index = 0; index < JOB_COUNT * roomNames.length; index++) {
+    const slot = 2 + index;
+    game().time = DAY_BASE + slot;
+    findLog.length = 0;
+
+    daylie();
+
+    const touchedRooms = new Set(findLog.map(entry => entry.room));
+    assert.equal(touchedRooms.size, 1, `Slot ${slot}: genau ein Raum darf bearbeitet werden`);
+
+    const [touchedRoom] = [...touchedRooms];
+    const expectedRoom = roomNames[index % roomNames.length]!;
+    assert.equal(touchedRoom, expectedRoom, `Slot ${slot}: erwarteter Raum wäre ${expectedRoom}`);
+
+    const jobIndex = Math.floor(index / roomNames.length);
+    roomsPerJobWindow[jobIndex]!.push(touchedRoom!);
+    touchesPerRoom.set(touchedRoom!, (touchesPerRoom.get(touchedRoom!) ?? 0) + 1);
+  }
+
+  for (const name of roomNames) {
+    assert.equal(
+      touchesPerRoom.get(name),
+      JOB_COUNT,
+      `${name} muss von jedem der ${JOB_COUNT} Jobs genau einmal bearbeitet worden sein`,
+    );
+  }
+  for (let jobIndex = 0; jobIndex < JOB_COUNT; jobIndex++) {
+    const distinctRoomsInWindow = new Set(roomsPerJobWindow[jobIndex]);
+    assert.equal(
+      distinctRoomsInWindow.size,
+      roomNames.length,
+      `Job ${jobIndex}: innerhalb seines Fensters muss jeder Raum genau einmal drankommen`,
+    );
+  }
+});
+
+test("daylie() tut nichts mehr, sobald das letzte (Job, Raum)-Paar durch ist", async () => {
+  installGlobals();
+  const { daylie } = await import("../src/controller/timing");
+
+  const roomNames = ["A1", "A2", "A3"];
+  const JOB_COUNT = 5;
+  for (const name of roomNames) {
+    anyGlobal.room[name] = { room: name, spawnRoom: name, maxwallRepairer: 1, saveRoads: true };
+  }
+
+  const findLog: FindLogEntry[] = [];
+  for (const name of roomNames) game().rooms[name] = makeLoggingRoom(name, findLog);
+
+  // Erster Slot jenseits des gültigen Bereichs (Indizes 0 .. JOB_COUNT*R - 1).
+  const slotAfterLastPair = 2 + JOB_COUNT * roomNames.length;
+  game().time = 28_800 * 6 + slotAfterLastPair;
+
+  daylie();
+
+  assert.equal(findLog.length, 0, "hinter dem letzten Paar darf kein find()-Aufruf mehr stattfinden");
+});
+
+test("daylie() wirft ohne konfigurierte Räume nicht", async () => {
+  installGlobals(); // resetWorld() leert auch bot.room
+
+  const { daylie } = await import("../src/controller/timing");
+
+  game().time = 28_800 * 7 + 5; // irgendein Slot ab STAGGER_START
+
+  assert.doesNotThrow(() => daylie());
+});

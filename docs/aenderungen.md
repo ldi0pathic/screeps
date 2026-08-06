@@ -647,3 +647,57 @@ Zahlen mit den bisherigen Fenstern vergleichbar bleiben.
 Nebenbei: `Game.cpu.generatePixel` fehlte im gemeinsamen Teststub. Der erste
 Test, der `controll()` aufrief, musste seinen Tick deshalb um die Pixelerzeugung
 herumlegen. Jetzt nachgetragen und mitgezählt (`cpu.generatePixelCalls`).
+
+## Runde 2026-08-06: Raumarbeit gestaffelt statt gebündelt (Plan 05, Schritt 4)
+
+**Verhaltensänderung an der Taktung, nicht an der Arbeit.** Jeder Raum wird
+genauso oft bearbeitet wie vorher — nur nicht mehr alle im selben Tick. Die
+Summe bleibt gleich, die **Spitze** sinkt, und die Spitze entscheidet, ob der
+Tick durchläuft: greift das CPU-Limit, bricht das Spiel den Rest stillschweigend
+ab.
+
+| Was | Vorher | Jetzt |
+| --- | --- | --- |
+| `defence.ts::check()` | alle 7 Ticks, dann **alle** neun Räume gebündelt | jeden Tick gerufen, bearbeitet je Raum nach `(Game.time + Position) % 7` — ein bis zwei Räume je Tick, jeder Raum weiterhin alle 7 Ticks |
+| Tagessequenz `daylie()` | sieben feste `case`-Nummern, jede Nummer ein Job über **alle** Räume | ein Paar aus (Job, Raum) je Tick: fünf staffelbare Jobs × Raumzahl, dazu Slot 0 und 1 ungestaffelt |
+| `findAndSaveRoomWalls`, `findAndSaveRoomContainer`, `findAndSaveRoomTower`, `rebuildRoads`, `planReceiverLinks` | liefen über alle Räume | haben einen optionalen ersten Parameter `onlyRoom?: string`. **Ohne** Argument unverändert alle Räume — die Funktionen sind auch von Hand aus der Konsole aufrufbar. |
+
+`clear()` und `findAndSaveTerminals()` bleiben ungestaffelt: beide bauen **eine**
+Liste über alle Räume auf und müssen sie in einem Zug schreiben, häppchenweise
+wäre sie zwischendurch unvollständig. Das steht jetzt als Kommentar an beiden
+Funktionen.
+
+**`tower()` wird weiterhin nicht gestaffelt.** Turmfeuer ist taktisch und muss in
+jedem Tick für jeden bedrohten Raum laufen.
+
+Ein Nebeneffekt, der in die richtige Richtung geht: `planReceiverLinks()` legte
+bisher „höchstens eine Baustelle **je Raum**" an — bei neun Räumen also bis zu
+neun im selben Tick, denn die Schleife über die Räume hatte kein `break`. Durch
+die Staffelung ist es jetzt höchstens **eine je Tick**. Das ist strenger als
+vorher, nicht lockerer.
+
+### Befund, bewusst nicht behoben: der Straßenwiederaufbau arbeitet auf einem toten Datenstand
+
+`memory.ts::findAndSaveRoads()` ist die **einzige** Stelle, die
+`Memory.rooms[<raum>].roads` füllt — und sie wird nirgends aufgerufen. Der
+Tagesjob `rebuildRoads` liest genau diese Liste (`if (!roomMemory?.roads)
+continue;`) und tut ohne sie nichts.
+
+Das ist keine Migrationslücke: im alten Bot steht der Aufruf **auskommentiert**
+in `prod/controller.timing.js:79` (`// case 6: memoryControll.FindAndSaveRoads();`).
+Jemand hat das absichtlich abgeschaltet. Der TypeScript-Bot hat den Zustand
+getreu übernommen.
+
+Damit gibt es zwei Möglichkeiten, und beide sind eine Entscheidung des
+Betreibers, keine technische Frage:
+
+- Die Straßenliste im laufenden Spiel stammt noch vom alten Bot und wird nie
+  aufgefrischt. `rebuildRoads` baut dann Straßen nach einem alten Schnappschuss
+  wieder auf — inklusive solcher, die man absichtlich hat verfallen lassen.
+- Oder es gibt gar keine Liste mehr, dann ist der ganze Zweig samt
+  `saveRoads`-Flag in vier Räumen toter Code.
+
+Nachzusehen ist das im Spiel mit einem Blick auf
+`Memory.rooms["E58N6"].roads`. Bis dahin bleibt der Code, wie er ist —
+etwas wieder einzuschalten, das ein Mensch bewusst abgeschaltet hat, wäre keine
+Fehlerbehebung.

@@ -40,8 +40,39 @@ class HostileScanCache {
 
 const hostileScan = new HostileScanCache();
 
+/**
+ * Wie oft jeder Raum geprüft wird. Unverändert alle 7 Ticks — neu ist nur, dass
+ * nicht mehr alle Räume denselben Tick treffen.
+ */
+const CHECK_INTERVAL = 7;
+
+/**
+ * Verteidigungsscan, **gestaffelt**: ein Raum je Tick statt alle im selben.
+ *
+ * Wird seit Plan 05 in **jedem** Tick gerufen, nicht mehr nur alle sieben. Die
+ * Häufigkeit je Raum bleibt dieselbe (`(Game.time + index) % 7`), aber die
+ * Räume verteilen sich über die sieben Ticks. Das ändert nicht die Summe,
+ * sondern die **Spitze** — und die entscheidet, ob der Tick durchläuft: greift
+ * das CPU-Limit, bricht das Spiel den Rest stillschweigend ab. Mit neun Räumen
+ * fielen bisher neun Raumscans in denselben Tick, jetzt sind es ein bis zwei.
+ *
+ * Der Versatz kommt aus der Position des Raums in `bot.room`. Die
+ * Schlüsselreihenfolge eines Objekts ist für Stringschlüssel die
+ * Einfügereihenfolge, also stabil — ein Raum behält seinen Tick, solange
+ * `config.ts` unverändert bleibt. Ändert sie sich, verschiebt sich der Versatz
+ * einmalig; das ist folgenlos, weil jede Prüfung für sich steht.
+ *
+ * `tower()` wird ausdrücklich **nicht** gestaffelt: Turmfeuer ist taktisch und
+ * muss in jedem Tick für jeden bedrohten Raum laufen.
+ */
 export function check(): void {
+  var roomIndex = 0;
+
   for (var name in bot.room) {
+    var offset = roomIndex++;
+
+    if ((Game.time + offset) % CHECK_INTERVAL !== 0) continue;
+
     if (!bot.room[name]!.sendDefender) continue;
 
     if (

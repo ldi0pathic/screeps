@@ -1,4 +1,4 @@
-// Build: 2026-08-06 02:19:09 +02:00
+// Build: 2026-08-06 02:05:31 +02:00
 "use strict";
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
@@ -397,11 +397,10 @@ function writeStatus() {
   }
   if (message) console.log(message);
 }
-function findAndSaveRoomWalls(onlyRoom) {
+function findAndSaveRoomWalls() {
   var _a;
   (_a = botMemory.rooms) != null ? _a : botMemory.rooms = {};
   for (const name in botGlobal.room) {
-    if (onlyRoom && name !== onlyRoom) continue;
     const config = botGlobal.room[name];
     if (!config || config.maxwallRepairer < 1) continue;
     const room = Game.rooms[config.room];
@@ -411,11 +410,10 @@ function findAndSaveRoomWalls(onlyRoom) {
     }).map((structure) => structure.id);
   }
 }
-function findAndSaveRoomContainer(onlyRoom) {
+function findAndSaveRoomContainer() {
   var _a;
   (_a = botMemory.rooms) != null ? _a : botMemory.rooms = {};
   for (const name in botGlobal.room) {
-    if (onlyRoom && name !== onlyRoom) continue;
     const config = botGlobal.room[name];
     if (!config) continue;
     const room = Game.rooms[config.room];
@@ -423,11 +421,10 @@ function findAndSaveRoomContainer(onlyRoom) {
     ensureRoomMemory(name).container = room.find(FIND_STRUCTURES, { filter: { structureType: STRUCTURE_CONTAINER } }).map((structure) => structure.id);
   }
 }
-function findAndSaveRoomTower(onlyRoom) {
+function findAndSaveRoomTower() {
   var _a;
   (_a = botMemory.rooms) != null ? _a : botMemory.rooms = {};
   for (const name in botGlobal.room) {
-    if (onlyRoom && name !== onlyRoom) continue;
     const config = botGlobal.room[name];
     if (!config) continue;
     const room = Game.rooms[config.room];
@@ -463,12 +460,8 @@ var HostileScanCache = class {
   }
 };
 var hostileScan = new HostileScanCache();
-var CHECK_INTERVAL = 7;
 function check() {
-  var roomIndex = 0;
   for (var name in bot.room) {
-    var offset = roomIndex++;
-    if ((Game.time + offset) % CHECK_INTERVAL !== 0) continue;
     if (!bot.room[name].sendDefender) continue;
     if (Memory.rooms[name].invaderCoreEndTick && Game.time + 10 > Memory.rooms[name].invaderCoreEndTick) {
       Memory.rooms[name].invaderCore = false;
@@ -998,9 +991,8 @@ var LinkPlanner = class {
     return true;
   }
 };
-function planReceiverLinks(onlyRoom) {
+function planReceiverLinks() {
   for (const roomName in bot.room) {
-    if (onlyRoom && roomName !== onlyRoom) continue;
     new LinkPlanner(roomName).plan();
   }
 }
@@ -1085,10 +1077,9 @@ function discoverAll() {
 // src/controller/rebuild.ts
 var botGlobal2 = global;
 var botMemory2 = Memory;
-function rebuildRoads(onlyRoom) {
+function rebuildRoads() {
   var _a, _b;
   for (const name in botGlobal2.room) {
-    if (onlyRoom && name !== onlyRoom) continue;
     const config = botGlobal2.room[name];
     const room = Game.rooms[name];
     if (!(config == null ? void 0 : config.saveRoads) || !room || ((_a = room.controller) == null ? void 0 : _a.level) === void 0 || room.controller.level < 7) {
@@ -4769,9 +4760,11 @@ function controll() {
     spawn2();
     end(SECTION.spawn);
   }
-  begin(SECTION.defence);
-  check();
-  end(SECTION.defence);
+  if (tick2 % 7 === 0) {
+    begin(SECTION.defence);
+    check();
+    end(SECTION.defence);
+  }
   if (tick2 % 11 === 0) {
     begin(SECTION.status);
     writeStatus();
@@ -4781,38 +4774,35 @@ function controll() {
   daylie();
   end(SECTION.daily);
 }
-var DAY_TICKS = 86400 / 3;
-var STAGGERED_DAILY_JOBS = [
-  { run: findAndSaveRoomWalls },
-  { run: findAndSaveRoomContainer },
-  { run: findAndSaveRoomTower },
-  { section: SECTION.roads, run: rebuildRoads },
-  { section: SECTION.linkplan, run: planReceiverLinks }
-];
-var STAGGER_START = 2;
 function daylie() {
-  const slot = Game.time % DAY_TICKS;
-  if (slot === 0) {
-    clear();
-    return;
+  const dayTicks = 86400 / 3;
+  switch (Game.time % dayTicks) {
+    case 0:
+      clear();
+      return;
+    case 1:
+      findAndSaveRoomWalls();
+      return;
+    case 2:
+      findAndSaveRoomContainer();
+      return;
+    case 3:
+      findAndSaveRoomTower();
+      return;
+    case 4:
+      findAndSaveTerminals();
+      return;
+    case 5:
+      begin(SECTION.roads);
+      rebuildRoads();
+      end(SECTION.roads);
+      return;
+    case 6:
+      begin(SECTION.linkplan);
+      planReceiverLinks();
+      end(SECTION.linkplan);
+      return;
   }
-  if (slot === 1) {
-    findAndSaveTerminals();
-    return;
-  }
-  const roomNames = Object.keys(bot.room);
-  if (roomNames.length === 0) return;
-  const index = slot - STAGGER_START;
-  if (index < 0 || index >= STAGGERED_DAILY_JOBS.length * roomNames.length) return;
-  const job = STAGGERED_DAILY_JOBS[Math.floor(index / roomNames.length)];
-  const roomName = roomNames[index % roomNames.length];
-  if (!job.section) {
-    job.run(roomName);
-    return;
-  }
-  begin(job.section);
-  job.run(roomName);
-  end(job.section);
 }
 
 // src/prototypes/creep-checks.ts

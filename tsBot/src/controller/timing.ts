@@ -4,6 +4,7 @@ import * as linksController from "./links";
 import * as memoryController from "./memory";
 import * as rebuildController from "./rebuild";
 import * as spawnController from "./spawn";
+import { bot } from "../globals";
 // Messpunkte für den CPU-Profiler: klammern die Abschnitte des Schedulers ein.
 import { begin, end, SECTION } from "../profiler";
 
@@ -93,11 +94,13 @@ export function controll(): void {
     end(SECTION.spawn);
   }
 
-  if (tick % 7 === 0) {
-    begin(SECTION.defence);
-    defenceController.check();
-    end(SECTION.defence);
-  }
+  // Jeden Tick, nicht mehr alle sieben: `check()` staffelt selbst und nimmt sich
+  // je Tick nur die Räume vor, die dran sind. Die Häufigkeit je Raum bleibt bei
+  // sieben Ticks, aber die Spitze verteilt sich — und die Spitze entscheidet, ob
+  // der Tick durchläuft. Ohne fällige Räume ist der Durchgang eine leere Schleife.
+  begin(SECTION.defence);
+  defenceController.check();
+  end(SECTION.defence);
 
   if (tick % 11 === 0) {
     begin(SECTION.status);
@@ -110,34 +113,66 @@ export function controll(): void {
   end(SECTION.daily);
 }
 
-export function daylie(): void {
-  const dayTicks = 86_400 / 3;
+/** Länge der Tagessequenz in Ticks. */
+const DAY_TICKS = 86_400 / 3;
 
-  switch (Game.time % dayTicks) {
-    case 0:
-      memoryController.clear();
-      return;
-    case 1:
-      memoryController.findAndSaveRoomWalls();
-      return;
-    case 2:
-      memoryController.findAndSaveRoomContainer();
-      return;
-    case 3:
-      memoryController.findAndSaveRoomTower();
-      return;
-    case 4:
-      memoryController.findAndSaveTerminals();
-      return;
-    case 5:
-      begin(SECTION.roads);
-      rebuildController.rebuildRoads();
-      end(SECTION.roads);
-      return;
-    case 6:
-      begin(SECTION.linkplan);
-      linkPlannerController.planReceiverLinks();
-      end(SECTION.linkplan);
-      return;
+/**
+ * Tagesjobs, die je Raum einzeln laufen können — **einer je Tick**.
+ *
+ * Vorher bearbeitete jeder dieser Jobs in seinem einen Tick **alle** Räume; bei
+ * neun Räumen fielen damit neun Raumscans zusammen. Die Summe ändert sich durch
+ * die Staffelung nicht, wohl aber die Spitze — und die entscheidet, ob der Tick
+ * durchläuft: greift das CPU-Limit, bricht das Spiel den Rest stillschweigend
+ * ab (Plan 05, Befund 2).
+ *
+ * `section` ist der Profilerabschnitt, sofern der Job einen eigenen hat; die
+ * übrigen laufen unter `timing.daily`.
+ */
+const STAGGERED_DAILY_JOBS: Array<{ section?: string; run: (roomName: string) => void }> = [
+  { run: memoryController.findAndSaveRoomWalls },
+  { run: memoryController.findAndSaveRoomContainer },
+  { run: memoryController.findAndSaveRoomTower },
+  { section: SECTION.roads, run: rebuildController.rebuildRoads },
+  { section: SECTION.linkplan, run: linkPlannerController.planReceiverLinks },
+];
+
+/** Erster Tick der Tagessequenz, ab dem die gestaffelten Jobs laufen. */
+const STAGGER_START = 2;
+
+export function daylie(): void {
+  const slot = Game.time % DAY_TICKS;
+
+  // Diese beiden bleiben ungestaffelt: sie bauen **eine** Liste über alle Räume
+  // auf und müssen sie in einem Zug schreiben. Häppchenweise wäre sie
+  // zwischendurch unvollständig.
+  if (slot === 0) {
+    memoryController.clear();
+    return;
   }
+  if (slot === 1) {
+    memoryController.findAndSaveTerminals();
+    return;
+  }
+
+  const roomNames = Object.keys(bot.room);
+  if (roomNames.length === 0) return;
+
+  // Ein Paar aus (Job, Raum) je Tick. Die Reihenfolge der Schlüssel eines
+  // Objekts ist für Stringschlüssel die Einfügereihenfolge, also stabil —
+  // ändert sich `config.ts`, verschiebt sich die Zuordnung einmalig, was
+  // folgenlos ist, weil jeder Job für sich steht.
+  const index = slot - STAGGER_START;
+  if (index < 0 || index >= STAGGERED_DAILY_JOBS.length * roomNames.length) return;
+
+  const job = STAGGERED_DAILY_JOBS[Math.floor(index / roomNames.length)]!;
+  const roomName = roomNames[index % roomNames.length]!;
+
+  if (!job.section) {
+    job.run(roomName);
+    return;
+  }
+
+  begin(job.section);
+  job.run(roomName);
+  end(job.section);
 }

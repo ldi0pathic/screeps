@@ -1,7 +1,23 @@
 # Plan 05: CPU-Verteilung über den Tick
 
-Status: **Vorschlag.** Verhaltensänderung: **ja**, außer beim ersten Punkt.
-Voraussetzung: **Plan 01**, sonst werden Schwellen geraten.
+Status: **Schritte 1 bis 4 gebaut** (2026-08-06, siehe `docs/aenderungen.md`),
+Wirkung noch nicht gemessen. **Schritt 5 offen** (CPU-Stufen). Befund 6
+(`range` an Pfadsuchen) ebenfalls offen — er braucht eine Einzelprüfung je
+Aufrufstelle, ob der Creep ein Feld früher noch in Reichweite seines
+`transfer`/`withdraw` steht.
+
+Nachtrag zu Schritt 3: Plan nennt „Türme **und Notfall-Spawn**". Umgesetzt sind
+nur die Türme. Einen eigenen Einstieg für den Notfallspawn gibt es nicht, und
+den Spawncontroller ganz nach vorn zu ziehen wäre kontraproduktiv — er läuft nur
+alle fünf Ticks und kostet je Aufruf ein Vielfaches der Türme (5,47 gegen 0,40
+gemessen), würde die Spitze also vergrößern statt verkleinern.
+
+Beim Staffeln der Tagesjobs gefunden: **der Straßenwiederaufbau arbeitet auf
+einem Datenstand, den niemand mehr auffrischt.** `findAndSaveRoads()` ist die
+einzige Stelle, die `Memory.rooms[<raum>].roads` füllt, und wird nirgends
+gerufen — im alten Bot steht der Aufruf auskommentiert
+(`prod/controller.timing.js:79`). Das ist eine Entscheidung des Betreibers, kein
+Fehler; Einzelheiten in `docs/aenderungen.md`.
 
 Bei 20 CPU ist das hier die Voraussetzung dafür, dass mehr Räume überhaupt
 hineinpassen.
