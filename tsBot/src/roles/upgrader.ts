@@ -51,7 +51,14 @@ export class Upgrader implements CreepRole {
 
         if (creep.memory.harvest)
         {
-            if(!creep.memory.noLink && new LinkList(creep.memory.workroom).controllerLink && (creep.room.controller!.my && creep.room.controller!.level >= 5) )
+            // Am Inhalt entschieden, nicht an einer Flagge: `noLink` wurde nie
+            // zurückgesetzt, ein Upgrader hätte den Link nach dem ersten leeren
+            // Antreffen für den Rest seines Lebens ignoriert — und damit auch
+            // jeden Nachschub aus dem Storage. Die Schwelle ist dieselbe, die
+            // `harvestControllerLink` prüft.
+            const controllerLink = new LinkList(creep.memory.workroom).controllerLink;
+
+            if(controllerLink && controllerLink.store[RESOURCE_ENERGY] > 100 && (creep.room.controller!.my && creep.room.controller!.level >= 5) )
             {
                 if(creepBase.harvestControllerLink(creep,RESOURCE_ENERGY)) return;
 

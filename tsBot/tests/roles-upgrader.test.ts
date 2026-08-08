@@ -24,9 +24,10 @@
  * Damit `doJob` nach dem `checkHarvest`-Aufruf nicht auf fehlenden Methoden
  * stolpert, ist der Creep so gebaut, dass die Beschaffungskette aus
  * `creep/base.ts` bis zum Ende (oder bis zu einem erfolgreichen `withdraw` aus
- * dem Storage) durchläuft, ohne zu werfen: `memory.noLink = true` überspringt
- * die Controller-Link-Suche (kein `LinkList`/`Memory.rooms[...].links` nötig),
- * `room.find` liefert für die Containerliste eine leere Trefferliste,
+ * dem Storage) durchläuft, ohne zu werfen: `Memory.rooms[ROOM]` trägt keine
+ * `links`, damit `LinkList.controllerLink` `null` liefert und der Link-Zweig
+ * ausfällt (`doJob` entscheidet am Inhalt des Links, nicht mehr an einer
+ * Flagge), `room.find` liefert für die Containerliste eine leere Trefferliste,
  * `pos.findClosestByPath` liefert `null` für Drops/Tombstones/Ruinen, und
  * `getActiveBodyparts` liefert 0, damit `harvestRoomEnergySource` ohne
  * Quellensuche `false` meldet. Ist ein Storage mit Energie vorhanden, greift
@@ -90,9 +91,6 @@ function stubUpgraderCreep(options: UpgraderCreepOptions = {}): { creep: any; st
       workroom: ROOM,
       home: ROOM,
       harvest: true,
-      // Umgeht die Controller-Link-Suche per Kurzschluss (`&&`) — die
-      // Linklogik ist nicht Gegenstand dieser Datei, siehe Dateikopf.
-      noLink: true,
       ...options.memory,
     },
     room: {
@@ -496,4 +494,50 @@ test("überlaufender Storage: genau einer, kein zweiter — ab RCL8 deckelt der 
   };
 
   assert.equal(upgrader.spawn(spawnObj, ROOM), false, "einer genügt");
+});
+
+// --- Controller-Link am Inhalt statt an der Flagge -----------------------------
+
+test("ein Upgrader mit noLink im Memory holt wieder aus dem Controller-Link, sobald dort Energie liegt", async () => {
+  const { Upgrader } = await loadUpgrader();
+  const upgrader = new Upgrader();
+
+  const link = { id: "controller-link", store: { [RESOURCE_ENERGY]: 400 } };
+  anyGlobal.Game.getObjectById = (id: string) => (id === link.id ? link : null);
+  anyGlobal.Memory.rooms = { [ROOM]: { links: { controller: link.id, sender: [] } } };
+
+  // Die Altlast aus dem Creep-Memory darf den Link nicht mehr sperren.
+  const { creep, state } = stubUpgraderCreep({
+    controller: controllerStub(7),
+    storageEnergy: 300000,
+    memory: { noLink: true },
+  });
+
+  upgrader.doJob(creep);
+
+  assert.equal(state.withdrawCalls, 1, "geholt wird aus dem Link");
+  // `withdrawCalls` allein unterscheidet den Link nicht vom Storage — beide
+  // Zweige holen per `withdraw`. `withdrawFrom` merkt sich aber die Id des
+  // Ziels in `memory.fromId`, und der Storage-Stub dieser Datei trägt keine.
+  assert.equal(creep.memory.fromId, "controller-link", "und zwar aus dem Link, nicht aus dem Storage");
+});
+
+test("leerer Controller-Link: der Upgrader fällt in die Ersatzkette, statt untätig zu warten", async () => {
+  const { Upgrader } = await loadUpgrader();
+  const upgrader = new Upgrader();
+
+  // Genau die 100 aus `harvestControllerLink` — die Schwelle ist `>`.
+  const link = { id: "controller-link", store: { [RESOURCE_ENERGY]: 100 } };
+  anyGlobal.Game.getObjectById = (id: string) => (id === link.id ? link : null);
+  anyGlobal.Memory.rooms = { [ROOM]: { links: { controller: link.id, sender: [] } } };
+
+  const { creep, state } = stubUpgraderCreep({
+    controller: controllerStub(7),
+    storageEnergy: 300000,
+  });
+
+  upgrader.doJob(creep);
+
+  assert.equal(state.withdrawCalls, 1, "der Creep steht nicht still, sondern nimmt die Ersatzkette");
+  assert.equal(creep.memory.fromId, undefined, "geholt wird aus dem Storage — der Stub trägt keine Id");
 });
