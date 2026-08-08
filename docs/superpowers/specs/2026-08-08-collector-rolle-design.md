@@ -103,10 +103,17 @@ im Storage, die mehr als 100 Einheiten hält, nicht Energie ist und nicht auf de
 
 ### B2 · Abliefern
 
-- Alles außer Energie: `TransportToHomeTerminal`, Rückfall
-  `TransportToHomeStorage`.
-- Energie: ins Terminal nur, solange dessen Energiebestand unter der
-  Deckungsgrenze liegt (B4); sonst ins Storage.
+`TransportToHomeTerminal`, Rückfall `TransportToHomeStorage` — für die ganze
+Ladung, ohne Fallunterscheidung.
+
+**Die Deckungsgrenze steuert das Holen, nicht das Abliefern.** Das ist kein
+Versehen: `creep/transport.ts:168-170` trägt eine eigene, fest eingebaute
+Energiegrenze (100 000), oberhalb derer `TransportToHomeTerminal` Energie
+abweist. Eine zweite Grenze im Abliefern danebenzustellen hieße, zwei Regeln für
+dieselbe Frage zu pflegen. Stattdessen holt der Collector Energie überhaupt nur
+dann, wenn das Terminal unter `TERMINAL_ENERGY_TARGET` liegt (B4, Stufe 6) —
+der Bestand dort pendelt sich damit bei der Zielgröße plus höchstens einer
+Ladung ein.
 
 ### B3 · Der Container am Extractor
 
