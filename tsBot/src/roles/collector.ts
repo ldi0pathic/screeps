@@ -184,9 +184,20 @@ export class Collector implements CreepRole {
         return false;
     }
 
-    /** Abliefern: erst das Terminal, dann das Storage als Rückfall. */
+    /**
+     * Abliefern: erst das Terminal, dann das Storage als Rückfall.
+     *
+     * `fromId` wird vor dem Rückfall geräumt: nach `harvestRoomStorage` zeigt es
+     * auf das Storage, und `TransportToHomeStorage` liefert grundsätzlich nicht
+     * dorthin zurück, woher gerade geholt wurde. Ohne das Räumen bliebe der
+     * Creep beladen stehen, sobald das Terminal einmal nichts annimmt — bis zu
+     * seinem Tod. `null` wie in `checkHarvest()` (`prototypes/creep-checks.ts`),
+     * der einzigen bestehenden Stelle, die `fromId` räumt.
+     */
     private _deliver(creep: Creep): void {
         if (creepBase.TransportToHomeTerminal(creep)) return;
+
+        creep.memory.fromId = null;
         creepBase.TransportToHomeStorage(creep);
     }
 

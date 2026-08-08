@@ -365,3 +365,33 @@ test("ein Terminal ganz ohne Energie bekommt welche — der wichtigste Fall, nic
     true,
   );
 });
+
+test("nimmt das Terminal nichts an, geht die Ladung ins Storage statt festzuhaengen", async () => {
+  const { Collector } = await loadCollector();
+  const collector = new Collector();
+
+  const storage = stubStructure("storage", STRUCTURE_STORAGE, 20, 20, ROOM, stubStore(1000000));
+  // Randvoll: TransportToHomeTerminal findet kein Ziel mit freiem Platz.
+  const terminal = stubStructure("terminal", STRUCTURE_TERMINAL, 21, 21, ROOM, stubStore(300000, { [RESOURCE_ENERGY]: 300000 }));
+
+  const room = stubRoom(ROOM, { storage, terminal });
+  configureRoom(ROOM, {});
+  roomMemory(ROOM, {});
+
+  const creep: any = addCheckHarvest(
+    stubActor(15, 15, ROOM, {
+      store: stubStore(500, { O: 500 }),
+      // `fromId` auf dem Storage: genau der Zustand nach `harvestRoomStorage`.
+      memory: { role: "collector", workroom: ROOM, home: ROOM, harvest: false, container: "", mineral: RESOURCE_ENERGY, fromId: "storage" },
+      room,
+    }),
+  );
+
+  collector.doJob(creep);
+
+  assert.equal(
+    actionCalls.some(call => call.targetId === "storage"),
+    true,
+    "die Ladung geht zurueck ins Storage, statt beim Creep zu bleiben",
+  );
+});
