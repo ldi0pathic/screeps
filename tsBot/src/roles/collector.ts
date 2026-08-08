@@ -54,6 +54,15 @@ export const TERMINAL_ENERGY_TARGET = 20000;
  */
 export const TERMINAL_FREE_MIN = 50000;
 
+/**
+ * Untergrenze im Storage, unterhalb derer keine Energie mehr ins Terminal
+ * wandert.
+ *
+ * Dieselbe Zahl, mit der `roles/wally.ts` seinen Energiezugriff vorbehält —
+ * der Markt ist Kür, der laufende Betrieb Pflicht.
+ */
+export const STORAGE_ENERGY_RESERVE = 50000;
+
 /** Siehe Dateikopf. `@profile` misst jede Methode dieser Klasse. */
 @profile
 export class Collector implements CreepRole {
@@ -179,16 +188,35 @@ export class Collector implements CreepRole {
         return creepBase.harvestRoomStorage(creep, sellable);
     }
 
-    /** Energie aus dem Storage, solange das Terminal unter der Zielgröße liegt. */
+    /**
+     * Energie aus dem Storage, solange das Terminal unter der Zielgröße liegt
+     * **und** der Raum sie entbehren kann.
+     *
+     * Ein Umlauf trägt 500 Einheiten in rund zehn Ticks, das sind etwa 50
+     * Energie je Tick — mehr, als zwei Quellen liefern (20/Tick) —, und das über
+     * rund 400 Ticks, bis das Terminal voll ist. Zwei Vorbehalte halten das vom
+     * laufenden Betrieb fern: hängt der Raum am Prioritätsspawn, bekommt der
+     * Spawn die Energie, nicht der Markt; und unterhalb von
+     * `STORAGE_ENERGY_RESERVE` wird das Storage gar nicht erst angezapft.
+     */
     private _collectTerminalEnergy(creep: Creep): boolean {
         const terminal = creep.room.terminal;
         if (!terminal) return false;
 
-        // `getUsedCapacity` statt `store[…]`: der Store liefert für eine
-        // fehlende Ressource `undefined`, und eine negierte Schwelle kippte
-        // dann genau im wichtigsten Fall — dem leeren Terminal, für das diese
-        // Konstante da ist (siehe die Notiz in `creep/base.ts`).
-        if (terminal.store.getUsedCapacity(RESOURCE_ENERGY) < TERMINAL_ENERGY_TARGET) {
+        // Derselbe Schlüssel, den `creep/base.ts::checkWorkroomPrioSpawn` liest.
+        if (Memory.rooms[creep.memory.workroom]!.aktivPrioSpawn) return false;
+
+        const storage = creep.room.storage;
+        if (!storage) return false;
+
+        // Beide Schwellen bewusst positiv: bei fehlender Ressource ist der Wert
+        // `undefined`, und eine Negierung kippte dann genau im wichtigsten Fall
+        // — dem leeren Terminal, für das `TERMINAL_ENERGY_TARGET` da ist (siehe
+        // die Notiz in `creep/base.ts`). Deshalb steht der Vergleich mit der
+        // Zielgröße über `getUsedCapacity`, das statt `undefined` eine Null
+        // liefert.
+        if (storage.store[RESOURCE_ENERGY] > STORAGE_ENERGY_RESERVE &&
+            terminal.store.getUsedCapacity(RESOURCE_ENERGY) < TERMINAL_ENERGY_TARGET) {
             return creepBase.harvestRoomStorage(creep, RESOURCE_ENERGY);
         }
 

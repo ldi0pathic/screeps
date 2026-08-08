@@ -252,6 +252,63 @@ test("ist im Terminal zu wenig frei, wird nichts mehr nachgeliefert", async () =
   );
 });
 
+test("haengt der Raum am Prioritaetsspawn, holt der Collector keine Energie fuers Terminal", async () => {
+  const { Collector } = await loadCollector();
+  const collector = new Collector();
+
+  const storage = stubStructure("storage", STRUCTURE_STORAGE, 20, 20, ROOM, stubStore(1000000, { [RESOURCE_ENERGY]: 500000 }));
+  // Leer: ohne den Vorbehalt wuerde hier sofort Energie geholt.
+  const terminal = stubStructure("terminal", STRUCTURE_TERMINAL, 21, 21, ROOM, stubStore(300000));
+
+  const room = stubRoom(ROOM, { storage, terminal });
+  configureRoom(ROOM, {});
+  roomMemory(ROOM, { aktivPrioSpawn: true });
+
+  const creep: any = addCheckHarvest(
+    stubActor(15, 15, ROOM, {
+      store: stubStore(500),
+      memory: { role: "collector", workroom: ROOM, home: ROOM, harvest: true, container: "", mineral: RESOURCE_ENERGY },
+      room,
+    }),
+  );
+
+  collector.doJob(creep);
+
+  assert.equal(
+    actionCalls.some(call => call.targetId === "storage"),
+    false,
+    "in der Krise gehoert die Energie dem Spawn, nicht dem Markt",
+  );
+});
+
+test("steht das Storage genau auf der Reserve, wird keine Energie fuers Terminal geholt", async () => {
+  const { Collector, STORAGE_ENERGY_RESERVE } = await loadCollector();
+  const collector = new Collector();
+
+  const storage = stubStructure("storage", STRUCTURE_STORAGE, 20, 20, ROOM, stubStore(1000000, { [RESOURCE_ENERGY]: STORAGE_ENERGY_RESERVE }));
+  const terminal = stubStructure("terminal", STRUCTURE_TERMINAL, 21, 21, ROOM, stubStore(300000));
+
+  const room = stubRoom(ROOM, { storage, terminal });
+  configureRoom(ROOM, {});
+  roomMemory(ROOM, {});
+
+  const creep: any = addCheckHarvest(
+    stubActor(15, 15, ROOM, {
+      store: stubStore(500),
+      memory: { role: "collector", workroom: ROOM, home: ROOM, harvest: true, container: "", mineral: RESOURCE_ENERGY },
+      room,
+    }),
+  );
+
+  collector.doJob(creep);
+
+  assert.equal(
+    actionCalls.some(call => call.targetId === "storage"),
+    false,
+    "genau die Reserve reicht nicht — die Bedingung ist `>`, nicht `>=`",
+  );
+});
+
 // --- Spawnbedingung ------------------------------------------------------------
 
 /**
