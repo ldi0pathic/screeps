@@ -61,12 +61,21 @@ export class LinkNetwork {
     }
 
     const senders = this.readySenders();
+
+    // Der Storage-Link wird im Bedarfsfall vom Empfänger zum Sender — und zwar
+    // **hinten** angehängt, damit geschenkte Quellenergie vor einer Abbuchung
+    // aus dem Vorrat zum Zug kommt.
+    const feed = this.feedSender();
+    if (feed) {
+      senders.push(feed);
+    }
+
     if (senders.length === 0) {
       // Der billige Normalfall: kein Sender bereit, nichts zu tun.
       return;
     }
 
-    const receivers = this.receiversByPriority(room);
+    const receivers = this.receiversByPriority(room, feed !== null);
 
     for (const sender of senders) {
       const receiver = receivers.shift();
@@ -94,6 +103,27 @@ export class LinkNetwork {
   }
 
   /**
+   * Der Storage-Link als Sender, wenn der Raum nachschieben muss — sonst `null`.
+   *
+   * Cooldown und Mindestladung werden hier geprüft und nicht in
+   * `needsStorageFeed`: die Frage "muss nachgeschoben werden" beantwortet auch
+   * der Linkkeeper, und für ihn ist der Cooldown des Links belanglos — er füllt
+   * ihn ja gerade erst.
+   */
+  private feedSender(): StructureLink | null {
+    if (!needsStorageFeed(this.roomName)) {
+      return null;
+    }
+
+    const link = this.list.spawnLink;
+    if (!link || link.cooldown !== 0 || link.store[RESOURCE_ENERGY] < SEND_MIN) {
+      return null;
+    }
+
+    return link;
+  }
+
+  /**
    * Empfänger nach Vorrang, gefiltert auf ausreichend freien Platz.
    *
    * Der Vorrang kippt bei RCL8: darunter bekommt der Controller-Link zuerst
@@ -101,12 +131,24 @@ export class LinkNetwork {
    * (dort zahlt Upgraden nur noch auf GCL ein). Empfänger dürfen dabei
    * teilweise befüllt werden — wer nur ganze Ladungen annimmt, bekäme als
    * halb gefüllter Empfänger nie etwas ab.
+   *
+   * `storageFeeds` überstimmt beides: sendet der Storage-Link gerade selbst,
+   * fällt er aus der Liste. Sonst könnte `receivers.shift()` ihm sich selbst
+   * zuteilen — und der Nebeneffekt ist erwünscht, weil die Quell-Ladungen dann
+   * direkt an den Controller gehen statt über einen zweiten Sprung mit weiteren
+   * drei Prozent Verlust.
    */
-  private receiversByPriority(room: Room): StructureLink[] {
+  private receiversByPriority(room: Room, storageFeeds: boolean): StructureLink[] {
     const controllerFirst = (room.controller?.level ?? 0) < 8;
-    const ordered = controllerFirst
-      ? [this.list.controllerLink, this.list.spawnLink]
-      : [this.list.spawnLink, this.list.controllerLink];
+
+    let ordered: (StructureLink | null)[];
+    if (storageFeeds) {
+      ordered = [this.list.controllerLink];
+    } else if (controllerFirst) {
+      ordered = [this.list.controllerLink, this.list.spawnLink];
+    } else {
+      ordered = [this.list.spawnLink, this.list.controllerLink];
+    }
 
     return ordered.filter(
       (link): link is StructureLink => link !== null && (link.store.getFreeCapacity(RESOURCE_ENERGY) ?? 0) >= SEND_MIN,
