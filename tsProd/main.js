@@ -1,4 +1,4 @@
-// Build: 2026-08-08 14:37:22 +02:00
+// Build: 2026-08-08 16:14:13 +02:00
 "use strict";
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
@@ -1761,11 +1761,11 @@ var LinkNetwork = class {
    * ihn ja gerade erst.
    */
   feedSender() {
-    if (!needsStorageFeed(this.roomName)) {
-      return null;
-    }
     const link = this.list.spawnLink;
     if (!link || link.cooldown !== 0 || link.store[RESOURCE_ENERGY] < SEND_MIN) {
+      return null;
+    }
+    if (!needsStorageFeed(this.roomName)) {
       return null;
     }
     return link;
@@ -1805,7 +1805,7 @@ var LinkNetwork = class {
   }
 };
 function needsStorageFeed(roomName) {
-  var _a;
+  var _a, _b;
   if (!usesLinks(roomName)) {
     return false;
   }
@@ -1816,6 +1816,9 @@ function needsStorageFeed(roomName) {
   const list = new LinkList(roomName);
   const controllerLink = list.controllerLink;
   if (!controllerLink || !list.spawnLink) {
+    return false;
+  }
+  if (((_b = controllerLink.store.getFreeCapacity(RESOURCE_ENERGY)) != null ? _b : 0) < SEND_MIN) {
     return false;
   }
   if (storageIsFull(roomName)) {
@@ -2501,7 +2504,6 @@ function harvestControllerLink(creep, type) {
   if (link && link.store[type] > 100) {
     return withdrawFrom(creep, link, type);
   }
-  creep.memory.noLink = true;
   return false;
 }
 function harvestMyContainer(creep, type) {
@@ -4131,7 +4133,8 @@ var Upgrader = class {
     if (!this._mayWork(creep)) return;
     creep.checkHarvest();
     if (creep.memory.harvest) {
-      if (!creep.memory.noLink && new LinkList(creep.memory.workroom).controllerLink && (creep.room.controller.my && creep.room.controller.level >= 5)) {
+      const controllerLink = new LinkList(creep.memory.workroom).controllerLink;
+      if (controllerLink && controllerLink.store[RESOURCE_ENERGY] > 100 && (creep.room.controller.my && creep.room.controller.level >= 5)) {
         if (harvestControllerLink(creep, RESOURCE_ENERGY)) return;
       } else {
         if (harvestRoomStorage(creep, RESOURCE_ENERGY))
@@ -4225,7 +4228,7 @@ var Upgrader = class {
     if (target <= count)
       return false;
     var profil = this.bodyFor(spawn3, workroom);
-    return spawn(spawn3, profil, role12 + "_" + Game.time, { role: role12, workroom, home: spawn3.room.name, repairs: 0, noLink: false });
+    return spawn(spawn3, profil, role12 + "_" + Game.time, { role: role12, workroom, home: spawn3.room.name, repairs: 0 });
   }
 };
 Upgrader = __decorateClass([
