@@ -13,6 +13,7 @@
 
 import { bot } from "../globals";
 import { LinkList, usesLinks } from "./link-list";
+import { storageIsFull } from "./storage-pressure";
 
 /**
  * Kleinste Menge, für die sich ein Sendevorgang lohnt.
@@ -24,6 +25,15 @@ import { LinkList, usesLinks } from "./link-list";
  * von `LINK_CAPACITY` und darf sich nach einer Messung ändern.
  */
 export const SEND_MIN = LINK_CAPACITY / 4;
+
+/**
+ * Untergrenze im Storage, unter der der Storage-Link nichts mehr abgibt.
+ *
+ * Der Rest bleibt für Spawn, Extensions und Türme. Der Wert deckt eine volle
+ * Extension-Runde samt Turmnachschub mehrfach ab und darf sich nach einer
+ * Messung ändern.
+ */
+export const STORAGE_FEED_RESERVE = 20000;
 
 export class LinkNetwork {
   private readonly list: LinkList;
@@ -102,6 +112,58 @@ export class LinkNetwork {
       (link): link is StructureLink => link !== null && (link.store.getFreeCapacity(RESOURCE_ENERGY) ?? 0) >= SEND_MIN,
     );
   }
+}
+
+/**
+ * Muss der Storage dieses Raums seinen Link speisen?
+ *
+ * Die **einzige** Entscheidungsstelle dafür — gefragt vom Sendenetz
+ * (`LinkNetwork.send`) und vom Linkkeeper (`roles/linkkeeper.ts`). Beide
+ * brauchen im selben Tick dieselbe Antwort: `main.ts` fährt erst alle Creeps
+ * und danach `controller.timing.controll()`, der Keeper handelt also vor dem
+ * Sendenetz. Eine Flagge im Memory käme einen Tick zu spät — und ohne Abgleich
+ * zöge der Keeper den Link genau in dem Tick leer, in dem das Netz ihn senden
+ * wollte.
+ *
+ * Zwei Fälle: der **Rückfall** (die Quellen liefern gerade nicht) und das
+ * **Vollpumpen** (der Storage läuft über, siehe `storageIsFull`).
+ */
+export function needsStorageFeed(roomName: string): boolean {
+  // `usesLinks` prüft Sicht, Besitz und RCL in einem.
+  if (!usesLinks(roomName)) {
+    return false;
+  }
+
+  const storage = Game.rooms[roomName]?.storage;
+  if (!storage) {
+    return false;
+  }
+
+  const list = new LinkList(roomName);
+  const controllerLink = list.controllerLink;
+  if (!controllerLink || !list.spawnLink) {
+    return false;
+  }
+
+  // Läuft der Storage über, wird ohne Rücksicht auf die Quellen nachgeschoben.
+  if (storageIsFull(roomName)) {
+    return true;
+  }
+
+  if (controllerLink.store[RESOURCE_ENERGY] >= SEND_MIN) {
+    return false;
+  }
+
+  // Gemessen wird der **Inhalt** der Quell-Links, nicht ihr Cooldown: ein
+  // beladener Quell-Link liefert ab, sobald sein Cooldown fällt, und der Bedarf
+  // verschwindet von selbst. Zählte der Cooldown mit, feuerte der Rückfall in
+  // jedem Cooldown-Tick, und der Storage bezahlte, was die Quellen ohnehin
+  // liefern.
+  if (list.senders().some(link => link.store[RESOURCE_ENERGY] >= SEND_MIN)) {
+    return false;
+  }
+
+  return storage.store[RESOURCE_ENERGY] > STORAGE_FEED_RESERVE;
 }
 
 /** Alle verwalteten Räume, deren RCL Links zulässt. Aufruf je Tick aus `controller/timing.ts`. */
