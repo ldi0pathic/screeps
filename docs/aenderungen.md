@@ -1123,3 +1123,25 @@ der Aufruf nur einen Zugriff auf `Game.flags` und einen Farbvergleich — kein
 Flankensteuerung ab.
 
 **Commit:** `741b41a`.
+
+## Runde 2026-08-08: Neue Rolle `collector` schließt die Terminal-Lücke (Plan 10, Nachtrag)
+
+Anlass ist eine Regression, kein neuer Wunsch. Seit Plan 10 ersetzen `filler`
+und `hauler` den Heimatraum-Debitor: `Debitor.spawn` steigt in Räumen mit
+Storage aus (`debitor.ts:233`). Damit wurde `debitor.ts:106-122` dort nie
+mehr ausgeführt — die **einzige** Stelle im Bot, die Mineralien aus dem
+Storage ins Terminal bringt. Kein Fehler, keine Meldung: es passierte
+schlicht nichts. Mitbetroffen waren Tombstones, Drops und Ruinen im
+Heimatraum sowie die Energieversorgung des Terminals, ohne die
+`TerminalMarket.sell` unter 1000 Energie gar nicht erst anläuft.
+
+| Was | Warum | Wirkung |
+| --- | --- | --- |
+| Neue Rolle `collector` (`src/roles/collector.ts`), einer je Raum mit Storage **und** Terminal. Sammelt in sechs Stufen nach Verfallsgeschwindigkeit: Tombstones → Drops → Ruinen → Prüfung auf freien Platz im Terminal → Container am Extractor → erste verkaufbare Ressource aus dem Storage → Energie fürs Terminal. | Vier Aufgaben in einer Rolle, weil es hier **ein** Zweck in **einem** Creep je Raum ist — anders als beim Debitor, den Plan 10 wegen seiner Kaskade aus verschiedenen Zwecken in vielen Creeps zerlegt hat. Die drei verfallenden Quellen stehen bewusst vor der Platzprüfung, sonst wären sie bei vollem Terminal verloren. | Mineralien fließen wieder ab, Gefallenes wird eingesammelt, der Markt kann handeln. |
+| `TERMINAL_ENERGY_TARGET` (20 000) und `TERMINAL_FREE_MIN` (50 000). | Ersteres steuert nur das Holen — abgeliefert wird über `TransportToHomeTerminal`, das seine eigene Grenze (100 000) mitbringt, zwei Regeln für dieselbe Frage wären eine zu viel. Letzteres ist der Überlaufschutz, dieselbe Zahl, die schon der alte Debitor benutzte. | Keine Neuerfindung von Schwellen. |
+| Spawnbedingung abgeleitet statt konfiguriert: eigener Raum, Storage und Terminal vorhanden, höchstens ein Collector. **Kein** neuer Config-Schlüssel. | Storage und Terminal sind Tatsachen über die Welt, keine Absicht — anders als `linkkeeper`, der noch `sendLinkkeeper` trägt. | Räume mit Storage und Terminal bekommen den Collector ohne Konfigurationsschritt. |
+| `roles/index.ts`: `collector` steht zwischen `defender` und `wally`. | Ein Raum unter Beschuss hat andere Sorgen als Aufräumen; Einsammeln bringt mehr als Mauerreparatur. | Verhaltensänderung an der Spawnreihenfolge. |
+| `NEVER_SELL` stand doppelt (`debitor.ts` und `prototypes/terminal-market.ts`), wird jetzt nur noch aus `terminal-market.ts` exportiert. | Kein doppelter Bestand derselben Liste. | Keine. |
+
+**Wirkung noch nicht gemessen.** Zum Zeitpunkt der Änderung gab es keinen
+Spielzugriff. Nachzutragen nach dem nächsten Deploy.

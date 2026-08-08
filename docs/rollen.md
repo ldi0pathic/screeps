@@ -53,6 +53,8 @@ Der Debitor ist der **Remote-Hauler** und der Allrounder für Räume ohne Storag
 
 Im normalen Betrieb sammelt er zunächst wertvolle Reste, Links und Container/Storage ein. Nichtenergie kann aus dem Storage in einen freien Terminal umgelagert werden; danach wird bevorzugt Terminal bzw. Storage beliefert. Energie wird nach Lage an Spawn/Extensions, Türme, Terminal, Storage und Labs geliefert. Im Invasions- und Notfallmodus priorisiert die Rolle Versorgung von Spawn und Türmen.
 
+Im Heimatraum mit Storage ist dieser Umlagerungs-Zweig seit Plan 10 toter Code: `Debitor.spawn` steigt dort aus, der Zweig läuft also nur noch in den letzten lebenden Debitoren aus der Zeit davor. Die Aufgabe selbst — Mineralien und Reste aus dem Heimatraum ins Terminal bringen — übernimmt jetzt `collector`.
+
 ### `linkkeeper`
 
 Der Linkkeeper steht dauerhaft auf dem einen Feld, das an den Spawn-Link (`spawnLink`) **und** an das Storage angrenzt, nimmt die Energie aus dem Link und gibt sie ins Storage. Die Rolle existiert, weil ein voller empfangender Link nichts mehr annehmen kann und dadurch den Durchsatz **aller** Quell-Links blockiert, die auf ihn senden — den Empfänger zu leeren ist Voraussetzung für den Durchsatz der ganzen Strecke, nicht Aufräumen.
@@ -105,6 +107,27 @@ Das Rumpfprofil ab RCL 8 (`BODIES.upgraderRcl8`) hat **15 WORK, 5 CARRY, 5 MOVE*
 ### `defender`
 
 Defender reagieren auf `needDefence`, `invaderCore` oder konfigurierte IDs unter `destroy`. Gegner werden nach Körperkosten absteigend priorisiert. Die Rolle nutzt Nah- und Fernangriff, merkt das Ziel als `attackId` und entfernt Verteidigungsflags, sobald keine Ziele verbleiben. Gegen Invader Cores können bis zu vier, gegen Feinde bis zu zwei Defender erzeugt werden. Ohne aktive Angriffs-Körperteile suizidiert sich der Creep.
+
+## Wirtschaft
+
+### `collector`
+
+Ein Collector je Raum mit Storage **und** Terminal, abgeleitet aus dem Baubestand statt konfiguriert — anders als `linkkeeper`, der noch einen Schalter (`sendLinkkeeper`) trägt, sind Storage und Terminal Tatsachen über die Welt und keine Absicht.
+
+Schließt eine Lücke aus Plan 10: seit `filler` und `hauler` den Heimatraum-Debitor ersetzen, spawnt `debitor` in Räumen mit Storage nicht mehr — und mit ihm verschwand der einzige Umzug Storage → Terminal im ganzen Bot. Mitbetroffen waren auch Tombstones, Drops und Ruinen im Heimatraum sowie die Energieversorgung des Terminals, ohne die `TerminalMarket.sell` unter 1000 Energie gar nicht erst anläuft.
+
+Gesammelt wird in sechs Stufen, sortiert nach Verfallsgeschwindigkeit — was zuerst verschwindet, kommt zuerst dran:
+
+1. Tombstones (nehmen ihren Inhalt beim Zerfall mit)
+2. Drops (schrumpfen je Tick)
+3. Ruinen (halten am längsten)
+4. eine Prüfung, ob im Terminal überhaupt noch Platz ist (mehr als `TERMINAL_FREE_MIN`, 50.000, frei) — die drei verfallenden Quellen stehen bewusst **davor**, sie werden auch bei vollem Terminal eingesammelt, sonst sind sie weg
+5. der Container am Extractor, den seit Plan 10 sonst niemand abholt (`hauler` läuft nur über Energiequellen)
+6. die erste verkaufbare Ressource aus dem Storage (nicht Energie, nicht auf `NEVER_SELL`, mehr als 100 Einheiten), sonst Energie fürs Terminal, solange dessen Bestand unter `TERMINAL_ENERGY_TARGET` (20.000) liegt
+
+`TERMINAL_ENERGY_TARGET` steuert nur das Holen; abgeliefert wird über `TransportToHomeTerminal`, Rückfall `TransportToHomeStorage`. Vor dem Rückfall wird `memory.fromId` geräumt, sonst bliebe der Creep beladen stehen, weil er nicht dorthin zurückliefert, woher er gerade geholt hat.
+
+Vier Aufgaben in einer Rolle sind hier Absicht, obwohl Plan 10 den Debitor genau wegen seiner Kaskade zerlegt hat: dort waren es verschiedene Zwecke in vielen Creeps, hier ist es ein Zweck in einem Creep je Raum. In der Spawn-Priorität (`roles/index.ts`) steht der Collector hinter `defender` — ein Raum unter Beschuss hat andere Sorgen — und vor `wally`, weil Einsammeln mehr bringt als Mauerreparatur.
 
 ## Wartungshinweis
 
