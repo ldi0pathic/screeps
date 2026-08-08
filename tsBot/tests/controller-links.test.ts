@@ -651,3 +651,43 @@ test("ohne Bedarf bleibt alles wie bisher: der Storage-Link ist Empfänger", asy
     "beide Empfänger werden bedient wie vor der Änderung",
   );
 });
+
+test("voller Controller-Link: kein Nachschub, und die Quell-Links behalten ihr Ausweichziel", async () => {
+  const { LinkNetwork, needsStorageFeed, SEND_MIN } = await loadLinks();
+  const roomName = "E58N6";
+
+  registerRoom(roomName);
+  setRoomKnown(roomName);
+  const sender = stubLink("sender", 500, 0);
+  // Weniger als SEND_MIN frei: der Controller-Link kann nichts mehr annehmen.
+  const fullControllerLink = stubLink("controller-link", LINK_CAPACITY, SEND_MIN - 1);
+  const spawnLink = stubLink("spawn-link", 500, LINK_CAPACITY);
+  setLinks(roomName, { controller: fullControllerLink.id, spawn: spawnLink.id, sender: [sender.id] });
+  anyGlobal.Game.rooms[roomName] = stubRoom(roomName, {
+    controllerLevel: 8,
+    storage: stubStorage({ energy: 400000, used: 950000 }),
+  });
+
+  assert.equal(needsStorageFeed(roomName), false, "ein voller Controller-Link nimmt nichts mehr an");
+
+  new LinkNetwork(roomName).send();
+
+  assert.equal(transferCalls.length, 1, "der Quell-Link kommt trotzdem zum Zug");
+  assert.equal(
+    transferCalls[0]!.receiverId,
+    "spawn-link",
+    "der Storage-Link ist wieder Empfänger — sonst stünde das ganze Linknetz still",
+  );
+});
+
+test("der Rückfall bleibt vom neuen Guard unberührt", async () => {
+  const { needsStorageFeed, SEND_MIN } = await loadLinks();
+
+  setupFeedWorld({
+    controllerLinkEnergy: SEND_MIN - 1,
+    senderEnergy: SEND_MIN - 1,
+    storageEnergy: 300000,
+  });
+
+  assert.equal(needsStorageFeed("E58N6"), true, "unter SEND_MIN im Link ist reichlich frei");
+});

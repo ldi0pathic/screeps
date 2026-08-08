@@ -187,6 +187,17 @@ export function needsStorageFeed(roomName: string): boolean {
     return false;
   }
 
+  // Der Empfänger muss aufnehmen können. Ohne diese Bedingung fiele der
+  // Storage-Link im Vollpumpmodus aus der Empfängerliste, obwohl niemand mehr
+  // senden kann — dann bekämen auch die Quell-Links kein Ziel mehr, und das
+  // Linknetz des Raums stünde still, bis der Upgrader den Controller-Link
+  // wieder leer genug getrunken hat. Im Rückfall ist die Bedingung ohnehin
+  // erfüllt (dort liegen unter SEND_MIN im Link, also ist reichlich frei) —
+  // sie wirkt allein auf den Vollpumpmodus.
+  if ((controllerLink.store.getFreeCapacity(RESOURCE_ENERGY) ?? 0) < SEND_MIN) {
+    return false;
+  }
+
   // Läuft der Storage über, wird ohne Rücksicht auf die Quellen nachgeschoben.
   if (storageIsFull(roomName)) {
     return true;

@@ -227,10 +227,15 @@ test("im Vollpumpmodus wird gefüllt, obwohl ein Quell-Link liefert", async () =
   const { LinkKeeper } = await loadLinkKeeper();
   const keeper = new LinkKeeper();
 
+  // Der Controller-Link hält mehr als `SEND_MIN` — der Rückfall ist damit
+  // ausgeschlossen, allein der Überlauf löst aus. Bewusst **nicht** randvoll:
+  // der Link-Stub dieser Datei leitet den freien Platz aus der Energie ab, und
+  // ein Controller-Link mit weniger als `SEND_MIN` freiem Platz nimmt seit
+  // `needsStorageFeed`s Empfängerprüfung nichts mehr an.
   const { creep } = setupKeeper({
     carrying: 0,
     linkEnergy: 0,
-    controllerLinkEnergy: LINK_CAPACITY,
+    controllerLinkEnergy: 500,
     senderEnergy: 500,
     storageEnergy: 400000,
     storageUsed: 950000,
