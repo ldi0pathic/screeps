@@ -1,4 +1,4 @@
-// Build: 2026-08-08 20:27:59 +02:00
+// Build: 2026-08-08 19:14:26 +02:00
 "use strict";
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
@@ -3073,13 +3073,9 @@ function installTerminalMarket() {
 var role3 = "collector";
 var TERMINAL_ENERGY_TARGET = 2e4;
 var TERMINAL_FREE_MIN = 5e4;
-var STORAGE_ENERGY_RESERVE = 5e4;
 var Collector = class {
   /** Sammelt oder liefert ab, je nach `memory.harvest`. */
   doJob(creep) {
-    const controller = creep.room.controller;
-    if (!controller || controller.level < 6) return;
-    if (!creep.room.terminal) return;
     creep.checkHarvest();
     if (creep.memory.harvest) {
       this._collect(creep);
@@ -3097,14 +3093,10 @@ var Collector = class {
     if (harvestCompleteRoomTombstones(creep)) return;
     if (harvestRoomDrops(creep, RESOURCE_ENERGY)) return;
     if (harvestRoomRuins(creep, RESOURCE_ENERGY)) return;
-    if (this._terminalHasRoom(creep)) {
-      if (this._collectMineralContainer(creep)) return;
-      if (this._collectSellable(creep)) return;
-      if (this._collectTerminalEnergy(creep)) return;
-    }
-    if (creep.store.getUsedCapacity() > 0) {
-      creep.memory.harvest = false;
-    }
+    if (!this._terminalHasRoom(creep)) return;
+    if (this._collectMineralContainer(creep)) return;
+    if (this._collectSellable(creep)) return;
+    this._collectTerminalEnergy(creep);
   }
   /**
    * Hat das Terminal überhaupt noch Platz?
@@ -3122,9 +3114,8 @@ var Collector = class {
    *
    * Den holt seit Plan 10 sonst niemand ab: `Hauler.spawn` läuft über
    * `energySources` und `Hauler.doJob` holt ausschließlich Energie. Die Id
-   * landet in `memory.container`, denn genau dort liest `harvestMyContainer`
-   * sie. Zeigt eine gemerkte Id ins Leere, wird der Schlüssel geräumt und die
-   * Auflösung beginnt im nächsten Tick von vorn.
+   * landet in `memory.container`, damit `harvestMyContainer` sie benutzen kann
+   * — eine eigene Suche braucht es dafür nicht.
    */
   _collectMineralContainer(creep) {
     const containerId = this._mineralContainerId(creep);
@@ -3139,22 +3130,8 @@ var Collector = class {
     if (!mineral) return false;
     return harvestMyContainer(creep, mineral);
   }
-  /**
-   * Die Id des Containers am Mineralvorkommen, in drei Stufen: die Config,
-   * dann die gemerkte Id, zuletzt eine Suche neben den Vorkommen.
-   *
-   * Die Config zuerst, weil dieselbe Id dort schon als
-   * `bot.room[<raum>].mineralContainerId` steht und `creep/transport.ts` sie
-   * von dort liest — zwei unabhängige Herleitungen derselben Sache liefen
-   * auseinander. Die Suche ist nur noch der Rückfall für Räume, in denen der
-   * Schlüssel fehlt; sie kostet ein `findInRange` und lief vorher in **jedem**
-   * Tick.
-   */
+  /** Der Container neben dem Mineralvorkommen des Raums, oder `null`. */
   _mineralContainerId(creep) {
-    var _a;
-    const configured = (_a = bot.room[creep.memory.workroom]) == null ? void 0 : _a.mineralContainerId;
-    if (configured) return configured;
-    if (creep.memory.container) return creep.memory.container;
     for (const mineralId of mineralSources(creep.room.name)) {
       const mineral = Game.getObjectById(mineralId);
       if (!mineral) continue;
@@ -3180,24 +3157,11 @@ var Collector = class {
     if (!sellable) return false;
     return harvestRoomStorage(creep, sellable);
   }
-  /**
-   * Energie aus dem Storage, solange das Terminal unter der Zielgröße liegt
-   * **und** der Raum sie entbehren kann.
-   *
-   * Ein Umlauf trägt 500 Einheiten in rund zehn Ticks, das sind etwa 50
-   * Energie je Tick — mehr, als zwei Quellen liefern (20/Tick) —, und das über
-   * rund 400 Ticks, bis das Terminal voll ist. Zwei Vorbehalte halten das vom
-   * laufenden Betrieb fern: hängt der Raum am Prioritätsspawn, bekommt der
-   * Spawn die Energie, nicht der Markt; und unterhalb von
-   * `STORAGE_ENERGY_RESERVE` wird das Storage gar nicht erst angezapft.
-   */
+  /** Energie aus dem Storage, solange das Terminal unter der Zielgröße liegt. */
   _collectTerminalEnergy(creep) {
     const terminal = creep.room.terminal;
     if (!terminal) return false;
-    if (Memory.rooms[creep.memory.workroom].aktivPrioSpawn) return false;
-    const storage = creep.room.storage;
-    if (!storage) return false;
-    if (storage.store[RESOURCE_ENERGY] > STORAGE_ENERGY_RESERVE && terminal.store.getUsedCapacity(RESOURCE_ENERGY) < TERMINAL_ENERGY_TARGET) {
+    if (terminal.store.getUsedCapacity(RESOURCE_ENERGY) < TERMINAL_ENERGY_TARGET) {
       return harvestRoomStorage(creep, RESOURCE_ENERGY);
     }
     return false;
