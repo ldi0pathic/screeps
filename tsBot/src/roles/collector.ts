@@ -3,11 +3,13 @@
  * Energiebetrieb ist, und bringt es dorthin, wo es hingehört.
  *
  * Schließt die Lücke aus Plan 10 (`docs/plans/10-logistikrollen.md`): seit
- * `filler` und `hauler` den Heimatraum-Debitor ersetzt haben, wird
- * `roles/debitor.ts:106-122` in Räumen mit Storage nie mehr ausgeführt — dort
- * stand der einzige Umzug Storage → Terminal im ganzen Bot. Mineralien blieben
- * seitdem im Storage liegen, Gefallenes im Raum, und das Terminal bekam keine
- * Energie mehr, ohne die `TerminalMarket.sell` gar nicht erst anläuft.
+ * `filler` und `hauler` den Heimatraum-Debitor ersetzt haben, wird der
+ * Mineralzweig in `Debitor.doJob` (der Block, der bei vorhandenem Storage und
+ * freiem Terminal Nichtenergie umlagert) in Räumen mit Storage nie mehr
+ * ausgeführt — dort stand der einzige Umzug Storage → Terminal im ganzen Bot.
+ * Mineralien blieben seitdem im Storage liegen, Gefallenes im Raum, und das
+ * Terminal bekam keine Energie mehr, ohne die `TerminalMarket.sell` gar nicht
+ * erst anläuft.
  *
  * Vier Aufgaben in einer Rolle sind hier Absicht, obwohl Plan 10 den Debitor
  * genau wegen seiner Kaskade zerlegt hat: dort waren es **verschiedene Zwecke**

@@ -1127,9 +1127,11 @@ Flankensteuerung ab.
 ## Runde 2026-08-08: Neue Rolle `collector` schließt die Terminal-Lücke (Plan 10, Nachtrag)
 
 Anlass ist eine Regression, kein neuer Wunsch. Seit Plan 10 ersetzen `filler`
-und `hauler` den Heimatraum-Debitor: `Debitor.spawn` steigt in Räumen mit
-Storage aus (`debitor.ts:233`). Damit wurde `debitor.ts:106-122` dort nie
-mehr ausgeführt — die **einzige** Stelle im Bot, die Mineralien aus dem
+und `hauler` den Heimatraum-Debitor: das Storage-Tor in `Debitor.spawn`
+(`spawn.room.name == workroom && spawn.room.storage`) steigt in Räumen mit
+Storage aus. Damit wurde der Mineralzweig in `Debitor.doJob` — der Block, der
+bei vorhandenem Storage und freiem Terminal Nichtenergie umlagert — dort nie
+mehr ausgeführt: die **einzige** Stelle im Bot, die Mineralien aus dem
 Storage ins Terminal bringt. Kein Fehler, keine Meldung: es passierte
 schlicht nichts. Mitbetroffen waren Tombstones, Drops und Ruinen im
 Heimatraum sowie die Energieversorgung des Terminals, ohne die
