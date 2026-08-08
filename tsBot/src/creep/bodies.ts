@@ -196,4 +196,22 @@ export const BODIES = {
       return [...Array<BodyPartConstant>(affordable).fill(CARRY), MOVE];
     },
   }),
+
+  /**
+   * Collector: reines CARRY/MOVE für kurze Wege im eigenen Raum.
+   *
+   * Keine Durchsatzformel dahinter — der Collector hat keine Frist und fährt
+   * nur zwischen Storage, Terminal und dem, was gerade im Raum liegt. Zehn
+   * Sätze (500 Einheiten Ladung) sind reichlich und kosten 1000 Energie, was ab
+   * RCL6 — dort steht das Terminal, ohne das die Rolle nicht spawnt — in jeden
+   * Spawn passt.
+   */
+  collector: new BodyProfile({
+    sets: [
+      { part: CARRY, perSet: 1 },
+      { part: MOVE, perSet: 1 },
+    ],
+    maxSets: 10,
+    fallback: [CARRY, MOVE],
+  }),
 } as const;
