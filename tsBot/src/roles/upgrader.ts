@@ -56,6 +56,12 @@ export class Upgrader implements CreepRole {
             // Antreffen für den Rest seines Lebens ignoriert — und damit auch
             // jeden Nachschub aus dem Storage. Die Schwelle ist dieselbe, die
             // `harvestControllerLink` prüft.
+            //
+            // Die Flagge selbst ist entfallen; ein Creep, der sie aus der Zeit
+            // davor noch im Memory trägt, arbeitet ab dem nächsten Tick normal
+            // weiter — sie wird nirgends mehr gelesen und absichtlich nicht
+            // gelöscht, damit kein Migrationsschritt nötig ist. Dasselbe
+            // Vorgehen ist unten für `sparmodus` dokumentiert.
             const controllerLink = new LinkList(creep.memory.workroom).controllerLink;
 
             if(controllerLink && controllerLink.store[RESOURCE_ENERGY] > 100 && (creep.room.controller!.my && creep.room.controller!.level >= 5) )
@@ -197,7 +203,7 @@ export class Upgrader implements CreepRole {
 
         var profil = this.bodyFor(spawn, workroom);
 
-        return creepBase.spawn(spawn, profil, role + '_' + Game.time,{ role: role, workroom: workroom, home: spawn.room.name, repairs:0, noLink: false});
+        return creepBase.spawn(spawn, profil, role + '_' + Game.time,{ role: role, workroom: workroom, home: spawn.room.name, repairs:0});
     }
 }
 
