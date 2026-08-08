@@ -1145,5 +1145,20 @@ Heimatraum sowie die Energieversorgung des Terminals, ohne die
 | `roles/index.ts`: `collector` steht zwischen `defender` und `wally`. | Ein Raum unter Beschuss hat andere Sorgen als Aufräumen; Einsammeln bringt mehr als Mauerreparatur. | Verhaltensänderung an der Spawnreihenfolge. |
 | `NEVER_SELL` stand doppelt (`debitor.ts` und `prototypes/terminal-market.ts`), wird jetzt nur noch aus `terminal-market.ts` exportiert. | Kein doppelter Bestand derselben Liste. | Keine. |
 
+Die Abschlussreview derselben Runde brachte sechs Befunde, drei davon mit
+Verhalten:
+
+| Was | Warum | Wirkung |
+| --- | --- | --- |
+| Laufen alle sechs Sammelstufen leer, während der Creep etwas trägt, schaltet `_collect` selbst auf Abliefern um. | `checkHarvest` tut das hier nicht: seine Regel für Nichtenergie hängt an `memory.mineral`, und das steht bei dieser Rolle fest auf `energy`. Der Creep schaltete deshalb nur bei randvoller Ladung um. | Eine Restmenge bleibt nicht mehr bis zum Tod des Creeps liegen. Nebenbei wird der Rückgabewert von `_collectTerminalEnergy` jetzt ausgewertet, und die Platzprüfung ist ein Block statt eines frühen Ausstiegs — bei vollem Terminal soll ein beladener Creep ja gerade abliefern. |
+| Zwei Vorbehalte für die Energiestufe: kein Zugriff bei `aktivPrioSpawn`, und das Storage muss über `STORAGE_ENERGY_RESERVE` (50 000) liegen. | Ohne Vorbehalt zog die Stufe rund 50 Energie je Tick über etwa 400 Ticks aus dem Storage — mehr, als zwei Quellen liefern. Die Zahl ist dieselbe, mit der `roles/wally.ts` seinen Energiezugriff vorbehält. | In der Krise und bei knappem Storage bleibt die Energie im laufenden Betrieb. |
+| `doJob` steigt aus, wenn der Controller unter Stufe 6 liegt oder kein Terminal dasteht. | `TransportToHomeTerminal` weist unter RCL 6 alles ab; in einem heruntergestuften Raum mit noch stehendem Terminal lief die Ladung sonst endlos Storage → Creep → Storage. | Kein Leerlauf in heruntergestuften Räumen. |
+| Ohne Verhalten: die Id des Extractor-Containers kommt jetzt aus `bot.room[<raum>].mineralContainerId`, dann aus `memory.container`, erst danach aus einer Suche. | Dieselbe Id stand schon in der Config und wurde von `creep/transport.ts` von dort gelesen; die Rolle suchte sie in **jedem** Tick neu. Zwei Herleitungen derselben Sache laufen auseinander. | Eine Suche weniger je Tick. |
+
 **Wirkung noch nicht gemessen.** Zum Zeitpunkt der Änderung gab es keinen
 Spielzugriff. Nachzutragen nach dem nächsten Deploy.
+
+**Commits:** `baa9a9a`, `e4138f0`, `7298d5a`, `f5ccd11`, `1b81b3d`, `a24306d`,
+`668b9dc`, `7c14193`, `715989f`, `deffa01`, `42e9cf9`, `dfa4f4b`, `b7d6b56`,
+`a81763d`, `be2c6b3`, `6929cdd` sowie der Commit dieses Eintrags und der
+abschließende Build.
