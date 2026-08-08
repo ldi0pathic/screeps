@@ -86,12 +86,21 @@ export class Collector implements CreepRole {
         if (creepBase.harvestRoomRuins(creep, RESOURCE_ENERGY)) return;
 
         // Ab hier wird nur noch geholt, was auch abgeliefert werden kann.
-        if (!this._terminalHasRoom(creep)) return;
+        if (this._terminalHasRoom(creep)) {
+            if (this._collectMineralContainer(creep)) return;
+            if (this._collectSellable(creep)) return;
+            if (this._collectTerminalEnergy(creep)) return;
+        }
 
-        if (this._collectMineralContainer(creep)) return;
-        if (this._collectSellable(creep)) return;
-
-        this._collectTerminalEnergy(creep);
+        // Nichts mehr zu holen: wer etwas trägt, liefert ab, statt damit stehen
+        // zu bleiben. `checkHarvest` schaltet hier nicht um — seine Regel für
+        // Nichtenergie hängt an `memory.mineral`, und das steht bei dieser Rolle
+        // fest auf `energy`, damit sie überhaupt auffüllt statt nach jedem
+        // einzelnen Griff loszufahren. Ohne diese Zeile bliebe eine Restmenge
+        // bis zum Tod des Creeps liegen.
+        if (creep.store.getUsedCapacity() > 0) {
+            creep.memory.harvest = false;
+        }
     }
 
     /**

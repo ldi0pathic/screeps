@@ -395,3 +395,35 @@ test("nimmt das Terminal nichts an, geht die Ladung ins Storage statt festzuhaen
     "die Ladung geht zurueck ins Storage, statt beim Creep zu bleiben",
   );
 });
+
+test("laeuft alles leer, liefert der Collector seine Restladung ab, statt stehen zu bleiben", async () => {
+  const { Collector, TERMINAL_ENERGY_TARGET } = await loadCollector();
+  const collector = new Collector();
+
+  // Nichts mehr zu holen: kein Tombstone, kein Drop, keine Ruine, kein
+  // Extractor-Container, nichts Verkaufbares im Storage, Terminal auf der
+  // Zielgroesse. `checkHarvest` schaltet hier nicht um — `memory.mineral` steht
+  // bei dieser Rolle fest auf `energy`, und die Ladung ist nicht voll.
+  const storage = stubStructure("storage", STRUCTURE_STORAGE, 20, 20, ROOM, stubStore(1000000, { [RESOURCE_ENERGY]: 500000 }));
+  const terminal = stubStructure("terminal", STRUCTURE_TERMINAL, 21, 21, ROOM, stubStore(300000, { [RESOURCE_ENERGY]: TERMINAL_ENERGY_TARGET }));
+
+  const room = stubRoom(ROOM, { storage, terminal });
+  configureRoom(ROOM, {});
+  roomMemory(ROOM, {});
+
+  const creep: any = addCheckHarvest(
+    stubActor(15, 15, ROOM, {
+      store: stubStore(500, { O: 300 }),
+      memory: { role: "collector", workroom: ROOM, home: ROOM, harvest: true, container: "", mineral: RESOURCE_ENERGY },
+      room,
+    }),
+  );
+
+  collector.doJob(creep);
+
+  assert.equal(
+    creep.memory.harvest,
+    false,
+    "mit Restladung und ohne Sammelziel wird abgeliefert — sonst blieb sie bis zum Tod des Creeps liegen",
+  );
+});
