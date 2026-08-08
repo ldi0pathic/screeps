@@ -19,6 +19,7 @@
  * Zahl ihrer Zweige.
  */
 
+import { bot } from "../globals";
 import { mineralSources } from "../controller/room-inventory";
 import * as creepBase from "../creep/base";
 import { BODIES } from "../creep/bodies";
@@ -128,8 +129,9 @@ export class Collector implements CreepRole {
      *
      * Den holt seit Plan 10 sonst niemand ab: `Hauler.spawn` läuft über
      * `energySources` und `Hauler.doJob` holt ausschließlich Energie. Die Id
-     * landet in `memory.container`, damit `harvestMyContainer` sie benutzen kann
-     * — eine eigene Suche braucht es dafür nicht.
+     * landet in `memory.container`, denn genau dort liest `harvestMyContainer`
+     * sie. Zeigt eine gemerkte Id ins Leere, wird der Schlüssel geräumt und die
+     * Auflösung beginnt im nächsten Tick von vorn.
      */
     private _collectMineralContainer(creep: Creep): boolean {
         const containerId = this._mineralContainerId(creep);
@@ -151,8 +153,23 @@ export class Collector implements CreepRole {
         return creepBase.harvestMyContainer(creep, mineral);
     }
 
-    /** Der Container neben dem Mineralvorkommen des Raums, oder `null`. */
+    /**
+     * Die Id des Containers am Mineralvorkommen, in drei Stufen: die Config,
+     * dann die gemerkte Id, zuletzt eine Suche neben den Vorkommen.
+     *
+     * Die Config zuerst, weil dieselbe Id dort schon als
+     * `bot.room[<raum>].mineralContainerId` steht und `creep/transport.ts` sie
+     * von dort liest — zwei unabhängige Herleitungen derselben Sache liefen
+     * auseinander. Die Suche ist nur noch der Rückfall für Räume, in denen der
+     * Schlüssel fehlt; sie kostet ein `findInRange` und lief vorher in **jedem**
+     * Tick.
+     */
     private _mineralContainerId(creep: Creep): string | null {
+        const configured = bot.room[creep.memory.workroom]?.mineralContainerId;
+        if (configured) return configured;
+
+        if (creep.memory.container) return creep.memory.container;
+
         for (const mineralId of mineralSources(creep.room.name)) {
             const mineral: any = Game.getObjectById(mineralId);
             if (!mineral) continue;
