@@ -57,6 +57,14 @@ Im normalen Betrieb sammelt er zunächst wertvolle Reste, Links und Container/St
 
 Der Linkkeeper steht dauerhaft auf dem einen Feld, das an den Spawn-Link (`spawnLink`) **und** an das Storage angrenzt, nimmt die Energie aus dem Link und gibt sie ins Storage. Die Rolle existiert, weil ein voller empfangender Link nichts mehr annehmen kann und dadurch den Durchsatz **aller** Quell-Links blockiert, die auf ihn senden — den Empfänger zu leeren ist Voraussetzung für den Durchsatz der ganzen Strecke, nicht Aufräumen.
 
+Seit der Storage-Link auch senden kann, pendelt der Keeper in **beide**
+Richtungen: Läuft der Storage über oder liefern die Quell-Links gerade nichts
+(`needsStorageFeed` in `controller/links.ts`), kehrt sich die Richtung um —
+der Keeper holt dann aus dem Storage und füllt den Link, statt ihn zu leeren,
+und steigt danach aus, ohne den Link zu leeren. Gefragt wird dieselbe
+Funktion wie vom Sendenetz: der Keeper handelt im selben Tick **vor**
+`controller.timing.controll()`, eine Flagge aus dem Vortick käme zu spät.
+
 Der Standplatz wird einmal je Creep berechnet (Nachbarfeld des Links, das auch an das Storage angrenzt, kein Wall-Terrain, keine blockierende Struktur nach `OBSTACLE_OBJECT_TYPES`) und im Creep-Memory unter `post` gespeichert; Straße, Container und Rampart blockieren den Platz nicht. Auf dem Standplatz prüft die Rolle **jeden Tick** den Inhalt von Link und eigenem Inventar und steigt sofort aus, wenn beide leer sind. Eine Schlafdauer wäre hier geraten: der empfangende Link hat keinen eigenen Cooldown — der liegt beim sendenden Link —, es gibt an dieser Stelle also nichts, worauf man warten könnte. `transfer` ins Storage und `withdraw` aus dem Link werden im selben Tick angemeldet; ob Screeps beide auflöst, ist offiziell nicht dokumentiert (siehe `docs/knowledge/mechanics/creeps-actions.md`) — lösen beide aus, dauert ein Umlauf einen Tick, sonst zwei, beides ist korrekt.
 
 Körperprofil: die Zahl der `CARRY`-Teile ergibt sich aus `LINK_CAPACITY / CARRY_CAPACITY` (800/50 = 16 `CARRY`), damit ein Withdraw den vollen Link auf einmal aufnimmt, dazu genau ein `MOVE` — der Creep steht nach der Anreise dauerhaft still, weitere `MOVE`-Teile würden nur den einmaligen Hinweg beschleunigen. Kosten 850 Energie, 17 Körperteile, 51 Ticks Spawnzeit. Ein Rückfallprofil mit weniger `CARRY` greift, falls die Energiekapazität nicht reicht; praktisch nie nötig, weil Links erst ab RCL5 existieren und dort bereits deutlich mehr Kapazität zur Verfügung steht.
@@ -95,6 +103,16 @@ Der lokale Upgrader erntet bevorzugt vom Controller-Link, dann aus Storage, Cont
 - **Kehrseite, ausdrücklich gewollt:** unter RCL 8 gibt es dabei **keine** Vorratsschwelle. Der Upgrader zieht dort zuerst am Storage, `RCL8_WORK_RESERVE` schützt nur Stufe 8 — eine Schwelle darunter wäre wieder ein Sparmodus unter voller Ausbaustufe und damit das Gegenteil der Entscheidung. Betroffene Räume sind über `controller.progress` und `storage.store.energy` je 1000 Ticks zu beobachten.
 
 Die **Arbeits**schwelle liegt bewusst unter der **Spawn**schwelle von 250 000: mit derselben Zahl auf beiden Seiten verstummte der Upgrader genau in dem Moment, in dem er anfängt, den Überschuss abzubauen. Gespawnt wird bei klarem Überschuss, gearbeitet, bis der Vorrat aufgebraucht ist.
+
+**Ausnahme von der Spawnschwelle:** Läuft der Storage über (`storageIsFull`,
+mehr als 90 Prozent Belegung bei über 100 000 Energie), steht mindestens ein
+Upgrader — auch bei `upgrader: 0` in der Config und trotz des RCL8-Gates bei
+250 000 Energie. Kein theoretischer Fall: bei hoher Mineralbelegung und nur
+150 000 Energie greift das Gate genau dann, wenn der Abfluss gebraucht wird.
+Erzwungen wird dabei höchstens **einer** (`Math.max(1, konfigurierte Zahl)`):
+ab RCL8 nimmt der Controller ohnehin nur `CONTROLLER_MAX_UPGRADE_PER_TICK`
+(15) Energie je Tick für den ganzen Raum an, und das RCL8-Profil mit 15 WORK
+schöpft das allein aus.
 
 Das Rumpfprofil ab RCL 8 (`BODIES.upgraderRcl8`) hat **15 WORK, 5 CARRY, 5 MOVE** und schöpft die erlaubte Rate damit genau aus (`UPGRADE_CONTROLLER_POWER` ist 1 je WORK und Tick). Wenige `CARRY`, weil der Controller-Link in Reichweite 1 steht; wenige `MOVE`, weil der Creep nach der Anreise steht. Vorher standen dort 4 WORK, 18 CARRY und 18 MOVE — zusammen mit der Tickdrossel kam der Raum damit auf 0,5 von 15 erlaubten Energie je Tick. Das ist kein Detail am Rand: GCL wächst ausschließlich aus Controller-Upgrades und ist die Erlaubnis für den nächsten Raum.
 

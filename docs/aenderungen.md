@@ -1123,3 +1123,25 @@ der Aufruf nur einen Zugriff auf `Game.flags` und einen Farbvergleich — kein
 Flankensteuerung ab.
 
 **Commit:** `741b41a`.
+
+## Runde 2026-08-08: Storage-Nachschub in den Controller-Link
+
+Bisher war der Storage-Link reiner Empfänger. Jetzt kann er den
+Controller-Link aktiv nachfüttern, in zwei Fällen: **Rückfall**, wenn die
+Quell-Links gerade nichts liefern, und **Vollpumpen**, wenn der Storage
+überläuft.
+
+| Was | Warum | Wirkung |
+| --- | --- | --- |
+| Neu `controller/storage-pressure.ts::storageIsFull(roomName)`: wahr, wenn der Storage zu mehr als `STORAGE_FULL_RATIO` (90 %) belegt ist **und** mehr als `STORAGE_FULL_MIN_ENERGY` (100 000) Energie hält. | Gemessen wird die **Gesamtbelegung**, weil „der Storage geht voll" eine Platzfrage ist; der Energieboden verhindert, dass ein mineralvoller, aber energiearmer Storage leergezogen wird. | Ohne Sicht oder ohne Storage `false`. |
+| Neu `controller/links.ts::needsStorageFeed(roomName)` plus `STORAGE_FEED_RESERVE` (20 000). Wahr im **Rückfall** (Controller-Link unter `SEND_MIN`, kein Quell-Link hält eine Ladung ≥ `SEND_MIN`, Storage-Energie über 20 000) oder beim **Vollpumpen** (`storageIsFull`, unabhängig von den Quell-Links). | Gemessen wird beim Rückfall der **Inhalt** der Quell-Links, nicht ihr Cooldown — ein beladener Quell-Link liefert ab, sobald sein Cooldown fällt, und der Bedarf verschwindet von selbst. | Die einzige Entscheidungsstelle, gefragt von `LinkNetwork.send` und vom Linkkeeper — beide brauchen im selben Tick dieselbe Antwort. |
+| `LinkNetwork.send`: der Storage-Link wird bei Bedarf vom Empfänger zum **Sender**, dabei **hinten** an die Senderliste gehängt, und fällt für diesen Tick aus der **Empfängerliste**. | Geschenkte Quellenergie geht vor einer Abbuchung aus dem Vorrat; der Wegfall aus der Empfängerliste erspart der Quellenergie einen zweiten Sprung mit weiteren 3 % Übertragungsverlust und übersteuert bewusst den ab RCL8 sonst geltenden Vorrang „Storage-Link zuerst". | Cooldown und Mindestladung prüft dafür die neue private Methode `feedSender`. |
+| `roles/linkkeeper.ts`: der Keeper fragt vor seinem Altverhalten `needsStorageFeed`. Ist Nachschub fällig, schiebt er seine Ladung in den Link bzw. holt eine volle Ladung aus dem Storage und steigt aus — der Link wird dann **nicht** geleert. | Der Keeper handelt im selben Tick **vor** dem Sendenetz (`main.ts` fährt erst alle Creeps, dann `controller.timing.controll()`); eine Flagge aus dem Vortick käme zu spät, deshalb fragen beide Seiten dieselbe reine Funktion. | Sonst unverändertes Altverhalten. |
+| `roles/upgrader.ts::spawn`: läuft der Storage über, steht mindestens ein Upgrader (`Math.max(1, uppis ?? 0)`), auch bei `upgrader: 0` in der Config und trotz RCL8-Gate. | Bei 95 % Belegung mit viel Mineral und 150 000 Energie greift das RCL8-Gate (`storage < 250000`) genau dann, wenn man den Upgrader braucht — kein theoretischer Fall. | Bewusst nur **einer**: ab RCL8 nimmt der Controller nur `CONTROLLER_MAX_UPGRADE_PER_TICK` (15) Energie je Tick für den ganzen Raum an, und `BODIES.upgraderRcl8` schöpft das mit 15 WORK allein aus. `_mayWork` bleibt unverändert — im Vollpumpmodus liegt die Energie zwangsläufig über `RCL8_WORK_RESERVE` (100 000), und das ist ab RCL8 schon heute die Arbeitsbedingung. |
+
+**Erwartete Wirkung:** Der Upgrader wartet nicht mehr auf einen leeren
+Controller-Link und läuft nicht zu Fuß bis zum Storage; ein volllaufender
+Storage bekommt einen Abfluss, statt nur auf den nächsten Ausbauschritt zu
+warten.
+
+**Commits:** `4ec11b0`, `77d83f3`, `8befd53`, `eaf8d12`, `c08b268`.
