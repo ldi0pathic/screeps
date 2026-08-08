@@ -71,7 +71,11 @@ export class LinkNetwork {
     }
 
     if (senders.length === 0) {
-      // Der billige Normalfall: kein Sender bereit, nichts zu tun.
+      // Kein Sender bereit — weder ein Quell-Link noch der Storage-Link. Der
+      // Ausstieg darf **nicht** vor `feedSender()` stehen: im Rückfall ist
+      // `readySenders()` per Konstruktion leer, der Nachschub käme dann nie zum
+      // Zug. Billig bleibt der Normalfall trotzdem, weil `feedSender()` zuerst
+      // den Storage-Link ansieht und erst danach den Bedarf berechnet.
       return;
     }
 
@@ -111,12 +115,15 @@ export class LinkNetwork {
    * ihn ja gerade erst.
    */
   private feedSender(): StructureLink | null {
-    if (!needsStorageFeed(this.roomName)) {
+    // Erst der billige Blick: ohne sendebereiten Storage-Link mit lohnender
+    // Ladung erübrigt sich die Bedarfsfrage — und das ist der Normalfall, weil
+    // der Linkkeeper ihn sonst leerräumt.
+    const link = this.list.spawnLink;
+    if (!link || link.cooldown !== 0 || link.store[RESOURCE_ENERGY] < SEND_MIN) {
       return null;
     }
 
-    const link = this.list.spawnLink;
-    if (!link || link.cooldown !== 0 || link.store[RESOURCE_ENERGY] < SEND_MIN) {
+    if (!needsStorageFeed(this.roomName)) {
       return null;
     }
 
