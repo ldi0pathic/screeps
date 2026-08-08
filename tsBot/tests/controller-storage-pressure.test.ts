@@ -56,13 +56,18 @@ test("über 90 Prozent belegt und Energie über dem Boden: der Storage läuft ü
   assert.equal(storageIsFull(ROOM), true);
 });
 
-test("genau 90 Prozent reicht nicht — die Bedingung ist `>`, nicht `>=`", async () => {
-  const { storageIsFull } = await loadStoragePressure();
+test("genau der Schwellenwert reicht nicht — die Bedingung ist `>`, nicht `>=`", async () => {
+  const { storageIsFull, STORAGE_FULL_RATIO } = await loadStoragePressure();
 
-  stubStorageRoom({ used: 900000, energy: 400000 });
-  assert.equal(storageIsFull(ROOM), false, "genau 900000 von 1000000 ist noch kein Überlauf");
+  // Gegen die Konstante gerechnet statt gegen 900000/900001: eine geänderte
+  // Schwelle soll den Test brechen, nicht still an ihm vorbeilaufen.
+  const capacity = 1000000;
+  const atRatio = capacity * STORAGE_FULL_RATIO;
 
-  stubStorageRoom({ used: 900001, energy: 400000 });
+  stubStorageRoom({ used: atRatio, energy: 400000, capacity });
+  assert.equal(storageIsFull(ROOM), false, "genau der Belegungsgrad ist noch kein Überlauf");
+
+  stubStorageRoom({ used: atRatio + 1, energy: 400000, capacity });
   assert.equal(storageIsFull(ROOM), true, "eine Einheit darüber genügt");
 });
 

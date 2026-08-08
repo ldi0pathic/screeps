@@ -43,7 +43,19 @@ Grundbedingungen (alle nötig):
 
 - `usesLinks(roomName)` — Raum ist meiner und sein RCL lässt Links zu,
 - Controller-Link **und** Storage-Link sind erhoben (`LinkList`),
-- der Raum hat ein Storage.
+- der Raum hat ein Storage,
+- der Controller-Link hat mindestens `SEND_MIN` **freien Platz**.
+
+Die letzte Bedingung kam mit der Abschlussreview dazu und steht **vor** dem
+`storageIsFull`-Zweig. Ohne sie fiel der Storage-Link im Vollpumpmodus aus der
+Empfängerliste, obwohl niemand mehr senden konnte: `receiversByPriority`
+filtert den vollen Controller-Link heraus, die Empfängerliste ist dann leer,
+und damit verlieren **alle** Quell-Links ihr Ziel. Gleichzeitig leert der
+Keeper den Storage-Link nicht mehr — ein stabiler Stillstand des ganzen
+Linknetzes, bis der Upgrader den Controller-Link wieder leer genug getrunken
+hat. Im Rückfall ist die Bedingung ohnehin erfüllt (dort liegen unter
+`SEND_MIN` im Link, also ist reichlich frei); sie wirkt allein auf das
+Vollpumpen.
 
 Danach genügt einer von zwei Fällen:
 
@@ -59,9 +71,9 @@ Zwei Entscheidungen im Rückfall-Fall, die absichtlich so und nicht anders sind:
   verschwindet dann von selbst. Zählte der Cooldown mit, feuerte der Rückfall in
   jedem Cooldown-Tick, und der Storage bezahlte, was die Quellen ohnehin liefern.
 - **Die Schwelle am Controller-Link ist `SEND_MIN` (200), nicht die 100 aus
-  `harvestControllerLink`.** So wird nachgeschoben, *bevor* der Upgrader `noLink`
-  setzt und den Fußweg antritt. Wäre die Schwelle 100, käme der Nachschub
-  regelmäßig einen Schritt zu spät.
+  `harvestControllerLink`.** So wird nachgeschoben, *bevor* der Upgrader den
+  Link leer antrifft und auf den Fußweg zum Storage ausweicht. Wäre die
+  Schwelle 100, käme der Nachschub regelmäßig einen Schritt zu spät.
 
 ### A2 · `storageIsFull(roomName)` in `controller/storage-pressure.ts`
 
@@ -171,7 +183,7 @@ Sonderfall.
 
 ## D — Upgrader (`roles/upgrader.ts`)
 
-### D1 · `_mayWork` bleibt unangetastet
+### D1 · `_mayWork` bleibt unangetastet, die `noLink`-Flagge fällt weg
 
 Im Vollpumpmodus liegt die Storage-Energie zwangsläufig über 100 000, und genau
 das ist ab RCL8 schon heute die Bedingung; unter RCL8 wird gar nicht gedrosselt.
@@ -183,6 +195,19 @@ Der Downgrade-Schutz bleibt davon unberührt: `ticksToDowngrade < 100000` liefer
 weiterhin `true`, unabhängig vom Vorrat. Der Abstand ist groß — auf RCL8 steht
 der Timer bei 200 000 Ticks, die Drossel gibt also spätestens bei halb
 abgelaufenem Timer auf.
+
+**Nachtrag aus der Abschlussreview:** `doJob` entscheidet nicht mehr an
+`creep.memory.noLink`, ob der Controller-Link genutzt wird, sondern am
+**Inhalt** des Links (mehr als 100 — dieselbe Schwelle, die
+`harvestControllerLink` ohnehin prüft). Die Flagge wurde nirgends
+zurückgesetzt: ein Upgrader, der den Link einmal leer antraf, ignorierte ihn
+für seine restlichen rund 1500 Ticks — und damit genau den Nachschub, den
+diese Runde einführt (er braucht drei Ticks: Keeper holt aus dem Storage,
+Keeper füllt den Link, Netz sendet). Die Flagge ist aus `creep/base.ts` und
+aus dem Spawn-Memory entfernt; lebende Creeps tragen sie weiter, sie wird nur
+nie wieder gelesen — bewusst ohne Migrationsschritt, wie schon bei
+`sparmodus`. Die `if`/`else`-Struktur bleibt unverändert: bei leerem Link
+fällt der Creep in die Ersatzkette, statt untätig zu warten.
 
 ### D2 · `spawn()`: mindestens einer, wenn der Storage überläuft
 
@@ -205,11 +230,14 @@ if (target <= count)                                         return false;
 Eine gewollte Null bleibt Null, solange der Storage Luft hat. Läuft er über,
 steht trotzdem einer da.
 
-**Deckelung, die dabei mitspielt:** ab RCL8 nimmt der Controller nur noch
-`CONTROLLER_MAX_UPGRADE_PER_TICK` = 15 Energie je Tick an, und zwar für den
-ganzen Raum. `BODIES.upgraderRcl8` (15 WORK) schöpft das allein aus — ein
-zweiter Upgrader brächte dort nichts. Deshalb `Math.max(1, …)` und keine höhere
-Zahl.
+`Math.max(1, …)` hebt dabei eine **Untergrenze** auf eins an — es ist keine
+Deckelung: eine höhere konfigurierte Zahl bleibt bestehen, erzwungen wird nur
+das Minimum von einem.
+
+**Warum die Untergrenze eins ist und nicht höher:** ab RCL8 nimmt der
+Controller nur noch `CONTROLLER_MAX_UPGRADE_PER_TICK` = 15 Energie je Tick an,
+und zwar für den ganzen Raum. `BODIES.upgraderRcl8` (15 WORK) schöpft das
+allein aus — ein zweiter erzwungener Upgrader brächte dort nichts.
 
 ## Abnahme
 
@@ -232,7 +260,11 @@ Testbar ohne Spiel; die Basis steht mit `tests/controller-links.test.ts` und
 8. Im Vollpumpmodus mit einem bereiten Quell-Link bekommt der Controller-Link die
    Quellenergie, nicht die aus dem Storage — der Storage-Link steht in der
    Senderliste hinten.
-9. `pnpm exec tsc --noEmit`, `pnpm test`, `pnpm build`, `pnpm smoke` fehlerfrei.
+9. Hat der Controller-Link weniger als `SEND_MIN` frei, ist `needsStorageFeed`
+   falsch — und die Quell-Links behalten den Storage-Link als Empfänger.
+10. Ein Upgrader mit `noLink: true` im Memory holt trotzdem aus dem
+    Controller-Link, sobald dort mehr als 100 liegen.
+11. `pnpm exec tsc --noEmit`, `pnpm test`, `pnpm build`, `pnpm smoke` fehlerfrei.
 
 ## Risiko
 

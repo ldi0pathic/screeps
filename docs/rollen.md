@@ -58,12 +58,26 @@ Im normalen Betrieb sammelt er zunächst wertvolle Reste, Links und Container/St
 Der Linkkeeper steht dauerhaft auf dem einen Feld, das an den Spawn-Link (`spawnLink`) **und** an das Storage angrenzt, nimmt die Energie aus dem Link und gibt sie ins Storage. Die Rolle existiert, weil ein voller empfangender Link nichts mehr annehmen kann und dadurch den Durchsatz **aller** Quell-Links blockiert, die auf ihn senden — den Empfänger zu leeren ist Voraussetzung für den Durchsatz der ganzen Strecke, nicht Aufräumen.
 
 Seit der Storage-Link auch senden kann, pendelt der Keeper in **beide**
-Richtungen: Läuft der Storage über oder liefern die Quell-Links gerade nichts
-(`needsStorageFeed` in `controller/links.ts`), kehrt sich die Richtung um —
-der Keeper holt dann aus dem Storage und füllt den Link, statt ihn zu leeren,
-und steigt danach aus, ohne den Link zu leeren. Gefragt wird dieselbe
-Funktion wie vom Sendenetz: der Keeper handelt im selben Tick **vor**
-`controller.timing.controll()`, eine Flagge aus dem Vortick käme zu spät.
+Richtungen: Entscheidet `needsStorageFeed` (`controller/links.ts`) auf
+Nachschub, kehrt sich die Richtung um — der Keeper holt dann aus dem Storage
+und füllt den Link, statt ihn zu leeren, und steigt danach aus, ohne den Link
+zu leeren. Gefragt wird dieselbe Funktion wie vom Sendenetz: der Keeper handelt
+im selben Tick **vor** `controller.timing.controll()`, eine Flagge aus dem
+Vortick käme zu spät.
+
+Nachschub ist fällig in genau zwei Lagen, und beide setzen voraus, dass der
+Controller-Link mindestens `SEND_MIN` (200) **freien Platz** hat — in einen
+vollen Empfänger wird nichts nachgeschoben, sonst verlöre der Storage-Link
+seinen Platz in der Empfängerliste und das Linknetz des Raums stünde still:
+
+- **Rückfall** — alle drei Bedingungen zusammen: im Controller-Link liegen
+  weniger als `SEND_MIN`, **kein** Quell-Link hält eine Ladung von mindestens
+  `SEND_MIN`, und im Storage liegen mehr als `STORAGE_FEED_RESERVE` (20 000)
+  Energie. Gemessen wird der **Inhalt** der Quell-Links, nicht ihr Cooldown:
+  ein beladener Quell-Link liefert von selbst ab, sobald sein Cooldown fällt.
+- **Vollpumpen** — `storageIsFull` (mehr als 90 Prozent belegt bei über
+  100 000 Energie), unabhängig davon, was die Quell-Links tun und wie viel
+  bereits im Controller-Link liegt.
 
 Der Standplatz wird einmal je Creep berechnet (Nachbarfeld des Links, das auch an das Storage angrenzt, kein Wall-Terrain, keine blockierende Struktur nach `OBSTACLE_OBJECT_TYPES`) und im Creep-Memory unter `post` gespeichert; Straße, Container und Rampart blockieren den Platz nicht. Auf dem Standplatz prüft die Rolle **jeden Tick** den Inhalt von Link und eigenem Inventar und steigt sofort aus, wenn beide leer sind. Eine Schlafdauer wäre hier geraten: der empfangende Link hat keinen eigenen Cooldown — der liegt beim sendenden Link —, es gibt an dieser Stelle also nichts, worauf man warten könnte. `transfer` ins Storage und `withdraw` aus dem Link werden im selben Tick angemeldet; ob Screeps beide auflöst, ist offiziell nicht dokumentiert (siehe `docs/knowledge/mechanics/creeps-actions.md`) — lösen beide aus, dauert ein Umlauf einen Tick, sonst zwei, beides ist korrekt.
 
@@ -97,6 +111,14 @@ Wally repariert die schwächste gespeicherte Wand oder Rampart aus `Memory.rooms
 
 Der lokale Upgrader erntet bevorzugt vom Controller-Link, dann aus Storage, Containern und Resten. Er wird nur im eigenen Raum erzeugt.
 
+Ob er den Link nimmt, entscheidet er in **jedem Tick neu am Inhalt** des Links
+(mehr als 100 Energie) — nicht mehr an einer Memory-Flagge. Die frühere
+`noLink`-Flagge wurde nach dem ersten leeren Antreffen nie zurückgesetzt und
+sperrte den Link damit für die restlichen rund 1500 Ticks des Creeps; sie ist
+entfallen und wird bei lebenden Creeps nur nicht mehr gelesen. Ist der Link
+leer, fällt der Creep in dieselbe Ersatzkette wie bisher (Storage, Container,
+Drops, Tombstones, Ruinen, Quelle), statt untätig zu warten.
+
 **Nur noch eine Drossel, und sie greift ausschließlich bei voller Ausbaustufe** (`_mayWork`, Plan 04, Punkt 3 entschieden am 2026-08-06): **unter RCL 8 arbeitet der Upgrader in jedem Tick**, ungedrosselt. Die frühere Tickdrossel (`memory.sparmodus`, gesetzt ab RCL 6, ein Sechstel bis ein Siebtel der Ticks) ist entfallen — sie kostete dort echten RCL-Fortschritt, nicht nur GCL, und war damit teurer als gedacht. `sparmodus` steht bei Creeps aus der Zeit davor noch im Memory, wird aber nirgends mehr gelesen.
 
 - **Ab RCL 8** drosselt der Vorrat statt der Tickzahl. Der Controller nimmt dort nur noch 15 Energie je Tick an, RCL-Fortschritt gibt es nicht mehr, und der Raum hat typischerweise Überschuss. Gearbeitet wird bei mehr als 100 000 Energie im Storage (`RCL8_WORK_RESERVE`) oder wenn `ticksToDowngrade` unter 100 000 fällt (`DOWNGRADE_ALARM`) — der Timer schlägt den Vorrat, sonst verlöre ein Raum mit leerem Storage seine Stufe.
@@ -109,10 +131,11 @@ mehr als 90 Prozent Belegung bei über 100 000 Energie), steht mindestens ein
 Upgrader — auch bei `upgrader: 0` in der Config und trotz des RCL8-Gates bei
 250 000 Energie. Kein theoretischer Fall: bei hoher Mineralbelegung und nur
 150 000 Energie greift das Gate genau dann, wenn der Abfluss gebraucht wird.
-Erzwungen wird dabei höchstens **einer** (`Math.max(1, konfigurierte Zahl)`):
-ab RCL8 nimmt der Controller ohnehin nur `CONTROLLER_MAX_UPGRADE_PER_TICK`
-(15) Energie je Tick für den ganzen Raum an, und das RCL8-Profil mit 15 WORK
-schöpft das allein aus.
+`Math.max(1, konfigurierte Zahl)` hebt dabei eine **Untergrenze** auf eins an;
+eine höhere konfigurierte Zahl bleibt bestehen. Dass die Untergrenze bei eins
+liegt und nicht höher, hat einen Grund: ab RCL8 nimmt der Controller ohnehin
+nur `CONTROLLER_MAX_UPGRADE_PER_TICK` (15) Energie je Tick für den ganzen Raum
+an, und das RCL8-Profil mit 15 WORK schöpft das allein aus.
 
 Das Rumpfprofil ab RCL 8 (`BODIES.upgraderRcl8`) hat **15 WORK, 5 CARRY, 5 MOVE** und schöpft die erlaubte Rate damit genau aus (`UPGRADE_CONTROLLER_POWER` ist 1 je WORK und Tick). Wenige `CARRY`, weil der Controller-Link in Reichweite 1 steht; wenige `MOVE`, weil der Creep nach der Anreise steht. Vorher standen dort 4 WORK, 18 CARRY und 18 MOVE — zusammen mit der Tickdrossel kam der Raum damit auf 0,5 von 15 erlaubten Energie je Tick. Das ist kein Detail am Rand: GCL wächst ausschließlich aus Controller-Upgrades und ist die Erlaubnis für den nächsten Raum.
 
