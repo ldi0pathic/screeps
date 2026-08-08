@@ -359,3 +359,141 @@ test("bodyFor: unter Stufe 8 gilt weiter das reguläre Profil", async () => {
   assert.deepEqual(body, BODIES.upgrader.build(2300), "derselbe Rumpf wie das reguläre Profil direkt liefert");
   assert.notEqual(body.filter(part => part === WORK).length, 15, "nicht das RCL8-Profil");
 });
+
+// --- Spawn bei überlaufendem Storage -----------------------------------------
+
+/**
+ * Ein Storage-Stub für `storageIsFull` und das RCL8-Spawn-Gate.
+ *
+ * `used` ist die Gesamtbelegung, `energy` der Energieanteil. Das Gate liest
+ * `getUsedCapacity(RESOURCE_ENERGY)`, `storageIsFull` beide Zahlen.
+ */
+function stubUpgraderStorage(options: { used: number; energy: number }) {
+  return {
+    store: {
+      [RESOURCE_ENERGY]: options.energy,
+      getCapacity: (): number => 1000000,
+      getUsedCapacity: (resource?: string): number =>
+        resource === undefined ? options.used : options.energy,
+    },
+  };
+}
+
+/**
+ * Baut die Welt für `spawn()`: `global.room`-Eintrag, sichtbarer Raum mit
+ * Storage und ein `_.filter`-Ersatz für die Creep-Zählung.
+ */
+function setupUpgraderSpawnWorld(options: {
+  configuredUpgraders: number;
+  controllerLevel: number;
+  storage: ReturnType<typeof stubUpgraderStorage> | undefined;
+  ticksToDowngrade?: number;
+}) {
+  const controller = {
+    my: true,
+    level: options.controllerLevel,
+    ticksToDowngrade: options.ticksToDowngrade ?? 200000,
+  };
+
+  anyGlobal.room[ROOM] = { room: ROOM, spawnRoom: ROOM, upgrader: options.configuredUpgraders };
+  anyGlobal.Game.rooms[ROOM] = { name: ROOM, controller, storage: options.storage };
+  anyGlobal._ = {
+    filter: (collection: Record<string, any>, predicate: (item: any) => boolean) =>
+      Object.values(collection).filter(predicate),
+  };
+
+  const spawnCalls: { profil: BodyPartConstant[]; newName: string }[] = [];
+  const spawnObj: any = {
+    room: {
+      name: ROOM,
+      storage: options.storage,
+      controller,
+      energyCapacityAvailable: 12900,
+    },
+    spawnCreep(profil: BodyPartConstant[], newName: string): number {
+      spawnCalls.push({ profil: [...profil], newName });
+      return OK;
+    },
+  };
+
+  return { spawnObj, spawnCalls };
+}
+
+test("überlaufender Storage: es wird gespawnt, auch bei upgrader: 0 in der Config", async () => {
+  const { Upgrader } = await loadUpgrader();
+  const upgrader = new Upgrader();
+
+  const { spawnObj } = setupUpgraderSpawnWorld({
+    configuredUpgraders: 0,
+    controllerLevel: 8,
+    storage: stubUpgraderStorage({ used: 950000, energy: 400000 }),
+  });
+
+  assert.equal(
+    upgrader.spawn(spawnObj, ROOM),
+    true,
+    "läuft der Storage über, steht trotz konfigurierter Null einer da",
+  );
+});
+
+test("überlaufender Storage mit viel Mineral: das RCL8-Gate mit den 250000 wird übergangen", async () => {
+  const { Upgrader } = await loadUpgrader();
+  const upgrader = new Upgrader();
+
+  // 95 Prozent belegt, aber nur 150000 Energie — das Gate `storage < 250000`
+  // verhinderte den Upgrader heute genau dann, wenn man ihn braucht.
+  const { spawnObj } = setupUpgraderSpawnWorld({
+    configuredUpgraders: 1,
+    controllerLevel: 8,
+    storage: stubUpgraderStorage({ used: 950000, energy: 150000 }),
+  });
+
+  assert.equal(upgrader.spawn(spawnObj, ROOM), true);
+});
+
+test("ohne Überlauf bleibt die konfigurierte Null eine Null", async () => {
+  const { Upgrader } = await loadUpgrader();
+  const upgrader = new Upgrader();
+
+  const { spawnObj } = setupUpgraderSpawnWorld({
+    configuredUpgraders: 0,
+    controllerLevel: 7,
+    storage: stubUpgraderStorage({ used: 300000, energy: 300000 }),
+  });
+
+  assert.equal(upgrader.spawn(spawnObj, ROOM), false, "eine gewollte Null bleibt Null, solange der Storage Luft hat");
+});
+
+test("ohne Überlauf greift das RCL8-Gate weiterhin", async () => {
+  const { Upgrader } = await loadUpgrader();
+  const upgrader = new Upgrader();
+
+  const { spawnObj } = setupUpgraderSpawnWorld({
+    configuredUpgraders: 1,
+    controllerLevel: 8,
+    storage: stubUpgraderStorage({ used: 200000, energy: 200000 }),
+  });
+
+  assert.equal(upgrader.spawn(spawnObj, ROOM), false, "unter 250000 Energie und ohne Überlauf wird nicht gespawnt");
+});
+
+test("überlaufender Storage: genau einer, kein zweiter — ab RCL8 deckelt der Controller ohnehin bei 15 je Tick", async () => {
+  const { Upgrader } = await loadUpgrader();
+  const upgrader = new Upgrader();
+
+  const { spawnObj } = setupUpgraderSpawnWorld({
+    configuredUpgraders: 0,
+    controllerLevel: 8,
+    storage: stubUpgraderStorage({ used: 950000, energy: 400000 }),
+  });
+
+  // Schlüssel setzen statt `Game.creeps` zu ersetzen — `resetWorld()` leert das
+  // vorhandene Objekt, ein neues käme dort nie an.
+  anyGlobal.Game.creeps["upgrader_1"] = {
+    memory: { role: "upgrader", workroom: ROOM },
+    ticksToLive: 1000,
+    spawning: false,
+  };
+
+  assert.equal(upgrader.spawn(spawnObj, ROOM), false, "einer genügt");
+});

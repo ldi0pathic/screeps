@@ -1,4 +1,4 @@
-// Build: 2026-08-08 14:27:47 +02:00
+// Build: 2026-08-08 14:19:36 +02:00
 "use strict";
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
@@ -4193,36 +4193,20 @@ var Upgrader = class {
     const profil = Game.rooms[workroom].controller.level > 7 ? BODIES.upgraderRcl8 : BODIES.upgrader;
     return profil.build(spawn3.room.energyCapacityAvailable);
   }
-  /**
-   * Spawnt einen Upgrader für `workroom`, falls die konfigurierte Anzahl noch
-   * nicht erreicht ist.
-   *
-   * Ausnahme: läuft der Storage über (`storageIsFull`), steht **mindestens
-   * einer** da — auch bei `upgrader: 0` in der Config und auch dann, wenn das
-   * RCL8-Gate ihn sonst verhinderte. Der Fall ist nicht theoretisch: bei 95
-   * Prozent Belegung mit viel Mineral und 150 000 Energie greift das Gate
-   * `storage < 250000` heute genau dann, wenn man den Upgrader braucht.
-   *
-   * Bewusst `Math.max(1, …)` und keine höhere Zahl: ab RCL8 nimmt der
-   * Controller nur noch `CONTROLLER_MAX_UPGRADE_PER_TICK` (15) Energie je Tick
-   * an — für den ganzen Raum. `BODIES.upgraderRcl8` schöpft das mit 15 WORK
-   * allein aus, ein zweiter Upgrader brächte dort nichts.
-   */
+  /** Spawnt einen Upgrader für `workroom`, falls die konfigurierte Anzahl noch nicht erreicht ist. */
   spawn(spawn3, workroom) {
-    const forced = storageIsFull(workroom);
     var uppis = bot.room[workroom].upgrader;
-    if (!forced && (!uppis || uppis < 1))
+    if (!uppis || uppis < 1)
       return false;
     if (spawn3.room.name != workroom)
       return false;
-    if (!forced && spawn3.room.controller.level > 7 && spawn3.room.controller.ticksToDowngrade > 1e5 && spawn3.room.storage && spawn3.room.storage.store.getUsedCapacity(RESOURCE_ENERGY) < 25e4)
+    if (spawn3.room.controller.level > 7 && spawn3.room.controller.ticksToDowngrade > 1e5 && spawn3.room.storage && spawn3.room.storage.store.getUsedCapacity(RESOURCE_ENERGY) < 25e4)
       return false;
     var count = _.filter(
       Game.creeps,
       (creep) => creep.memory.role == role12 && creep.memory.workroom == workroom && (creep.ticksToLive > 160 || creep.spawning)
     ).length;
-    const target = forced ? Math.max(1, uppis != null ? uppis : 0) : uppis;
-    if (target <= count)
+    if (uppis <= count)
       return false;
     var profil = this.bodyFor(spawn3, workroom);
     return spawn(spawn3, profil, role12 + "_" + Game.time, { role: role12, workroom, home: spawn3.room.name, repairs: 0, noLink: false });
