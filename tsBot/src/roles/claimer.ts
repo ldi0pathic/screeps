@@ -37,7 +37,7 @@ export class Claimer implements CreepRole {
             {
                 var s = creep.claimController(controller);
                 if (s === ERR_NOT_IN_RANGE) {
-                    creepBase.moveByMemory(creep, controller.pos)
+                    creepBase.moveByMemory(creep, controller.pos, 1)
                 }
                 if(s === OK)
                 {
@@ -47,7 +47,7 @@ export class Claimer implements CreepRole {
             }
             var state = creep.reserveController(controller);
             if (state === ERR_NOT_IN_RANGE) {
-                creepBase.moveByMemory(creep, controller.pos)
+                creepBase.moveByMemory(creep, controller.pos, 1)
             }
             else if(state == ERR_INVALID_TARGET)
             {

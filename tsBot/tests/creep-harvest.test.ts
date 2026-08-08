@@ -10,7 +10,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { moveCalls } from "./support/movement-stubs";
+import { moveCalls, pathSearches } from "./support/movement-stubs";
 import {
   actionCalls,
   actionResults,
@@ -64,6 +64,7 @@ test("Drops: zu weit weg heißt hinlaufen und merken", async () => {
 
   assert.equal(harvestRoomDrops(creep, RESOURCE_ENERGY), true);
   assert.equal(moveCalls.length, 1, "es wird gelaufen");
+  assert.equal(pathSearches[0]!.range, 1, "collectFrom sucht mit Reichweite 1, weil pickup dort schon gelingt");
   assert.equal(creep.memory.useRoomDrop, "drop1");
   assert.equal(creep.memory.fromId, undefined, "geholt wurde noch nichts");
 });

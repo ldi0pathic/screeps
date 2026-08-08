@@ -1,7 +1,8 @@
 /**
  * Rolle "upgrader": Controller-Upgrader mit eigener Energiebeschaffung
  * (Controller-Link, Storage, Container, Drops, Tombstones, Ruins, Quelle)
- * und "Sparmodus" bei hohem Controller-Level.
+ * und einer Vorratsdrossel ("Sparmodus"), die erst bei voller Ausbaustufe
+ * (RCL 8) greift — siehe `_mayWork` für die Begründung.
  *
  * Ursprünglich aus `prod/creep.upgrader.js` übernommen. Diese Datei enthält
  * Fehlerkorrekturen gegenüber dem alten Bot, siehe `docs/aenderungen.md`.
@@ -40,7 +41,7 @@ const DOWNGRADE_ALARM = 100000;
 /** Siehe Dateikopf. `@profile` misst jede Methode dieser Klasse. */
 @profile
 export class Upgrader implements CreepRole {
-    /** Beschafft Energie und upgradet den Controller des Arbeitsraums, inklusive Sparmodus bei hohem Level. */
+    /** Beschafft Energie und upgradet den Controller des Arbeitsraums; unter RCL 8 ungedrosselt, ab RCL 8 nur mit Vorrat (siehe `_mayWork`). */
     doJob(creep: Creep): void {
 
         if(!this._mayWork(creep)) return;
@@ -89,43 +90,40 @@ export class Upgrader implements CreepRole {
         if(creepBase.goToWorkroom(creep)) return;
         if(creepBase.checkWorkroomPrioSpawn(creep)) return;
 
-        if(creepBase.upgradeController(creep))
-        {
-            creep.memory.sparmodus = creep.room.controller!.level > 5;
-        }
+        creepBase.upgradeController(creep);
     }
 
     /**
      * Darf der Upgrader in diesem Tick überhaupt arbeiten?
      *
-     * Zwei verschiedene Drosseln, und der Unterschied ist der Punkt von Plan 04:
+     * Unter voller Ausbaustufe (RCL < 8) wird nicht mehr gedrosselt: dort ist
+     * RCL-Fortschritt das Ziel, und die frühere Tickdrossel (ein Sechstel bis
+     * ein Siebtel der Ticks) kostete echten Fortschritt (Plan 04, Punkt 3,
+     * `docs/plans/04-rcl8-upgrader-und-gcl.md`). Ein Creep, der aus der Zeit vor
+     * dieser Änderung noch `sparmodus: true` im Memory trägt, arbeitet ab dem
+     * nächsten Tick ungedrosselt weiter — das Flag wird nirgends mehr gelesen
+     * und absichtlich nicht aus dem Memory gelöscht, damit kein Migrationsschritt
+     * nötig ist.
      *
-     * - **Bis RCL7** die alte Tickdrossel (`sparmodus`, gesetzt ab Stufe 6): der
-     *   Creep arbeitet in einem von `level` Ticks. Grob, aber dort ist RCL-Fortschritt
-     *   das Ziel und Energie knapp.
-     * - **Ab RCL8** der Vorrat statt der Tickzahl. Der Controller nimmt dort nur
-     *   noch 15 Energie je Tick an, und der Raum hat typischerweise Überschuss.
-     *   Die Tickdrossel achtelte hier die Leistung unabhängig davon, ob Energie
-     *   da ist — zusammen mit dem alten Rumpf kam der Raum auf 0,5 von 15
-     *   erlaubten Energie je Tick, also 3 %. GCL wächst ausschließlich aus
-     *   Controller-Upgrades und ist die Erlaubnis für den nächsten Raum.
+     * Erst ab RCL8 drosselt der Vorrat statt der Tickzahl: der Controller nimmt
+     * dort nur noch 15 Energie je Tick an, GCL wächst ausschließlich aus
+     * Controller-Upgrades, und der Raum hat typischerweise Überschuss. Unterhalb
+     * von RCL8 gibt es bewusst keine Vorratsschwelle — der Upgrader zieht dort
+     * zuerst am Storage, `RCL8_WORK_RESERVE` schützt nur Stufe 8. Das ist keine
+     * Lücke, sondern die gewollte Kehrseite der weggefallenen Tickdrossel.
      */
     private _mayWork(creep: Creep): boolean
     {
         const controller = creep.room.controller;
 
-        // Kein Controller im aktuellen Raum: der Creep ist unterwegs, es gibt
-        // nichts zu drosseln. Die Zeile ist kein Formalismus — die Vorgängerfassung
+        // Kein Controller im aktuellen Raum (Creep unterwegs) oder Raum unter
+        // voller Ausbaustufe: in beiden Fällen wird nicht gedrosselt. Die
+        // `!controller`-Prüfung ist dabei kein Formalismus — die Vorgängerfassung
         // rechnete hier `Game.time % controller.level` auf `undefined`, sobald
         // `sparmodus` gesetzt war, und ein Upgrader auf dem Weg durch einen
         // Korridorraum brachte damit den ganzen Tick zum Absturz.
-        if(!controller)
+        if(!controller || !controller.my || controller.level < 8)
             return true;
-
-        if(!controller.my || controller.level < 8)
-        {
-            return !creep.memory.sparmodus || Game.time % controller.level == 0;
-        }
 
         // Der Downgrade-Timer schlägt den Vorrat: läuft er ab, verliert der Raum
         // eine Stufe. Dieselbe Grenze prüft `spawn()`, damit nicht der eine einen

@@ -125,7 +125,7 @@ Zahlenwerte im Code (Schwellen, Profile, Intervalle) gegen diese Dateien abgleic
 
 ## Laufzeitstruktur (gilt für beide Bots)
 
-Pro Tick in `loop()`: Raum-Visuals zeichnen bzw. Raum-Memory bei Bedarf neu initialisieren → `Memory.creeps` bereinigen (Creeps ohne Rolle suizidieren) → jeden fertigen Creep an `jobs[creep.memory.role].doJob(creep)` geben → `controller.timing.controll()`. Fehler werden mit Rollennamen geloggt und weitergeworfen; eine defekte Rolle bricht den Tick ab.
+Pro Tick in `loop()`: Raum-Visuals zeichnen bzw. Raum-Memory bei Bedarf neu initialisieren → `Memory.creeps` bereinigen (Creeps ohne Rolle suizidieren) → jeden fertigen Creep an `jobs[creep.memory.role].doJob(creep)` geben → `controller.timing.controll()`. Fehler werden **eingefangen, nicht weitergeworfen**: `main.ts` umschließt jeden `doJob` einzeln, ebenso beide Hälften des Schedulers (`runTimed`). Eine defekte Rolle kostet also nur ihren eigenen Creep, der Tick läuft weiter — die übrigen Creeps, die Türme und der Spawncontroller kommen trotzdem dran. Gemeldet wird über `reportError(kind, …)`: die Meldung geht in jedem Fall in die Konsole, zusätzlich **einmal je `kind` und Global** per `Game.notify` (der `reportedErrors`-Filter unterdrückt die Wiederholung, bis der Global neu lädt).
 
 `controller/timing.ts` ist der Scheduler: Towersteuerung und ein Terminal im Round-Robin jeden Tick, dann `% 3` Pixelgenerierung, `% 5` Spawncontroller, `% 7` Verteidigungsscan, `% 11` Statuslog und eine Tagessequenz (28 800 Ticks), die Memory-Cleanup, Wall-/Container-/Tower-/Terminal-Suche und Straßenwiederaufbau auf aufeinanderfolgende Ticks verteilt.
 

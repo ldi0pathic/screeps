@@ -89,10 +89,10 @@ Wally repariert die schwächste gespeicherte Wand oder Rampart aus `Memory.rooms
 
 Der lokale Upgrader erntet bevorzugt vom Controller-Link, dann aus Storage, Containern und Resten. Er wird nur im eigenen Raum erzeugt.
 
-**Zwei verschiedene Drosseln, und der Unterschied ist Absicht** (`_mayWork`, Plan 04):
+**Nur noch eine Drossel, und sie greift ausschließlich bei voller Ausbaustufe** (`_mayWork`, Plan 04, Punkt 3 entschieden am 2026-08-06): **unter RCL 8 arbeitet der Upgrader in jedem Tick**, ungedrosselt. Die frühere Tickdrossel (`memory.sparmodus`, gesetzt ab RCL 6, ein Sechstel bis ein Siebtel der Ticks) ist entfallen — sie kostete dort echten RCL-Fortschritt, nicht nur GCL, und war damit teurer als gedacht. `sparmodus` steht bei Creeps aus der Zeit davor noch im Memory, wird aber nirgends mehr gelesen.
 
-- **Bis RCL 7** die Tickdrossel: nach dem ersten erfolgreichen Upgrade setzt `memory.sparmodus` ein, und der Creep arbeitet nur noch in einem von `controller.level` Ticks. Grob, aber dort ist RCL-Fortschritt das Ziel und Energie knapp. Diese Stufen sind noch nicht überprüft — Plan 04, Punkt 3.
-- **Ab RCL 8** der Vorrat statt der Tickzahl. Der Controller nimmt dort nur noch 15 Energie je Tick an, RCL-Fortschritt gibt es nicht mehr, und der Raum hat typischerweise Überschuss. Gearbeitet wird bei mehr als 100 000 Energie im Storage (`RCL8_WORK_RESERVE`) oder wenn `ticksToDowngrade` unter 100 000 fällt (`DOWNGRADE_ALARM`) — der Timer schlägt den Vorrat, sonst verlöre ein Raum mit leerem Storage seine Stufe.
+- **Ab RCL 8** drosselt der Vorrat statt der Tickzahl. Der Controller nimmt dort nur noch 15 Energie je Tick an, RCL-Fortschritt gibt es nicht mehr, und der Raum hat typischerweise Überschuss. Gearbeitet wird bei mehr als 100 000 Energie im Storage (`RCL8_WORK_RESERVE`) oder wenn `ticksToDowngrade` unter 100 000 fällt (`DOWNGRADE_ALARM`) — der Timer schlägt den Vorrat, sonst verlöre ein Raum mit leerem Storage seine Stufe.
+- **Kehrseite, ausdrücklich gewollt:** unter RCL 8 gibt es dabei **keine** Vorratsschwelle. Der Upgrader zieht dort zuerst am Storage, `RCL8_WORK_RESERVE` schützt nur Stufe 8 — eine Schwelle darunter wäre wieder ein Sparmodus unter voller Ausbaustufe und damit das Gegenteil der Entscheidung. Betroffene Räume sind über `controller.progress` und `storage.store.energy` je 1000 Ticks zu beobachten.
 
 Die **Arbeits**schwelle liegt bewusst unter der **Spawn**schwelle von 250 000: mit derselben Zahl auf beiden Seiten verstummte der Upgrader genau in dem Moment, in dem er anfängt, den Überschuss abzubauen. Gespawnt wird bei klarem Überschuss, gearbeitet, bis der Vorrat aufgebraucht ist.
 

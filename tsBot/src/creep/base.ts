@@ -265,7 +265,7 @@ export function calcProfil(creepProfile: BodyPartConstant[]): number {
 export function goToMyHome(creep: Creep) { return creepBaseGoTo.goToMyHome(creep) }
 export function goToRoomFlag(creep: Creep) { return creepBaseGoTo.goToRoomFlag(creep) }
 export function goToWorkroom(creep: Creep) { return creepBaseGoTo.goToWorkroom(creep) }
-export function moveByMemory(creep: Creep, target: RoomPosition) { return creepBaseGoTo.moveByMemory(creep, target) }
+export function moveByMemory(creep: Creep, target: RoomPosition, range?: number) { return creepBaseGoTo.moveByMemory(creep, target, range) }
 
 export function TransportEnergyToHomeSpawn(creep: Creep) { return creepBaseTransport.TransportEnergyToHomeSpawn(creep); }
 export function TransportEnergyToHomeTower(creep: Creep) { return creepBaseTransport.TransportEnergyToHomeTower(creep); }
@@ -296,7 +296,19 @@ export function upgradeController(creep: Creep): boolean | void {
     if (state === ERR_NOT_IN_RANGE ||
         (state === ERR_INVALID_TARGET && controller.upgradeBlocked > 0)) {
 
-        creepBaseGoTo.moveByMemory(creep,controller.pos);
+        // Der Controller ist nicht betretbar. Ohne `range` sucht die Pfadsuche dort
+        // vergeblich; mit `range: 1` endet sie früher. Ein Weg auf Reichweite 1 führt
+        // durch Reichweite 3 hindurch, wo `upgradeController` schon `OK` liefert –
+        // dieser Zweig wird dann nicht mehr betreten, der Creep hält also weiterhin
+        // drei Felder vor dem Controller an.
+        //
+        // `PathMemory` cacht den Weg nur auf die Zielposition. Laufen beide Zweige im
+        // selben Tick mit unterschiedlichen Reichweiten auf `controller.pos`,
+        // überschreiben sie sich den Weg gegenseitig.
+        //
+        // Eine echte Reichweite 3 braucht deshalb zuerst ein `PathMemory`, das die
+        // Reichweite mitschlüsselt.
+        creepBaseGoTo.moveByMemory(creep,controller.pos, 1);
 
     }
 
@@ -306,7 +318,7 @@ export function upgradeController(creep: Creep): boolean | void {
 
         var c = creep.signController(controller, '⚔')
         if (c === ERR_NOT_IN_RANGE) {
-            creepBaseGoTo.moveByMemory(creep,controller.pos);
+            creepBaseGoTo.moveByMemory(creep,controller.pos, 1);
         }
 
     }

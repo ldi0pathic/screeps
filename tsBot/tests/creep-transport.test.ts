@@ -21,7 +21,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { moveCalls } from "./support/movement-stubs";
+import { moveCalls, pathSearches } from "./support/movement-stubs";
 import {
   actionCalls,
   actionResults,
@@ -71,6 +71,7 @@ test("abliefern: zu weit weg heißt hinlaufen, erledigt heißt fertig", async ()
   actionResults.transfer = ERR_NOT_IN_RANGE;
   assert.equal(transferTo(creep, target as any, RESOURCE_ENERGY), true);
   assert.equal(moveCalls.length, 1);
+  assert.equal(pathSearches[0]!.range, 1, "transferTo sucht mit Reichweite 1, weil transfer dort schon gelingt");
 
   installCreepWorld();
   const near = stubStructure("ziel", "extension", 11, 10, "E58N6", stubStore(200));
@@ -385,6 +386,7 @@ test("Spawn: unterwegs zum Ziel bleibt es gemerkt", async () => {
   actionResults.transfer = ERR_NOT_IN_RANGE;
   assert.equal(TransportEnergyToHomeSpawn(creep), true);
   assert.equal(moveCalls.length, 1, "der Creep läuft zum gemerkten Ziel hin");
+  assert.equal(pathSearches[0]!.range, 1, "deliverTo sucht mit Reichweite 1, weil transfer dort schon gelingt");
   assert.equal(creep.memory.useSupply, "spawn", "das Ziel bleibt gemerkt, solange der Creep unterwegs ist");
 });
 

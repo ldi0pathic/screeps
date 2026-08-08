@@ -22,9 +22,13 @@ Periodische Aufgaben:
 | 1000 Ticks | Linklisten neu erheben (`links.discoverAll()`) |
 | ca. täglich (28.800 Ticks) | Memory bereinigen, Wände/Container/Türme/Terminals speichern, Straßen wiederaufbauen und Empfängerlinks planen |
 
-Die tägliche Sequenz verteilt die sieben Aufgaben auf aufeinanderfolgende Ticks. Das Speichern von Straßen ist aktuell auskommentiert; ohne bereits vorhandenes `Memory.rooms[name].roads` kann der darauffolgende Straßenbau nichts wiederherstellen.
+Die tägliche Sequenz verteilt ihre Aufgaben auf aufeinanderfolgende Ticks, und zwar in zwei Klassen: **zwei ungestaffelte Slots** ganz vorn (Slot 0 `memory.clear()`, Slot 1 `findAndSaveTerminals()` — beide bauen *eine* Liste über alle Räume und müssen sie in einem Zug schreiben) und danach **sechs gestaffelte Jobs** (`STAGGERED_DAILY_JOBS` in `controller/timing.ts`), von denen je Tick genau ein Paar aus Job und Raum läuft. Bei neun Räumen dauert der gestaffelte Teil also 54 Ticks. Das Speichern von Straßen ist aktuell auskommentiert; ohne bereits vorhandenes `Memory.rooms[name].roads` kann der darauffolgende Straßenbau nichts wiederherstellen.
 
 Die Linkliste hängt bewusst **nicht** an der Tagessequenz, sondern an `% 1000`: sie heilt sich selbst, wenn ein Link *verschwindet* (eine Id ohne Objekt verwirft die ganze Liste), aber nicht, wenn einer *dazukommt* — und genau das tut der Linkplaner. 28.800 Ticks wären dafür zu lang.
+
+`memoryController.clear()` (`controller/memory.ts:63`) räumt `Memory.rooms`-Einträge auf, die keinen Eintrag mehr in `bot.room` haben — der einzige Mechanismus, der das tut. Er läuft aber nur bei `Game.time % 28800 === 0`, also **einem Tick je Tagesdurchgang**, und zusätzlich nur, wenn `cpuBudget.mayRunLow()` zustimmt. Ein Raum, der aus der Config entfernt wird, bleibt deshalb bis zu einem Tag lang in `Memory.rooms` stehen, und `writeStatus()` (das über **alle** Einträge in `Memory.rooms` berichtet, nicht nur über `bot.room`) meldet in dieser Zeit weiter Ereignisse aus ihm. Seine Creeps arbeiten dabei bis zu 1500 Ticks lang ins Leere, weil kein Spawncontroller sie ersetzt, aber auch keiner sie stoppt.
+
+Dagegen gibt es die **Aufräumflagge `cleanup`** (`controller/cleanup.ts`, verdrahtet in `controll()` jeden Tick und ungetaktet, direkt vor dem Spawncontroller): Ort und Raum der Flagge sind gleichgültig, `Game.flags` ist weltweit. Gelb (`COLOR_YELLOW`) berichtet nur, was gelöscht *würde*; rot (`COLOR_RED`) ruft `clear()` sofort auf, suizidiert jeden Creep, dessen `workroom` **oder** `home` nicht mehr in `bot.room` steht, und entfernt die Flagge selbst. Ausgelöst wird nur bei einer **Farbänderung** — dasselbe Flankenmuster wie bei der Profilerflagge `prof` weiter unten, mit der zuletzt verarbeiteten Farbe in `Memory.cleanup.flagColor` statt im Heap. Ohne gesetzte Flagge kostet der Aufruf nur einen Zugriff auf `Game.flags`.
 
 ## Spawncontroller (`controller.spawn.js`)
 

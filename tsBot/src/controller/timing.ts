@@ -1,3 +1,4 @@
+import * as cleanupController from "./cleanup";
 import * as cpuBudget from "./cpu-budget";
 import defenceController from "./defence";
 import * as linkPlannerController from "./link-planner";
@@ -91,6 +92,13 @@ export function controll(): void {
     Game.cpu.generatePixel();
     end(SECTION.pixel);
   }
+
+  // Die Aufräumflagge des Betreibers. Bewusst **jeden** Tick und ungetaktet: sie
+  // ist ein Bedienelement, und ein Knopf, der erst in fünf Ticks reagiert, fühlt
+  // sich kaputt an. Ohne gesetzte Flagge kostet der Aufruf einen Zugriff auf
+  // `Game.flags` und einen Farbvergleich. Vor dem Spawncontroller, damit ein
+  // Aufräumen noch im selben Tick wirkt und nicht erst nach dessen Entscheidungen.
+  cleanupController.check();
 
   if (tick % 5 === 0 && cpuBudget.mayRunNormal()) {
     begin(SECTION.spawn);

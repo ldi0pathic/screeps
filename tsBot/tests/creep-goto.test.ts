@@ -241,11 +241,13 @@ test("goToWorkroom, goToMyHome und goToRoomFlag greifen nur, wenn sie zuständig
   const away = stubCreep(10, 10, "E58N7", { workroom: "E58N6", home: "E58N9" });
   assert.equal(goToWorkroom(away as any), true);
   assert.deepEqual(pathSearches[0]!.to, { x: 25, y: 25, roomName: "E58N6" });
+  assert.equal(pathSearches[0]!.range, 0, "die Raummitte ist betretbar");
 
   installMovement();
   const goingHome = stubCreep(10, 10, "E58N7", { workroom: "E58N6", home: "E58N9" });
   assert.equal(goToMyHome(goingHome as any), true);
   assert.deepEqual(pathSearches[0]!.to, { x: 25, y: 25, roomName: "E58N9" });
+  assert.equal(pathSearches[0]!.range, 0, "die Raummitte ist betretbar");
 
   // Raumflagge: nur außerhalb des Heimatraums und nur, wenn sie weiter als 2 Felder weg ist.
   installMovement();
@@ -256,10 +258,53 @@ test("goToWorkroom, goToMyHome und goToRoomFlag greifen nur, wenn sie zuständig
   const farFromFlag = stubCreep(10, 10, "E58N6", { workroom: "E58N6", home: "E58N9" }, [flag]);
   assert.equal(goToRoomFlag(farFromFlag as any), true);
   assert.deepEqual(pathSearches[0]!.to, { x: 30, y: 30, roomName: "E58N6" });
+  assert.equal(pathSearches[0]!.range, 0, "die Flaggenposition ist betretbar");
 
   // Im Heimatraum ist die Flagge uninteressant.
   installMovement();
   const homeCreep = stubCreep(10, 10, "E58N9", { workroom: "E58N9", home: "E58N9" }, [flag]);
   assert.equal(goToRoomFlag(homeCreep as any), false);
   assert.equal(pathSearches.length, 0);
+});
+
+test("ohne Reichweite wird bis auf das Feld selbst gesucht", async () => {
+  const { moveByMemory } = await goto();
+
+  const creep = stubCreep(10, 10, "E58N6");
+  // Vorgabe ist 0: betretbare Ziele (Container, Standplätze) müssen erreicht
+  // werden, und `roles/linkkeeper.ts` sowie `roles/miner.ts` prüfen die Ankunft
+  // mit `creep.pos.isEqualTo(...)` — das setzt eine Suche mit `range: 0` voraus.
+  moveByMemory(creep as any, position(20, 15, "E58N6"));
+
+  assert.equal(pathSearches[0]!.range, 0);
+});
+
+test("eine übergebene Reichweite kommt an der Suche an", async () => {
+  const { moveByMemory } = await goto();
+
+  const creep = stubCreep(10, 10, "E58N6");
+  moveByMemory(creep as any, position(20, 15, "E58N6"), 1);
+
+  assert.equal(pathSearches[0]!.range, 1);
+});
+
+test("ab vier Ticks Stillstand wird mit derselben Reichweite neu gesucht", async () => {
+  const { moveByMemory } = await goto();
+
+  const creep = stubCreep(10, 10, "E58N6", {
+    path: "alt",
+    pathTarget: { x: 20, y: 15, roomName: "E58N6" },
+    dontMove: 4,
+    lastPos: { x: 10, y: 10 },
+  });
+
+  moveByMemory(creep as any, position(20, 15, "E58N6"), 1);
+
+  assert.equal(pathSearches.length, 1);
+  // Der Stau-Zweig speichert seinen Weg mit `rememberPath()` unter dem alten
+  // `pathTarget`. Suchte er mit einer anderen Reichweite als die reguläre
+  // Suche, läge im Cache ein Weg zu einem anderen Endpunkt als der, den der
+  // nächste Tick unter demselben `pathTarget` erwartet.
+  assert.equal(pathSearches[0]!.ignoreCreeps, false, "nur im Stau wird um andere Creeps herum gesucht");
+  assert.equal(pathSearches[0]!.range, 1);
 });
