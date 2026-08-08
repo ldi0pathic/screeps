@@ -69,6 +69,17 @@ export const STORAGE_ENERGY_RESERVE = 50000;
 export class Collector implements CreepRole {
     /** Sammelt oder liefert ab, je nach `memory.harvest`. */
     doJob(creep: Creep): void {
+        // `TransportToHomeTerminal` (`creep/transport.ts`) steigt unter
+        // Controllerstufe 6 aus. Ohne diesen Ausstieg legte `_deliver` die
+        // Ladung über den Rückfall ins Storage zurück, aus dem
+        // `_collectSellable` sie im nächsten Tick wieder holt — Storage → Creep
+        // → Storage, endlos. Betrifft heruntergestufte Räume, in denen das
+        // Terminal noch steht; ohne Terminal hat die Rolle ohnehin nichts zu
+        // tun.
+        const controller = creep.room.controller;
+        if (!controller || controller.level < 6) return;
+        if (!creep.room.terminal) return;
+
         creep.checkHarvest();
 
         if (creep.memory.harvest) {

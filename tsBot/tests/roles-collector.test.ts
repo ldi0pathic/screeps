@@ -309,6 +309,32 @@ test("steht das Storage genau auf der Reserve, wird keine Energie fuers Terminal
   );
 });
 
+test("unter RCL 6 tut der Collector nichts — dort nimmt das Terminal nichts an", async () => {
+  const { Collector } = await loadCollector();
+  const collector = new Collector();
+
+  // Heruntergestufter Raum mit noch stehendem Terminal: `TransportToHomeTerminal`
+  // steigt unter Stufe 6 aus, das Mineral liefe sonst Storage → Creep → Storage.
+  const storage = stubStructure("storage", STRUCTURE_STORAGE, 20, 20, ROOM, stubStore(1000000, { O: 5000 }));
+  const terminal = stubStructure("terminal", STRUCTURE_TERMINAL, 21, 21, ROOM, stubStore(300000));
+
+  const room = stubRoom(ROOM, { storage, terminal, controller: { my: true, level: 5 } });
+  configureRoom(ROOM, {});
+  roomMemory(ROOM, {});
+
+  const creep: any = addCheckHarvest(
+    stubActor(15, 15, ROOM, {
+      store: stubStore(500),
+      memory: { role: "collector", workroom: ROOM, home: ROOM, harvest: true, container: "", mineral: RESOURCE_ENERGY },
+      room,
+    }),
+  );
+
+  collector.doJob(creep);
+
+  assert.equal(actionCalls.length, 0, "unter RCL 6 wird gar nichts getan");
+});
+
 // --- Spawnbedingung ------------------------------------------------------------
 
 /**
