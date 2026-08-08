@@ -254,9 +254,16 @@ test("ist im Terminal zu wenig frei, wird nichts mehr nachgeliefert", async () =
 
 // --- Spawnbedingung ------------------------------------------------------------
 
-/** Ein Spawn-Stub, dessen `spawnCreep` jeden Aufruf mitschreibt und OK meldet. */
+/**
+ * Ein Spawn-Stub, dessen `spawnCreep` jeden Aufruf mitschreibt und OK meldet.
+ *
+ * `creepBase.spawn` ruft `spawnCreep` zweimal auf: einmal als `dryRun`-Probe,
+ * einmal echt. Das `dryRun`-Flag wird mitgeschrieben, damit ein Test die Probe
+ * herausfiltern kann — dieselbe Unterscheidung wie in `roles-filler.test.ts`
+ * und `roles-hauler.test.ts`.
+ */
 function stubCollectorSpawn(roomName: string, options: { storage?: unknown; terminal?: unknown } = {}) {
-  const spawnCalls: { profil: BodyPartConstant[]; newName: string; memory?: Record<string, any> }[] = [];
+  const spawnCalls: { profil: BodyPartConstant[]; newName: string; memory?: Record<string, any>; dryRun: boolean }[] = [];
 
   const spawnObj: any = {
     room: {
@@ -265,8 +272,12 @@ function stubCollectorSpawn(roomName: string, options: { storage?: unknown; term
       terminal: options.terminal,
       energyCapacityAvailable: 2300,
     },
-    spawnCreep(profil: BodyPartConstant[], newName: string, opts?: { memory?: Record<string, any> }): number {
-      spawnCalls.push({ profil: [...profil], newName, memory: opts?.memory });
+    spawnCreep(
+      profil: BodyPartConstant[],
+      newName: string,
+      opts?: { dryRun?: boolean; memory?: Record<string, any> },
+    ): number {
+      spawnCalls.push({ profil: [...profil], newName, memory: opts?.memory, dryRun: Boolean(opts?.dryRun) });
       return OK;
     },
   };
@@ -295,8 +306,20 @@ test("mit Storage und Terminal wird genau einer gespawnt", async () => {
   const storage = stubStructure("storage", STRUCTURE_STORAGE, 20, 20, ROOM, stubStore(1000000));
   const terminal = stubStructure("terminal", STRUCTURE_TERMINAL, 21, 21, ROOM, stubStore(300000));
 
-  const { spawnObj } = stubCollectorSpawn(ROOM, { storage, terminal });
+  const { spawnObj, spawnCalls } = stubCollectorSpawn(ROOM, { storage, terminal });
   assert.equal(collector.spawn(spawnObj, ROOM), true);
+
+  // Nur die echten Spawns, ohne die vorausgehende `dryRun`-Probe aus
+  // `creepBase.spawn` — siehe die Erklärung an `stubCollectorSpawn`.
+  const real = spawnCalls.filter(call => !call.dryRun);
+  assert.equal(real.length, 1, "genau ein echter spawnCreep-Aufruf");
+  assert.notEqual(real[0]!.profil.length, 0, "ein leeres Body-Array laesst spawnCreep immer fehlschlagen");
+  assert.equal(
+    real[0]!.memory!.mineral,
+    RESOURCE_ENERGY,
+    "ohne diesen Schluessel kippt checkHarvest bei jeder Teilladung sofort in den Abliefermodus",
+  );
+  assert.equal(real[0]!.memory!.harvest, true);
 
   // Schlüssel setzen statt `Game.creeps` zu ersetzen — `resetWorld()` leert das
   // vorhandene Objekt, ein neues käme dort nie an.

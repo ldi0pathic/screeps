@@ -217,7 +217,10 @@ export class Collector implements CreepRole {
             spawn,
             BODIES.collector.build(spawn.room.energyCapacityAvailable),
             role + '_' + Game.time,
-            { role: role, workroom: workroom, home: spawn.room.name, harvest: true, container: '' },
+            // `mineral` wie bei Filler und Hauler: fehlt der Schlüssel, ist er
+            // `undefined`, `checkHarvest` liest ihn als "nicht Energie" und
+            // kippt den Creep bei jeder Teilladung sofort zurück ins Abliefern.
+            { role: role, workroom: workroom, home: spawn.room.name, harvest: true, container: '', mineral: RESOURCE_ENERGY },
         );
     }
 }
