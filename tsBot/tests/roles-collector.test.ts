@@ -314,3 +314,31 @@ test("aus einem fremden Raum wird nicht gespawnt", async () => {
   const { spawnObj } = stubCollectorSpawn("E58N7", { storage, terminal });
   assert.equal(collector.spawn(spawnObj, ROOM), false, "die Rolle kennt kein goToWorkroom");
 });
+
+test("ein Terminal ganz ohne Energie bekommt welche — der wichtigste Fall, nicht der Randfall", async () => {
+  const { Collector } = await loadCollector();
+  const collector = new Collector();
+
+  const storage = stubStructure("storage", STRUCTURE_STORAGE, 20, 20, ROOM, stubStore(1000000, { [RESOURCE_ENERGY]: 500000 }));
+  // Ganz leer: genau die Lage, in der `sell()` mangels Energie nie anläuft.
+  const terminal = stubStructure("terminal", STRUCTURE_TERMINAL, 21, 21, ROOM, stubStore(300000));
+
+  const room = stubRoom(ROOM, { storage, terminal });
+  configureRoom(ROOM, {});
+  roomMemory(ROOM, {});
+
+  const creep: any = addCheckHarvest(
+    stubActor(15, 15, ROOM, {
+      store: stubStore(500),
+      memory: { role: "collector", workroom: ROOM, home: ROOM, harvest: true, container: "", mineral: RESOURCE_ENERGY },
+      room,
+    }),
+  );
+
+  collector.doJob(creep);
+
+  assert.equal(
+    actionCalls.some(call => call.targetId === "storage" && call.resource === RESOURCE_ENERGY),
+    true,
+  );
+});

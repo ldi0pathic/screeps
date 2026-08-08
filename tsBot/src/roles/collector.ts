@@ -171,14 +171,17 @@ export class Collector implements CreepRole {
     /** Energie aus dem Storage, solange das Terminal unter der Zielgröße liegt. */
     private _collectTerminalEnergy(creep: Creep): boolean {
         const terminal = creep.room.terminal;
+        if (!terminal) return false;
 
-        // Positiv formuliert: fehlt der Wert, ist der Vergleich falsch — und
-        // dann wird nichts geholt, was hier die sichere Seite ist.
-        if (!terminal || !(terminal.store[RESOURCE_ENERGY] < TERMINAL_ENERGY_TARGET)) {
-            return false;
+        // `getUsedCapacity` statt `store[…]`: der Store liefert für eine
+        // fehlende Ressource `undefined`, und eine negierte Schwelle kippte
+        // dann genau im wichtigsten Fall — dem leeren Terminal, für das diese
+        // Konstante da ist (siehe die Notiz in `creep/base.ts`).
+        if (terminal.store.getUsedCapacity(RESOURCE_ENERGY) < TERMINAL_ENERGY_TARGET) {
+            return creepBase.harvestRoomStorage(creep, RESOURCE_ENERGY);
         }
 
-        return creepBase.harvestRoomStorage(creep, RESOURCE_ENERGY);
+        return false;
     }
 
     /** Abliefern: erst das Terminal, dann das Storage als Rückfall. */
