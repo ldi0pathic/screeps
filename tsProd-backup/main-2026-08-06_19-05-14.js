@@ -1,4 +1,4 @@
-// Build: 2026-08-08 14:37:22 +02:00
+// Build: 2026-08-06 19:05:14 +02:00
 "use strict";
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
@@ -439,116 +439,12 @@ function findAndSaveTerminals() {
   });
 }
 
-// src/controller/cleanup.ts
-var FLAG_NAME = "cleanup";
-var cleanupMemory = Memory;
-function rememberedColor() {
-  var _a;
-  return (_a = cleanupMemory.cleanup) == null ? void 0 : _a.flagColor;
-}
-function remember(color) {
-  var _a;
-  if (color === void 0) {
-    delete cleanupMemory.cleanup;
-    return;
-  }
-  (_a = cleanupMemory.cleanup) != null ? _a : cleanupMemory.cleanup = {};
-  cleanupMemory.cleanup.flagColor = color;
-}
-function orphanedRooms() {
-  const rooms = cleanupMemory.rooms;
-  if (!rooms) return [];
-  return Object.keys(rooms).filter((name) => !bot.room[name]);
-}
-function isAffected(creep) {
-  const workroom = creep.memory.workroom;
-  const home = creep.memory.home;
-  if (!workroom || !home) return true;
-  return !bot.room[workroom] || !bot.room[home];
-}
-function affectedCreeps() {
-  return Object.values(Game.creeps).filter(isAffected);
-}
-function hasNothingToDo(orphaned, creeps) {
-  return orphaned.length === 0 && creeps.length === 0;
-}
-function report() {
-  const orphaned = orphanedRooms();
-  const creeps = affectedCreeps();
-  if (hasNothingToDo(orphaned, creeps)) {
-    console.log("[cleanup] Nichts zu tun: keine verwaisten Raeume, keine betroffenen Creeps.");
-    return;
-  }
-  if (orphaned.length > 0) {
-    console.log(`[cleanup] Raum-Memory ohne Config: ${orphaned.join(", ")}`);
-  }
-  console.log(`[cleanup] Creeps davon betroffen: ${creeps.length}`);
-  for (const creep of creeps) {
-    console.log(`  ${creep.name} (workroom ${creep.memory.workroom}, home ${creep.memory.home})`);
-  }
-  console.log("[cleanup] Nichts geaendert. Rot = ausfuehren.");
-}
-function execute() {
-  const orphaned = orphanedRooms();
-  const creeps = affectedCreeps();
-  clear();
-  let killed = 0;
-  for (const creep of creeps) {
-    const result = creep.suicide();
-    if (result === OK) {
-      killed += 1;
-    } else {
-      console.log(`[cleanup] suicide fehlgeschlagen fuer ${creep.name}: ${result}`);
-    }
-  }
-  if (hasNothingToDo(orphaned, creeps)) {
-    console.log("[cleanup] Nichts zu tun, Flagge entfernt.");
-    return;
-  }
-  const rooms = orphaned.length > 0 ? orphaned.join(", ") : "keine Raeume";
-  console.log(`[cleanup] ${rooms} geloescht, ${killed} Creeps suizidiert.`);
-}
-function reportUnknownColor() {
-  console.log(
-    `[cleanup] Flagge "${FLAG_NAME}": diese Farbe ist nicht belegt. Belegt sind gelb=Bericht, rot=ausfuehren.`
-  );
-}
-function check() {
-  const flag = Game.flags[FLAG_NAME];
-  if (!flag) {
-    if (rememberedColor() !== void 0) {
-      remember(void 0);
-    }
-    return;
-  }
-  const previous = rememberedColor();
-  if (flag.color === previous) return;
-  if (flag.color === COLOR_YELLOW) {
-    remember(flag.color);
-    report();
-    return;
-  }
-  if (flag.color === COLOR_RED) {
-    execute();
-    const removed = flag.remove();
-    if (removed === OK) {
-      remember(void 0);
-    } else {
-      remember(flag.color);
-      console.log(`[cleanup] Flagge "${FLAG_NAME}" konnte nicht entfernt werden: ${removed}`);
-    }
-    return;
-  }
-  remember(flag.color);
-  reportUnknownColor();
-}
-
 // src/controller/cpu-budget.ts
 var LOW_TIER_BUCKET = 2e3;
 var NORMAL_TIER_BUCKET = 500;
 var LOG_INTERVAL = 100;
 var lastReport = {};
-function report2(tier, reason) {
+function report(tier, reason) {
   const last = lastReport[tier];
   if (last !== void 0 && Game.time - last < LOG_INTERVAL) return;
   lastReport[tier] = Game.time;
@@ -559,13 +455,13 @@ function mayRunLow() {
   if (bucket >= LOW_TIER_BUCKET) return true;
   const used = Game.cpu.getUsed();
   if (used <= Game.cpu.limit) return true;
-  report2("niedrig", `Bucket ${Math.round(bucket)}, im Tick schon ${used.toFixed(1)} von ${Game.cpu.limit}`);
+  report("niedrig", `Bucket ${Math.round(bucket)}, im Tick schon ${used.toFixed(1)} von ${Game.cpu.limit}`);
   return false;
 }
 function mayRunNormal() {
   const bucket = Game.cpu.bucket;
   if (bucket >= NORMAL_TIER_BUCKET) return true;
-  report2("normal", `Bucket ${Math.round(bucket)} unter ${NORMAL_TIER_BUCKET}`);
+  report("normal", `Bucket ${Math.round(bucket)} unter ${NORMAL_TIER_BUCKET}`);
   return false;
 }
 
@@ -607,7 +503,7 @@ var SECTION = {
 };
 
 // src/profiler/flag.ts
-var FLAG_NAME2 = "prof";
+var FLAG_NAME = "prof";
 var SWITCH_COLORS = [
   { color: COLOR_GREY, request: "off", label: "grau", meaning: "aus", css: "#b4b4b4" },
   { color: COLOR_WHITE, request: "light", label: "wei\xDF", meaning: "light", css: "#ffffff" },
@@ -635,7 +531,7 @@ function isActive(entry, data) {
   return data.detailRemaining === 0 && entry.request === data.mode;
 }
 var FlagSwitch = class {
-  constructor(state2, flagName = FLAG_NAME2) {
+  constructor(state2, flagName = FLAG_NAME) {
     this.state = state2;
     this.flagName = flagName;
   }
@@ -1688,26 +1584,8 @@ function planReceiverLinks(onlyRoom) {
   }
 }
 
-// src/controller/storage-pressure.ts
-var STORAGE_FULL_RATIO = 0.9;
-var STORAGE_FULL_MIN_ENERGY = 1e5;
-function storageIsFull(roomName) {
-  var _a, _b, _c;
-  const storage = (_a = Game.rooms[roomName]) == null ? void 0 : _a.storage;
-  if (!storage) {
-    return false;
-  }
-  const capacity = (_b = storage.store.getCapacity()) != null ? _b : 0;
-  if (capacity <= 0) {
-    return false;
-  }
-  const used = (_c = storage.store.getUsedCapacity()) != null ? _c : 0;
-  return used / capacity > STORAGE_FULL_RATIO && storage.store[RESOURCE_ENERGY] > STORAGE_FULL_MIN_ENERGY;
-}
-
 // src/controller/links.ts
 var SEND_MIN = LINK_CAPACITY / 4;
-var STORAGE_FEED_RESERVE = 2e4;
 var LinkNetwork = class {
   constructor(roomName) {
     this.roomName = roomName;
@@ -1728,14 +1606,10 @@ var LinkNetwork = class {
       return;
     }
     const senders = this.readySenders();
-    const feed = this.feedSender();
-    if (feed) {
-      senders.push(feed);
-    }
     if (senders.length === 0) {
       return;
     }
-    const receivers = this.receiversByPriority(room, feed !== null);
+    const receivers = this.receiversByPriority(room);
     for (const sender of senders) {
       const receiver = receivers.shift();
       if (!receiver) {
@@ -1753,24 +1627,6 @@ var LinkNetwork = class {
     return this.list.senders().filter((link) => link.cooldown === 0 && link.store[RESOURCE_ENERGY] >= SEND_MIN);
   }
   /**
-   * Der Storage-Link als Sender, wenn der Raum nachschieben muss — sonst `null`.
-   *
-   * Cooldown und Mindestladung werden hier geprüft und nicht in
-   * `needsStorageFeed`: die Frage "muss nachgeschoben werden" beantwortet auch
-   * der Linkkeeper, und für ihn ist der Cooldown des Links belanglos — er füllt
-   * ihn ja gerade erst.
-   */
-  feedSender() {
-    if (!needsStorageFeed(this.roomName)) {
-      return null;
-    }
-    const link = this.list.spawnLink;
-    if (!link || link.cooldown !== 0 || link.store[RESOURCE_ENERGY] < SEND_MIN) {
-      return null;
-    }
-    return link;
-  }
-  /**
    * Empfänger nach Vorrang, gefiltert auf ausreichend freien Platz.
    *
    * Der Vorrang kippt bei RCL8: darunter bekommt der Controller-Link zuerst
@@ -1778,24 +1634,11 @@ var LinkNetwork = class {
    * (dort zahlt Upgraden nur noch auf GCL ein). Empfänger dürfen dabei
    * teilweise befüllt werden — wer nur ganze Ladungen annimmt, bekäme als
    * halb gefüllter Empfänger nie etwas ab.
-   *
-   * `storageFeeds` überstimmt beides: sendet der Storage-Link gerade selbst,
-   * fällt er aus der Liste. Sonst könnte `receivers.shift()` ihm sich selbst
-   * zuteilen — und der Nebeneffekt ist erwünscht, weil die Quell-Ladungen dann
-   * direkt an den Controller gehen statt über einen zweiten Sprung mit weiteren
-   * drei Prozent Verlust.
    */
-  receiversByPriority(room, storageFeeds) {
+  receiversByPriority(room) {
     var _a, _b;
     const controllerFirst = ((_b = (_a = room.controller) == null ? void 0 : _a.level) != null ? _b : 0) < 8;
-    let ordered;
-    if (storageFeeds) {
-      ordered = [this.list.controllerLink];
-    } else if (controllerFirst) {
-      ordered = [this.list.controllerLink, this.list.spawnLink];
-    } else {
-      ordered = [this.list.spawnLink, this.list.controllerLink];
-    }
+    const ordered = controllerFirst ? [this.list.controllerLink, this.list.spawnLink] : [this.list.spawnLink, this.list.controllerLink];
     return ordered.filter(
       (link) => {
         var _a2;
@@ -1804,31 +1647,6 @@ var LinkNetwork = class {
     );
   }
 };
-function needsStorageFeed(roomName) {
-  var _a;
-  if (!usesLinks(roomName)) {
-    return false;
-  }
-  const storage = (_a = Game.rooms[roomName]) == null ? void 0 : _a.storage;
-  if (!storage) {
-    return false;
-  }
-  const list = new LinkList(roomName);
-  const controllerLink = list.controllerLink;
-  if (!controllerLink || !list.spawnLink) {
-    return false;
-  }
-  if (storageIsFull(roomName)) {
-    return true;
-  }
-  if (controllerLink.store[RESOURCE_ENERGY] >= SEND_MIN) {
-    return false;
-  }
-  if (list.senders().some((link) => link.store[RESOURCE_ENERGY] >= SEND_MIN)) {
-    return false;
-  }
-  return storage.store[RESOURCE_ENERGY] > STORAGE_FEED_RESERVE;
-}
 function sendAll() {
   for (const roomName in bot.room) {
     new LinkNetwork(roomName).send();
@@ -2073,8 +1891,8 @@ var PathMemory = class {
 };
 
 // src/creep/goto.ts
-function searchRoute(creep, target, ignoreCreeps, range) {
-  const steps = creep.pos.findPathTo(target, { ignoreCreeps, range });
+function searchRoute(creep, target, ignoreCreeps) {
+  const steps = creep.pos.findPathTo(target, { ignoreCreeps });
   return { serialized: Room.serializePath(steps), steps };
 }
 function drawRemainingPath(creep, route) {
@@ -2117,14 +1935,14 @@ function goToWorkroom(creep) {
   }
   return false;
 }
-function moveByMemory(creep, target, range = 0) {
+function moveByMemory(creep, target) {
   const cache = new PathMemory(creep.memory);
   if (creep.pos.isEqualTo(target)) {
     cache.clear();
     return false;
   }
   if (cache.isStuck) {
-    const route2 = searchRoute(creep, target, false, range);
+    const route2 = searchRoute(creep, target, false);
     cache.rememberPath(route2.serialized);
     cache.resetStuck();
     creep.moveByPath(route2.serialized);
@@ -2135,7 +1953,7 @@ function moveByMemory(creep, target, range = 0) {
   if (known !== void 0) {
     route = { serialized: known };
   } else {
-    route = searchRoute(creep, target, true, range);
+    route = searchRoute(creep, target, true);
     cache.rememberPathTo(route.serialized, target);
   }
   const state2 = creep.moveByPath(route.serialized);
@@ -2197,7 +2015,7 @@ var RememberedTarget = class {
 function collectFrom(creep, target, remembered, state2) {
   switch (state2) {
     case ERR_NOT_IN_RANGE:
-      moveByMemory(creep, target.pos, 1);
+      moveByMemory(creep, target.pos);
       remembered.remember(target);
       return true;
     case OK:
@@ -2215,7 +2033,7 @@ function transferTo(creep, target, type) {
   }
   switch (creep.transfer(target, type)) {
     case ERR_NOT_IN_RANGE:
-      moveByMemory(creep, target.pos, 1);
+      moveByMemory(creep, target.pos);
       return true;
     case OK:
       return true;
@@ -2230,7 +2048,7 @@ function deliverTo(creep, target, remembered, type) {
   }
   switch (creep.transfer(target, type)) {
     case ERR_NOT_IN_RANGE:
-      moveByMemory(creep, target.pos, 1);
+      moveByMemory(creep, target.pos);
       return true;
     case OK:
       remembered.forget();
@@ -2243,7 +2061,7 @@ function deliverTo(creep, target, remembered, type) {
 function withdrawFrom(creep, target, type) {
   switch (creep.withdraw(target, type)) {
     case ERR_NOT_IN_RANGE:
-      moveByMemory(creep, target.pos, 1);
+      moveByMemory(creep, target.pos);
       return true;
     case OK:
       creep.memory.fromId = target.id;
@@ -2290,7 +2108,7 @@ function TransportToHomeContainer(creep, type, mul) {
   if (container && container.store.getFreeCapacity() > 0) {
     switch (creep.transfer(container, type)) {
       case ERR_NOT_IN_RANGE:
-        moveByMemory(creep, container.pos, 1);
+        moveByMemory(creep, container.pos);
         return true;
       case OK:
         remembered.forget();
@@ -2564,8 +2382,8 @@ function goToRoomFlag2(creep) {
 function goToWorkroom2(creep) {
   return goToWorkroom(creep);
 }
-function moveByMemory2(creep, target, range) {
-  return moveByMemory(creep, target, range);
+function moveByMemory2(creep, target) {
+  return moveByMemory(creep, target);
 }
 function TransportEnergyToHomeSpawn2(creep) {
   return TransportEnergyToHomeSpawn(creep);
@@ -2600,12 +2418,12 @@ function upgradeController(creep) {
     return;
   const state2 = creep.upgradeController(controller);
   if (state2 === ERR_NOT_IN_RANGE || state2 === ERR_INVALID_TARGET && controller.upgradeBlocked > 0) {
-    moveByMemory(creep, controller.pos, 1);
+    moveByMemory(creep, controller.pos);
   }
   if (!controller.sign || controller.sign.username == void 0 || controller.sign.username != creep.owner.username) {
     var c = creep.signController(controller, "\u2694");
     if (c === ERR_NOT_IN_RANGE) {
-      moveByMemory(creep, controller.pos, 1);
+      moveByMemory(creep, controller.pos);
     }
   }
   return state2 == OK;
@@ -2912,7 +2730,7 @@ var Claimer = class {
       if (claim) {
         var s = creep.claimController(controller);
         if (s === ERR_NOT_IN_RANGE) {
-          moveByMemory2(creep, controller.pos, 1);
+          moveByMemory2(creep, controller.pos);
         }
         if (s === OK) {
           Memory.rooms[creep.memory.workroom].claimed = true;
@@ -2921,7 +2739,7 @@ var Claimer = class {
       }
       var state2 = creep.reserveController(controller);
       if (state2 === ERR_NOT_IN_RANGE) {
-        moveByMemory2(creep, controller.pos, 1);
+        moveByMemory2(creep, controller.pos);
       } else if (state2 == ERR_INVALID_TARGET) {
         creep.say("\u{1FA93}");
         creep.attackController(controller);
@@ -3543,11 +3361,6 @@ var LinkKeeper = class {
     if (!link) return;
     const carrying = creep.store.getUsedCapacity(RESOURCE_ENERGY);
     const inLink = link.store.getUsedCapacity(RESOURCE_ENERGY);
-    if (needsStorageFeed(creep.memory.workroom)) {
-      if (carrying > 0) creep.transfer(link, RESOURCE_ENERGY);
-      else creep.withdraw(storage, RESOURCE_ENERGY);
-      return;
-    }
     if (carrying === 0 && inLink === 0) return;
     if (carrying > 0) creep.transfer(storage, RESOURCE_ENERGY);
     if (inLink > 0) creep.withdraw(link, RESOURCE_ENERGY);
@@ -4126,7 +3939,7 @@ var role12 = "upgrader";
 var RCL8_WORK_RESERVE = 1e5;
 var DOWNGRADE_ALARM = 1e5;
 var Upgrader = class {
-  /** Beschafft Energie und upgradet den Controller des Arbeitsraums; unter RCL 8 ungedrosselt, ab RCL 8 nur mit Vorrat (siehe `_mayWork`). */
+  /** Beschafft Energie und upgradet den Controller des Arbeitsraums, inklusive Sparmodus bei hohem Level. */
   doJob(creep) {
     if (!this._mayWork(creep)) return;
     creep.checkHarvest();
@@ -4155,31 +3968,32 @@ var Upgrader = class {
     if (creep.checkInvasion()) return;
     if (goToWorkroom2(creep)) return;
     if (checkWorkroomPrioSpawn(creep)) return;
-    upgradeController(creep);
+    if (upgradeController(creep)) {
+      creep.memory.sparmodus = creep.room.controller.level > 5;
+    }
   }
   /**
    * Darf der Upgrader in diesem Tick überhaupt arbeiten?
    *
-   * Unter voller Ausbaustufe (RCL < 8) wird nicht mehr gedrosselt: dort ist
-   * RCL-Fortschritt das Ziel, und die frühere Tickdrossel (ein Sechstel bis
-   * ein Siebtel der Ticks) kostete echten Fortschritt (Plan 04, Punkt 3,
-   * `docs/plans/04-rcl8-upgrader-und-gcl.md`). Ein Creep, der aus der Zeit vor
-   * dieser Änderung noch `sparmodus: true` im Memory trägt, arbeitet ab dem
-   * nächsten Tick ungedrosselt weiter — das Flag wird nirgends mehr gelesen
-   * und absichtlich nicht aus dem Memory gelöscht, damit kein Migrationsschritt
-   * nötig ist.
+   * Zwei verschiedene Drosseln, und der Unterschied ist der Punkt von Plan 04:
    *
-   * Erst ab RCL8 drosselt der Vorrat statt der Tickzahl: der Controller nimmt
-   * dort nur noch 15 Energie je Tick an, GCL wächst ausschließlich aus
-   * Controller-Upgrades, und der Raum hat typischerweise Überschuss. Unterhalb
-   * von RCL8 gibt es bewusst keine Vorratsschwelle — der Upgrader zieht dort
-   * zuerst am Storage, `RCL8_WORK_RESERVE` schützt nur Stufe 8. Das ist keine
-   * Lücke, sondern die gewollte Kehrseite der weggefallenen Tickdrossel.
+   * - **Bis RCL7** die alte Tickdrossel (`sparmodus`, gesetzt ab Stufe 6): der
+   *   Creep arbeitet in einem von `level` Ticks. Grob, aber dort ist RCL-Fortschritt
+   *   das Ziel und Energie knapp.
+   * - **Ab RCL8** der Vorrat statt der Tickzahl. Der Controller nimmt dort nur
+   *   noch 15 Energie je Tick an, und der Raum hat typischerweise Überschuss.
+   *   Die Tickdrossel achtelte hier die Leistung unabhängig davon, ob Energie
+   *   da ist — zusammen mit dem alten Rumpf kam der Raum auf 0,5 von 15
+   *   erlaubten Energie je Tick, also 3 %. GCL wächst ausschließlich aus
+   *   Controller-Upgrades und ist die Erlaubnis für den nächsten Raum.
    */
   _mayWork(creep) {
     const controller = creep.room.controller;
-    if (!controller || !controller.my || controller.level < 8)
+    if (!controller)
       return true;
+    if (!controller.my || controller.level < 8) {
+      return !creep.memory.sparmodus || Game.time % controller.level == 0;
+    }
     if (controller.ticksToDowngrade < DOWNGRADE_ALARM)
       return true;
     const storage = creep.room.storage;
@@ -4193,36 +4007,20 @@ var Upgrader = class {
     const profil = Game.rooms[workroom].controller.level > 7 ? BODIES.upgraderRcl8 : BODIES.upgrader;
     return profil.build(spawn3.room.energyCapacityAvailable);
   }
-  /**
-   * Spawnt einen Upgrader für `workroom`, falls die konfigurierte Anzahl noch
-   * nicht erreicht ist.
-   *
-   * Ausnahme: läuft der Storage über (`storageIsFull`), steht **mindestens
-   * einer** da — auch bei `upgrader: 0` in der Config und auch dann, wenn das
-   * RCL8-Gate ihn sonst verhinderte. Der Fall ist nicht theoretisch: bei 95
-   * Prozent Belegung mit viel Mineral und 150 000 Energie greift das Gate
-   * `storage < 250000` heute genau dann, wenn man den Upgrader braucht.
-   *
-   * Bewusst `Math.max(1, …)` und keine höhere Zahl: ab RCL8 nimmt der
-   * Controller nur noch `CONTROLLER_MAX_UPGRADE_PER_TICK` (15) Energie je Tick
-   * an — für den ganzen Raum. `BODIES.upgraderRcl8` schöpft das mit 15 WORK
-   * allein aus, ein zweiter Upgrader brächte dort nichts.
-   */
+  /** Spawnt einen Upgrader für `workroom`, falls die konfigurierte Anzahl noch nicht erreicht ist. */
   spawn(spawn3, workroom) {
-    const forced = storageIsFull(workroom);
     var uppis = bot.room[workroom].upgrader;
-    if (!forced && (!uppis || uppis < 1))
+    if (!uppis || uppis < 1)
       return false;
     if (spawn3.room.name != workroom)
       return false;
-    if (!forced && spawn3.room.controller.level > 7 && spawn3.room.controller.ticksToDowngrade > 1e5 && spawn3.room.storage && spawn3.room.storage.store.getUsedCapacity(RESOURCE_ENERGY) < 25e4)
+    if (spawn3.room.controller.level > 7 && spawn3.room.controller.ticksToDowngrade > 1e5 && spawn3.room.storage && spawn3.room.storage.store.getUsedCapacity(RESOURCE_ENERGY) < 25e4)
       return false;
     var count = _.filter(
       Game.creeps,
       (creep) => creep.memory.role == role12 && creep.memory.workroom == workroom && (creep.ticksToLive > 160 || creep.spawning)
     ).length;
-    const target = forced ? Math.max(1, uppis != null ? uppis : 0) : uppis;
-    if (target <= count)
+    if (uppis <= count)
       return false;
     var profil = this.bodyFor(spawn3, workroom);
     return spawn(spawn3, profil, role12 + "_" + Game.time, { role: role12, workroom, home: spawn3.room.name, repairs: 0, noLink: false });
@@ -5022,8 +4820,8 @@ ${formatDetailReport(metrics)}`;
     return formatComparison(name, baseline, metrics);
   }
   mail() {
-    const report3 = this.report();
-    return mailReport(`[prof] Bericht Tick ${Game.time}`, report3);
+    const report2 = this.report();
+    return mailReport(`[prof] Bericht Tick ${Game.time}`, report2);
   }
   history() {
     if (!isAvailable()) {
@@ -5135,7 +4933,6 @@ function controll() {
     Game.cpu.generatePixel();
     end(SECTION.pixel);
   }
-  check();
   if (tick2 % 5 === 0 && mayRunNormal()) {
     begin(SECTION.spawn);
     spawn2();

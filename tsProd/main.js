@@ -1,4 +1,4 @@
-// Build: 2026-08-08 16:14:13 +02:00
+// Build: 2026-08-09 13:01:59 +02:00
 "use strict";
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
@@ -4590,7 +4590,7 @@ var Upgrader = class {
     if (target <= count)
       return false;
     var profil = this.bodyFor(spawn3, workroom);
-    return spawn(spawn3, profil, role13 + "_" + Game.time, { role: role13, workroom, home: spawn3.room.name, repairs: 0, noLink: false });
+    return spawn(spawn3, profil, role13 + "_" + Game.time, { role: role13, workroom, home: spawn3.room.name, repairs: 0 });
   }
 };
 Upgrader = __decorateClass([
