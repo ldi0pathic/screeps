@@ -41,7 +41,16 @@ const T1_INTERMEDIATES: Record<string, boolean> = {
   GO: true,
 };
 
-const NEVER_SELL: Record<string, boolean> = {
+/**
+ * Was nie verkauft wird.
+ *
+ * Steht hier und nicht bei den Rollen, weil `sell()` sie auswertet — es ist
+ * Marktwissen. Gelesen wird sie außerdem von `roles/debitor.ts` und
+ * `roles/collector.ts`, die entscheiden, was sie überhaupt erst ins Terminal
+ * tragen. Vorher stand die Liste zweimal im Code und musste von Hand synchron
+ * gehalten werden.
+ */
+export const NEVER_SELL: Record<string, boolean> = {
   energy: true,
   power: true,
   pixel: true,

@@ -1124,27 +1124,41 @@ Flankensteuerung ab.
 
 **Commit:** `741b41a`.
 
-## Runde 2026-08-08: Storage-Nachschub in den Controller-Link
+## Runde 2026-08-08: Neue Rolle `collector` schließt die Terminal-Lücke (Plan 10, Nachtrag)
 
-Bisher war der Storage-Link reiner Empfänger. Jetzt kann er den
-Controller-Link aktiv nachfüttern, in zwei Fällen: **Rückfall**, wenn die
-Quell-Links gerade nichts liefern, und **Vollpumpen**, wenn der Storage
-überläuft.
+Anlass ist eine Regression, kein neuer Wunsch. Seit Plan 10 ersetzen `filler`
+und `hauler` den Heimatraum-Debitor: das Storage-Tor in `Debitor.spawn`
+(`spawn.room.name == workroom && spawn.room.storage`) steigt in Räumen mit
+Storage aus. Damit wurde der Mineralzweig in `Debitor.doJob` — der Block, der
+bei vorhandenem Storage und freiem Terminal Nichtenergie umlagert — dort nie
+mehr ausgeführt: die **einzige** Stelle im Bot, die Mineralien aus dem
+Storage ins Terminal bringt. Kein Fehler, keine Meldung: es passierte
+schlicht nichts. Mitbetroffen waren Tombstones, Drops und Ruinen im
+Heimatraum sowie die Energieversorgung des Terminals, ohne die
+`TerminalMarket.sell` unter 1000 Energie gar nicht erst anläuft.
 
 | Was | Warum | Wirkung |
 | --- | --- | --- |
-| Neu `controller/storage-pressure.ts::storageIsFull(roomName)`: wahr, wenn der Storage zu mehr als `STORAGE_FULL_RATIO` (90 %) belegt ist **und** mehr als `STORAGE_FULL_MIN_ENERGY` (100 000) Energie hält. | Gemessen wird die **Gesamtbelegung**, weil „der Storage geht voll" eine Platzfrage ist; der Energieboden verhindert, dass ein mineralvoller, aber energiearmer Storage leergezogen wird. | Ohne Sicht oder ohne Storage `false`. |
-| Neu `controller/links.ts::needsStorageFeed(roomName)` plus `STORAGE_FEED_RESERVE` (20 000). Wahr im **Rückfall** (Controller-Link unter `SEND_MIN`, kein Quell-Link hält eine Ladung ≥ `SEND_MIN`, Storage-Energie über 20 000) oder beim **Vollpumpen** (`storageIsFull`, unabhängig von den Quell-Links). | Gemessen wird beim Rückfall der **Inhalt** der Quell-Links, nicht ihr Cooldown — ein beladener Quell-Link liefert ab, sobald sein Cooldown fällt, und der Bedarf verschwindet von selbst. | Die einzige Entscheidungsstelle, gefragt von `LinkNetwork.send` und vom Linkkeeper — beide brauchen im selben Tick dieselbe Antwort. |
-| `LinkNetwork.send`: der Storage-Link wird bei Bedarf vom Empfänger zum **Sender**, dabei **hinten** an die Senderliste gehängt, und fällt für diesen Tick aus der **Empfängerliste**. | Geschenkte Quellenergie geht vor einer Abbuchung aus dem Vorrat; der Wegfall aus der Empfängerliste erspart der Quellenergie einen zweiten Sprung mit weiteren 3 % Übertragungsverlust und übersteuert bewusst den ab RCL8 sonst geltenden Vorrang „Storage-Link zuerst". | Cooldown und Mindestladung prüft dafür die neue private Methode `feedSender`. |
-| `roles/linkkeeper.ts`: der Keeper fragt vor seinem Altverhalten `needsStorageFeed`. Ist Nachschub fällig, schiebt er seine Ladung in den Link bzw. holt eine volle Ladung aus dem Storage und steigt aus — der Link wird dann **nicht** geleert. | Der Keeper handelt im selben Tick **vor** dem Sendenetz (`main.ts` fährt erst alle Creeps, dann `controller.timing.controll()`); eine Flagge aus dem Vortick käme zu spät, deshalb fragen beide Seiten dieselbe reine Funktion. | Sonst unverändertes Altverhalten. |
-| `roles/upgrader.ts::spawn`: läuft der Storage über, steht mindestens ein Upgrader (`Math.max(1, uppis ?? 0)`), auch bei `upgrader: 0` in der Config und trotz RCL8-Gate. | Bei 95 % Belegung mit viel Mineral und 150 000 Energie greift das RCL8-Gate (`storage < 250000`) genau dann, wenn man den Upgrader braucht — kein theoretischer Fall. | `Math.max(1, …)` hebt eine **Untergrenze** auf eins an; eine höhere konfigurierte Zahl bleibt bestehen. Dass die Untergrenze eins ist und nicht höher, liegt an der Deckelung: ab RCL8 nimmt der Controller nur `CONTROLLER_MAX_UPGRADE_PER_TICK` (15) Energie je Tick für den ganzen Raum an, und `BODIES.upgraderRcl8` schöpft das mit 15 WORK allein aus. `_mayWork` bleibt unverändert — im Vollpumpmodus liegt die Energie zwangsläufig über `RCL8_WORK_RESERVE` (100 000), und das ist ab RCL8 schon heute die Arbeitsbedingung. |
-| `needsStorageFeed`: es wird **kein** Nachschub angefordert, wenn der Controller-Link weniger als `SEND_MIN` **freien Platz** hat. Die Bedingung steht vor dem `storageIsFull`-Zweig. | Ohne sie fiel der Storage-Link im Vollpumpmodus aus der Empfängerliste, obwohl niemand mehr senden konnte: `receiversByPriority` filterte den vollen Controller-Link heraus, die Liste war leer, und damit verloren **alle** Quell-Links ihr Ziel. Gleichzeitig leerte der Keeper den Storage-Link nicht mehr — ein stabiler Stillstand, bis der Upgrader den Controller-Link wieder leer genug getrunken hätte. | Im Rückfall ist die Bedingung ohnehin erfüllt (dort liegen unter `SEND_MIN` im Link), sie wirkt allein auf den Vollpumpmodus. |
-| `roles/upgrader.ts::doJob` entscheidet am **Inhalt** des Controller-Links (mehr als 100 Energie, dieselbe Schwelle wie `harvestControllerLink`) statt an `creep.memory.noLink`. Die Flagge ist aus `creep/base.ts` und aus dem Spawn-Memory entfernt. | `noLink` wurde nirgends zurückgesetzt: ein Upgrader, der den Link einmal leer antraf, ignorierte ihn für seine restlichen rund 1500 Ticks — und damit auch jeden Nachschub aus dem Storage, der drei Ticks braucht (Keeper holt, Keeper füllt, Netz sendet) und den Creep deshalb gerade im Anlauf trifft. | Die `if`/`else`-Struktur bleibt: bei leerem Link fällt der Creep weiter in die Ersatzkette (Storage, Container, Drops, …), statt untätig zu warten. Lebende Creeps tragen die Flagge weiter im Memory, sie wird nur nie wieder gelesen — bewusst ohne Migrationsschritt, wie schon bei `sparmodus`. |
+| Neue Rolle `collector` (`src/roles/collector.ts`), einer je Raum mit Storage **und** Terminal. Sammelt in sechs Stufen nach Verfallsgeschwindigkeit: Tombstones → Drops → Ruinen → Prüfung auf freien Platz im Terminal → Container am Extractor → erste verkaufbare Ressource aus dem Storage → Energie fürs Terminal. | Vier Aufgaben in einer Rolle, weil es hier **ein** Zweck in **einem** Creep je Raum ist — anders als beim Debitor, den Plan 10 wegen seiner Kaskade aus verschiedenen Zwecken in vielen Creeps zerlegt hat. Die drei verfallenden Quellen stehen bewusst vor der Platzprüfung, sonst wären sie bei vollem Terminal verloren. | Mineralien fließen wieder ab, Gefallenes wird eingesammelt, der Markt kann handeln. |
+| `TERMINAL_ENERGY_TARGET` (20 000) und `TERMINAL_FREE_MIN` (50 000). | Ersteres steuert nur das Holen — abgeliefert wird über `TransportToHomeTerminal`, das seine eigene Grenze (100 000) mitbringt, zwei Regeln für dieselbe Frage wären eine zu viel. Letzteres ist der Überlaufschutz, dieselbe Zahl, die schon der alte Debitor benutzte. | Keine Neuerfindung von Schwellen. |
+| Spawnbedingung abgeleitet statt konfiguriert: eigener Raum, Storage und Terminal vorhanden, höchstens ein Collector. **Kein** neuer Config-Schlüssel. | Storage und Terminal sind Tatsachen über die Welt, keine Absicht — anders als `linkkeeper`, der noch `sendLinkkeeper` trägt. | Räume mit Storage und Terminal bekommen den Collector ohne Konfigurationsschritt. |
+| `roles/index.ts`: `collector` steht zwischen `defender` und `wally`. | Ein Raum unter Beschuss hat andere Sorgen als Aufräumen; Einsammeln bringt mehr als Mauerreparatur. | Verhaltensänderung an der Spawnreihenfolge. |
+| `NEVER_SELL` stand doppelt (`debitor.ts` und `prototypes/terminal-market.ts`), wird jetzt nur noch aus `terminal-market.ts` exportiert. | Kein doppelter Bestand derselben Liste. | Keine. |
 
-**Erwartete Wirkung:** Der Upgrader wartet nicht mehr auf einen leeren
-Controller-Link und läuft nicht zu Fuß bis zum Storage; ein volllaufender
-Storage bekommt einen Abfluss, statt nur auf den nächsten Ausbauschritt zu
-warten.
+Die Abschlussreview derselben Runde brachte sechs Befunde, drei davon mit
+Verhalten:
 
-**Commits:** `4ec11b0`, `77d83f3`, `8befd53`, `eaf8d12`, `c08b268`; Fix-Runde
-nach der Abschlussreview `4c97244`, `9ce6e7f`, `f96fb38`, `e7c6051`.
+| Was | Warum | Wirkung |
+| --- | --- | --- |
+| Laufen alle sechs Sammelstufen leer, während der Creep etwas trägt, schaltet `_collect` selbst auf Abliefern um. | `checkHarvest` tut das hier nicht: seine Regel für Nichtenergie hängt an `memory.mineral`, und das steht bei dieser Rolle fest auf `energy`. Der Creep schaltete deshalb nur bei randvoller Ladung um. | Eine Restmenge bleibt nicht mehr bis zum Tod des Creeps liegen. Nebenbei wird der Rückgabewert von `_collectTerminalEnergy` jetzt ausgewertet, und die Platzprüfung ist ein Block statt eines frühen Ausstiegs — bei vollem Terminal soll ein beladener Creep ja gerade abliefern. |
+| Zwei Vorbehalte für die Energiestufe: kein Zugriff bei `aktivPrioSpawn`, und das Storage muss über `STORAGE_ENERGY_RESERVE` (50 000) liegen. | Ohne Vorbehalt zog die Stufe rund 50 Energie je Tick über etwa 400 Ticks aus dem Storage — mehr, als zwei Quellen liefern. Die Zahl ist dieselbe, mit der `roles/wally.ts` seinen Energiezugriff vorbehält. | In der Krise und bei knappem Storage bleibt die Energie im laufenden Betrieb. |
+| `doJob` steigt aus, wenn der Controller unter Stufe 6 liegt oder kein Terminal dasteht. | `TransportToHomeTerminal` weist unter RCL 6 alles ab; in einem heruntergestuften Raum mit noch stehendem Terminal lief die Ladung sonst endlos Storage → Creep → Storage. | Kein Leerlauf in heruntergestuften Räumen. |
+| Ohne Verhalten: die Id des Extractor-Containers kommt jetzt aus `bot.room[<raum>].mineralContainerId`, dann aus `memory.container`, erst danach aus einer Suche. | Dieselbe Id stand schon in der Config und wurde von `creep/transport.ts` von dort gelesen; die Rolle suchte sie in **jedem** Tick neu. Zwei Herleitungen derselben Sache laufen auseinander. | Eine Suche weniger je Tick. |
+
+**Wirkung noch nicht gemessen.** Zum Zeitpunkt der Änderung gab es keinen
+Spielzugriff. Nachzutragen nach dem nächsten Deploy.
+
+**Commits:** `baa9a9a`, `e4138f0`, `7298d5a`, `f5ccd11`, `1b81b3d`, `a24306d`,
+`668b9dc`, `7c14193`, `715989f`, `deffa01`, `42e9cf9`, `dfa4f4b`, `b7d6b56`,
+`a81763d`, `be2c6b3`, `6929cdd` sowie der Commit dieses Eintrags und der
+abschließende Build.

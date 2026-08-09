@@ -26,8 +26,11 @@ Die Zuständigkeit hängt am **Ausbaustand**, und zwar an den Bauwerken, nicht a
 | Storage vorhanden (ab RCL 4) | `hauler`: Quellcontainer → Storage | `filler`: Storage → Spawn, Extensions, Turm |
 | Quell-Link sendet (ab RCL 5) | Linknetz ersetzt den `hauler` für diese Quelle | `filler`, gespeist vom `linkkeeper` |
 | alle Quellen mit Link (RCL 8) | kein Heim-`hauler` mehr | `filler` allein |
+| Storage **und** Terminal (ab RCL 6) | `collector`: Tombstones, Drops, Ruinen, Extractor-Container, verkaufbare Ressourcen und Terminalenergie aus dem Storage | derselbe Creep: Terminal, mit Storage als Rückfall |
 
-Die drei Bedingungen schließen sich gegenseitig aus: `filler` und `hauler` verlangen `spawn.room.storage`, `Debitor.spawn` steigt für den Heimatraum mit Storage aus. Kein Raum wird von beiden bedient und keiner von keinem. Fremde Arbeitsräume bleiben in jedem Fall Sache des `debitor`.
+Die ersten drei Zeilen betreffen den **Energieumlauf** und schließen sich gegenseitig aus: `filler` und `hauler` verlangen `spawn.room.storage`, `Debitor.spawn` steigt für den Heimatraum mit Storage aus. Kein Raum wird von beiden bedient und keiner von keinem. Fremde Arbeitsräume bleiben in jedem Fall Sache des `debitor`.
+
+Der `collector` steht **nicht** in dieser Ausschließlichkeit: er kommt in Räumen mit Storage und Terminal zu `filler` und `hauler` hinzu, statt einen von beiden abzulösen. Er rührt den Energieumlauf nicht an — er holt Energie nur für das Terminal und nur, solange der Raum sie entbehren kann (siehe `collector`).
 
 ### `filler`
 
@@ -52,6 +55,8 @@ Der Debitor ist der **Remote-Hauler** und der Allrounder für Räume ohne Storag
 `doJob` trägt noch die vollständige alte Kaskade inklusive der Zweige, die inzwischen `filler` und `hauler` erledigen. Das ist Absicht: Rollennamen stehen im Creep-Memory, und die zum Umstellungszeitpunkt lebenden Debitoren müssen ihre bis zu 1500 Ticks zu Ende arbeiten können. Die toten Zweige fallen in einem späteren Commit weg, wenn keiner mehr lebt.
 
 Im normalen Betrieb sammelt er zunächst wertvolle Reste, Links und Container/Storage ein. Nichtenergie kann aus dem Storage in einen freien Terminal umgelagert werden; danach wird bevorzugt Terminal bzw. Storage beliefert. Energie wird nach Lage an Spawn/Extensions, Türme, Terminal, Storage und Labs geliefert. Im Invasions- und Notfallmodus priorisiert die Rolle Versorgung von Spawn und Türmen.
+
+Im Heimatraum mit Storage ist dieser Umlagerungs-Zweig seit Plan 10 toter Code: `Debitor.spawn` steigt dort aus, der Zweig läuft also nur noch in den letzten lebenden Debitoren aus der Zeit davor. Die Aufgabe selbst — Mineralien und Reste aus dem Heimatraum ins Terminal bringen — übernimmt jetzt `collector`.
 
 ### `linkkeeper`
 
@@ -146,6 +151,35 @@ Das Rumpfprofil ab RCL 8 (`BODIES.upgraderRcl8`) hat **15 WORK, 5 CARRY, 5 MOVE*
 ### `defender`
 
 Defender reagieren auf `needDefence`, `invaderCore` oder konfigurierte IDs unter `destroy`. Gegner werden nach Körperkosten absteigend priorisiert. Die Rolle nutzt Nah- und Fernangriff, merkt das Ziel als `attackId` und entfernt Verteidigungsflags, sobald keine Ziele verbleiben. Gegen Invader Cores können bis zu vier, gegen Feinde bis zu zwei Defender erzeugt werden. Ohne aktive Angriffs-Körperteile suizidiert sich der Creep.
+
+## Wirtschaft
+
+### `collector`
+
+Ein Collector je Raum mit Storage **und** Terminal, abgeleitet aus dem Baubestand statt konfiguriert — anders als `linkkeeper`, der noch einen Schalter (`sendLinkkeeper`) trägt, sind Storage und Terminal Tatsachen über die Welt und keine Absicht.
+
+Schließt eine Lücke aus Plan 10: seit `filler` und `hauler` den Heimatraum-Debitor ersetzen, spawnt `debitor` in Räumen mit Storage nicht mehr — und mit ihm verschwand der einzige Umzug Storage → Terminal im ganzen Bot. Mitbetroffen waren auch Tombstones, Drops und Ruinen im Heimatraum sowie die Energieversorgung des Terminals, ohne die `TerminalMarket.sell` unter 1000 Energie gar nicht erst anläuft.
+
+Gesammelt wird in sechs Stufen, sortiert nach Verfallsgeschwindigkeit — was zuerst verschwindet, kommt zuerst dran:
+
+1. Tombstones (nehmen ihren Inhalt beim Zerfall mit)
+2. Drops (schrumpfen je Tick)
+3. Ruinen (halten am längsten)
+4. eine Prüfung, ob im Terminal überhaupt noch Platz ist (mehr als `TERMINAL_FREE_MIN`, 50.000, frei) — die drei verfallenden Quellen stehen bewusst **davor**, sie werden auch bei vollem Terminal eingesammelt, sonst sind sie weg
+5. der Container am Extractor, den seit Plan 10 sonst niemand abholt (`hauler` läuft nur über Energiequellen)
+6. die erste verkaufbare Ressource aus dem Storage (nicht Energie, nicht auf `NEVER_SELL`, mehr als 100 Einheiten), sonst Energie fürs Terminal, solange dessen Bestand unter `TERMINAL_ENERGY_TARGET` (20.000) liegt
+
+Laufen alle sechs Stufen leer, während der Creep noch etwas trägt, schaltet er selbst auf Abliefern um. `checkHarvest` tut das hier nicht: dessen Regel für Nichtenergie hängt an `memory.mineral`, und das steht bei dieser Rolle fest auf `energy`, damit sie überhaupt auffüllt statt nach jedem einzelnen Griff loszufahren. Ohne die eigene Umschaltung bliebe eine Restmenge bis zum Tod des Creeps liegen — und der Nachfolger höbe sie aus dem Grabstein wieder auf.
+
+Die Energiestufe hat zwei Vorbehalte, weil sie sonst rund 50 Energie je Tick über etwa 400 Ticks aus dem Storage zöge — mehr, als zwei Quellen liefern: hängt der Raum am Prioritätsspawn (`aktivPrioSpawn`), wird gar keine geholt, und das Storage muss über `STORAGE_ENERGY_RESERVE` (50.000) liegen — dieselbe Zahl, mit der `wally` seinen Energiezugriff vorbehält.
+
+Die Id des Extractor-Containers kommt aus der Config (`bot.room[<raum>].mineralContainerId`), sonst aus `memory.container`, und erst danach aus einer Suche neben den Mineralvorkommen. Die Config zuerst, weil `creep/transport.ts` dieselbe Id von dort liest.
+
+`doJob` steigt ganz vorn aus, wenn der Controller unter Stufe 6 liegt oder kein Terminal dasteht: `TransportToHomeTerminal` weist unter RCL 6 alles ab, und in einem heruntergestuften Raum mit noch stehendem Terminal liefe das Mineral sonst endlos Storage → Creep → Storage.
+
+`TERMINAL_ENERGY_TARGET` steuert nur das Holen; abgeliefert wird über `TransportToHomeTerminal`, Rückfall `TransportToHomeStorage`. Vor dem Rückfall wird `memory.fromId` geräumt, sonst bliebe der Creep beladen stehen, weil er nicht dorthin zurückliefert, woher er gerade geholt hat.
+
+Vier Aufgaben in einer Rolle sind hier Absicht, obwohl Plan 10 den Debitor genau wegen seiner Kaskade zerlegt hat: dort waren es verschiedene Zwecke in vielen Creeps, hier ist es ein Zweck in einem Creep je Raum. In der Spawn-Priorität (`roles/index.ts`) steht der Collector hinter `defender` — ein Raum unter Beschuss hat andere Sorgen — und vor `wally`, weil Einsammeln mehr bringt als Mauerreparatur.
 
 ## Wartungshinweis
 

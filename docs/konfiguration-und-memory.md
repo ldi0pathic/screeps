@@ -15,6 +15,8 @@ Eine Raumdefinition enthält typischerweise `room`, `spawnRoom`, Flags zum Entse
 
 Der Schalter `sendLinkkeeper` aktiviert die Rolle `linkkeeper` für den Raum. Sie schiebt die Energie aus dem Link in der Basis (`spawnLink`) kontinuierlich ins Storage. Muss an sein, solange `useLinks` für den Raum gilt: Der frühere Direktzugriff `harvestSpawnLink` ist entfernt, weshalb ohne `sendLinkkeeper` niemand sonst den Link leert. Ein voller Empfänger-Link blockiert dann alle Quell-Links, die auf ihn senden. Voraussetzungen: `useLinks` gesetzt, `spawnLink` konfiguriert, ein Storage im Raum, der Raum ist sein eigener Spawnraum. Höchstens ein Creep je Raum. Derzeit gesetzt in E58N6, E58N7, E59N3 und E59N9.
 
+Die Rolle `collector` hat **keinen** solchen Schalter. Ob ein Raum einen bekommt, entscheidet `Collector.spawn` allein am Baubestand — Storage und Terminal im eigenen Raum vorhanden, höchstens ein Collector. Storage und Terminal sind Tatsachen über die Welt, keine Absicht, und gehören deshalb nicht in die Config.
+
 **Links stehen nicht mehr in der Config.** Die früheren Schlüssel `targetLinks`, `spawnLink`, `controllerLink` und `useLinks` sind alle entfallen:
 
 - **Welcher Link welche Rolle hat**, bestimmt `controller/link-list.ts` aus der Lage — Reichweite 3 zum Controller, 2 zum Storage, alles andere sendet. Von Hand gepflegte Ids tragen nicht mehr, seit `controller/link-planner.ts` Links im laufenden Spiel baut.
@@ -45,6 +47,8 @@ Die manuellen Helfer in `controller.memory` suchen sichtbare Räume ab und speic
 - `links`: die klassifizierten Links des Raums als `{ controller, spawn, sender[] }` — erhoben von `controller/link-list.ts`, nicht von `controller.memory`. Die Liste wird alle 1000 Ticks neu erhoben und zusätzlich verworfen, sobald eine gemerkte Id ins Leere zeigt.
 
 `FindAndSaveTerminals()` speichert Terminal-IDs zentral in `Memory.terminals`. Diese Suchfunktionen werden nicht automatisch aus `main.js` ausgeführt; die dort vorhandenen Aufrufe sind auskommentiert.
+
+Davon zu unterscheiden ist `creep.memory.container`: kein Raum-, sondern ein Creep-Schlüssel, der die Id **eines** Containers merkt, an den dieser Creep gebunden ist. `miner`, `debitor` und `hauler` tragen ihn für ihren Quellcontainer; `collector` benutzt denselben Schlüssel für den Container am Extractor, den seit Plan 10 sonst niemand mehr abholt.
 
 `writeStatus()` gibt aktive Prioritäts-Spawns, Verteidigungsbedarf und Invader Cores als zusammengefasste Konsolennachricht aus.
 

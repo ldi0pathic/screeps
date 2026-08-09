@@ -17,26 +17,12 @@ import { carryMove } from "../creep/body";
 import { RoundTrip, type RoundTripKeys } from "../creep/round-trip";
 import type { CreepRole } from "../roles";
 import { profile } from "../profiler/decorator";
+import { NEVER_SELL } from "../prototypes/terminal-market";
 
 const role = "debitor";
 
 /** Raum-Memory-Schlüssel der gemessenen Umlaufdimensionierung, siehe `RoundTrip`. */
 const ROUND_TRIP_KEYS: RoundTripKeys = { samples: "distances", size: "needDebitorSize", count: "needDebitors" };
-const NEVER_SELL = {
-    "energy": true,
-    "power": true,
-    "pixel": true,
-    "XUH2O": true,
-    "XUHO2": true,
-    "XKHO2": true,
-    "XKH2O": true,
-    "XZH2O": true,
-    "XZHO2": true,
-    "XLH2O": true,
-    "XLHO2": true,
-    "XGH2O": true,
-    "XGHO2": true
-};
 
 /** Siehe Dateikopf. `@profile` misst jede Methode dieser Klasse. */
 @profile
