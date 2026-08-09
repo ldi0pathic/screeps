@@ -24,9 +24,10 @@
  * Damit `doJob` nach dem `checkHarvest`-Aufruf nicht auf fehlenden Methoden
  * stolpert, ist der Creep so gebaut, dass die Beschaffungskette aus
  * `creep/base.ts` bis zum Ende (oder bis zu einem erfolgreichen `withdraw` aus
- * dem Storage) durchläuft, ohne zu werfen: `memory.noLink = true` überspringt
- * die Controller-Link-Suche (kein `LinkList`/`Memory.rooms[...].links` nötig),
- * `room.find` liefert für die Containerliste eine leere Trefferliste,
+ * dem Storage) durchläuft, ohne zu werfen: `Memory.rooms[ROOM]` trägt keine
+ * `links`, damit `LinkList.controllerLink` `null` liefert und der Link-Zweig
+ * ausfällt (`doJob` entscheidet am Inhalt des Links, nicht mehr an einer
+ * Flagge), `room.find` liefert für die Containerliste eine leere Trefferliste,
  * `pos.findClosestByPath` liefert `null` für Drops/Tombstones/Ruinen, und
  * `getActiveBodyparts` liefert 0, damit `harvestRoomEnergySource` ohne
  * Quellensuche `false` meldet. Ist ein Storage mit Energie vorhanden, greift
@@ -90,9 +91,6 @@ function stubUpgraderCreep(options: UpgraderCreepOptions = {}): { creep: any; st
       workroom: ROOM,
       home: ROOM,
       harvest: true,
-      // Umgeht die Controller-Link-Suche per Kurzschluss (`&&`) — die
-      // Linklogik ist nicht Gegenstand dieser Datei, siehe Dateikopf.
-      noLink: true,
       ...options.memory,
     },
     room: {
@@ -358,4 +356,188 @@ test("bodyFor: unter Stufe 8 gilt weiter das reguläre Profil", async () => {
   const body = spawnCalls[spawnCalls.length - 1]!.profil;
   assert.deepEqual(body, BODIES.upgrader.build(2300), "derselbe Rumpf wie das reguläre Profil direkt liefert");
   assert.notEqual(body.filter(part => part === WORK).length, 15, "nicht das RCL8-Profil");
+});
+
+// --- Spawn bei überlaufendem Storage -----------------------------------------
+
+/**
+ * Ein Storage-Stub für `storageIsFull` und das RCL8-Spawn-Gate.
+ *
+ * `used` ist die Gesamtbelegung, `energy` der Energieanteil. Das Gate liest
+ * `getUsedCapacity(RESOURCE_ENERGY)`, `storageIsFull` beide Zahlen.
+ */
+function stubUpgraderStorage(options: { used: number; energy: number }) {
+  return {
+    store: {
+      [RESOURCE_ENERGY]: options.energy,
+      getCapacity: (): number => 1000000,
+      getUsedCapacity: (resource?: string): number =>
+        resource === undefined ? options.used : options.energy,
+    },
+  };
+}
+
+/**
+ * Baut die Welt für `spawn()`: `global.room`-Eintrag, sichtbarer Raum mit
+ * Storage und ein `_.filter`-Ersatz für die Creep-Zählung.
+ */
+function setupUpgraderSpawnWorld(options: {
+  configuredUpgraders: number;
+  controllerLevel: number;
+  storage: ReturnType<typeof stubUpgraderStorage> | undefined;
+  ticksToDowngrade?: number;
+}) {
+  const controller = {
+    my: true,
+    level: options.controllerLevel,
+    ticksToDowngrade: options.ticksToDowngrade ?? 200000,
+  };
+
+  anyGlobal.room[ROOM] = { room: ROOM, spawnRoom: ROOM, upgrader: options.configuredUpgraders };
+  anyGlobal.Game.rooms[ROOM] = { name: ROOM, controller, storage: options.storage };
+  anyGlobal._ = {
+    filter: (collection: Record<string, any>, predicate: (item: any) => boolean) =>
+      Object.values(collection).filter(predicate),
+  };
+
+  const spawnCalls: { profil: BodyPartConstant[]; newName: string }[] = [];
+  const spawnObj: any = {
+    room: {
+      name: ROOM,
+      storage: options.storage,
+      controller,
+      energyCapacityAvailable: 12900,
+    },
+    spawnCreep(profil: BodyPartConstant[], newName: string): number {
+      spawnCalls.push({ profil: [...profil], newName });
+      return OK;
+    },
+  };
+
+  return { spawnObj, spawnCalls };
+}
+
+test("überlaufender Storage: es wird gespawnt, auch bei upgrader: 0 in der Config", async () => {
+  const { Upgrader } = await loadUpgrader();
+  const upgrader = new Upgrader();
+
+  const { spawnObj } = setupUpgraderSpawnWorld({
+    configuredUpgraders: 0,
+    controllerLevel: 8,
+    storage: stubUpgraderStorage({ used: 950000, energy: 400000 }),
+  });
+
+  assert.equal(
+    upgrader.spawn(spawnObj, ROOM),
+    true,
+    "läuft der Storage über, steht trotz konfigurierter Null einer da",
+  );
+});
+
+test("überlaufender Storage mit viel Mineral: das RCL8-Gate mit den 250000 wird übergangen", async () => {
+  const { Upgrader } = await loadUpgrader();
+  const upgrader = new Upgrader();
+
+  // 95 Prozent belegt, aber nur 150000 Energie — das Gate `storage < 250000`
+  // verhinderte den Upgrader heute genau dann, wenn man ihn braucht.
+  const { spawnObj } = setupUpgraderSpawnWorld({
+    configuredUpgraders: 1,
+    controllerLevel: 8,
+    storage: stubUpgraderStorage({ used: 950000, energy: 150000 }),
+  });
+
+  assert.equal(upgrader.spawn(spawnObj, ROOM), true);
+});
+
+test("ohne Überlauf bleibt die konfigurierte Null eine Null", async () => {
+  const { Upgrader } = await loadUpgrader();
+  const upgrader = new Upgrader();
+
+  const { spawnObj } = setupUpgraderSpawnWorld({
+    configuredUpgraders: 0,
+    controllerLevel: 7,
+    storage: stubUpgraderStorage({ used: 300000, energy: 300000 }),
+  });
+
+  assert.equal(upgrader.spawn(spawnObj, ROOM), false, "eine gewollte Null bleibt Null, solange der Storage Luft hat");
+});
+
+test("ohne Überlauf greift das RCL8-Gate weiterhin", async () => {
+  const { Upgrader } = await loadUpgrader();
+  const upgrader = new Upgrader();
+
+  const { spawnObj } = setupUpgraderSpawnWorld({
+    configuredUpgraders: 1,
+    controllerLevel: 8,
+    storage: stubUpgraderStorage({ used: 200000, energy: 200000 }),
+  });
+
+  assert.equal(upgrader.spawn(spawnObj, ROOM), false, "unter 250000 Energie und ohne Überlauf wird nicht gespawnt");
+});
+
+test("überlaufender Storage: genau einer, kein zweiter — ab RCL8 deckelt der Controller ohnehin bei 15 je Tick", async () => {
+  const { Upgrader } = await loadUpgrader();
+  const upgrader = new Upgrader();
+
+  const { spawnObj } = setupUpgraderSpawnWorld({
+    configuredUpgraders: 0,
+    controllerLevel: 8,
+    storage: stubUpgraderStorage({ used: 950000, energy: 400000 }),
+  });
+
+  // Schlüssel setzen statt `Game.creeps` zu ersetzen — `resetWorld()` leert das
+  // vorhandene Objekt, ein neues käme dort nie an.
+  anyGlobal.Game.creeps["upgrader_1"] = {
+    memory: { role: "upgrader", workroom: ROOM },
+    ticksToLive: 1000,
+    spawning: false,
+  };
+
+  assert.equal(upgrader.spawn(spawnObj, ROOM), false, "einer genügt");
+});
+
+// --- Controller-Link am Inhalt statt an der Flagge -----------------------------
+
+test("ein Upgrader mit noLink im Memory holt wieder aus dem Controller-Link, sobald dort Energie liegt", async () => {
+  const { Upgrader } = await loadUpgrader();
+  const upgrader = new Upgrader();
+
+  const link = { id: "controller-link", store: { [RESOURCE_ENERGY]: 400 } };
+  anyGlobal.Game.getObjectById = (id: string) => (id === link.id ? link : null);
+  anyGlobal.Memory.rooms = { [ROOM]: { links: { controller: link.id, sender: [] } } };
+
+  // Die Altlast aus dem Creep-Memory darf den Link nicht mehr sperren.
+  const { creep, state } = stubUpgraderCreep({
+    controller: controllerStub(7),
+    storageEnergy: 300000,
+    memory: { noLink: true },
+  });
+
+  upgrader.doJob(creep);
+
+  assert.equal(state.withdrawCalls, 1, "geholt wird aus dem Link");
+  // `withdrawCalls` allein unterscheidet den Link nicht vom Storage — beide
+  // Zweige holen per `withdraw`. `withdrawFrom` merkt sich aber die Id des
+  // Ziels in `memory.fromId`, und der Storage-Stub dieser Datei trägt keine.
+  assert.equal(creep.memory.fromId, "controller-link", "und zwar aus dem Link, nicht aus dem Storage");
+});
+
+test("leerer Controller-Link: der Upgrader fällt in die Ersatzkette, statt untätig zu warten", async () => {
+  const { Upgrader } = await loadUpgrader();
+  const upgrader = new Upgrader();
+
+  // Genau die 100 aus `harvestControllerLink` — die Schwelle ist `>`.
+  const link = { id: "controller-link", store: { [RESOURCE_ENERGY]: 100 } };
+  anyGlobal.Game.getObjectById = (id: string) => (id === link.id ? link : null);
+  anyGlobal.Memory.rooms = { [ROOM]: { links: { controller: link.id, sender: [] } } };
+
+  const { creep, state } = stubUpgraderCreep({
+    controller: controllerStub(7),
+    storageEnergy: 300000,
+  });
+
+  upgrader.doJob(creep);
+
+  assert.equal(state.withdrawCalls, 1, "der Creep steht nicht still, sondern nimmt die Ersatzkette");
+  assert.equal(creep.memory.fromId, undefined, "geholt wird aus dem Storage — der Stub trägt keine Id");
 });

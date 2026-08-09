@@ -1,4 +1,4 @@
-// Build: 2026-08-08 16:14:13 +02:00
+// Build: 2026-08-08 16:13:14 +02:00
 "use strict";
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
@@ -949,8 +949,8 @@ var MeasurementWindow = class {
     window.tickLimit = Game.cpu.tickLimit;
   }
   /** Rollenzeit verbuchen. Genutzt vom Rollen-Wrapper in `decorator.ts`. */
-  recordRole(role15, cpu) {
-    record(this.window.roles, role15, cpu);
+  recordRole(role14, cpu) {
+    record(this.window.roles, role14, cpu);
   }
   /** Zeit einer Klassenmethode verbuchen. Genutzt vom `@profile`-Dekorator. */
   recordMethod(key, cpu) {
@@ -1056,9 +1056,9 @@ function profile(target, key, _descriptor) {
 }
 function wrapRoles(jobs2) {
   const wrapped = {};
-  for (const role15 in jobs2) {
-    const original = jobs2[role15];
-    wrapped[role15] = {
+  for (const role14 in jobs2) {
+    const original = jobs2[role14];
+    wrapped[role14] = {
       doJob(creep) {
         if (state.mode !== "full") {
           original.doJob(creep);
@@ -1067,7 +1067,7 @@ function wrapRoles(jobs2) {
         const start = Game.cpu.getUsed();
         original.doJob(creep);
         const cpu = Game.cpu.getUsed() - start;
-        measurement.recordRole(role15, cpu);
+        measurement.recordRole(role14, cpu);
         measurement.recordCreep(creep.name, cpu);
       },
       spawn(spawn3, workroom) {
@@ -1076,7 +1076,7 @@ function wrapRoles(jobs2) {
         }
         const start = Game.cpu.getUsed();
         const result = original.spawn(spawn3, workroom);
-        measurement.recordRole(`${role15}.spawn`, Game.cpu.getUsed() - start);
+        measurement.recordRole(`${role14}.spawn`, Game.cpu.getUsed() - start);
         return result;
       }
     };
@@ -2815,23 +2815,6 @@ var BODIES = {
       );
       return [...Array(affordable).fill(CARRY), MOVE];
     }
-  }),
-  /**
-   * Collector: reines CARRY/MOVE für kurze Wege im eigenen Raum.
-   *
-   * Keine Durchsatzformel dahinter — der Collector hat keine Frist und fährt
-   * nur zwischen Storage, Terminal und dem, was gerade im Raum liegt. Zehn
-   * Sätze (500 Einheiten Ladung) sind reichlich und kosten 1000 Energie, was ab
-   * RCL6 — dort steht das Terminal, ohne das die Rolle nicht spawnt — in jeden
-   * Spawn passt.
-   */
-  collector: new BodyProfile({
-    sets: [
-      { part: CARRY, perSet: 1 },
-      { part: MOVE, perSet: 1 }
-    ],
-    maxSets: 10,
-    fallback: [CARRY, MOVE]
   })
 };
 
@@ -2971,366 +2954,6 @@ Claimer = __decorateClass([
 ], Claimer);
 var claimer_default = new Claimer();
 
-// src/prototypes/terminal-market.ts
-var T1_BOOSTS = {
-  UH2O: true,
-  UHO2: true,
-  KH2O: true,
-  KHO2: true,
-  ZH2O: true,
-  ZHO2: true,
-  LH2O: true,
-  LHO2: true,
-  GH2O: true,
-  GHO2: true
-};
-var T1_INTERMEDIATES = {
-  UH: true,
-  UO: true,
-  KH: true,
-  KO: true,
-  ZH: true,
-  ZO: true,
-  LH: true,
-  LO: true,
-  GH: true,
-  GO: true
-};
-var NEVER_SELL = {
-  energy: true,
-  power: true,
-  pixel: true,
-  XUH2O: true,
-  XUHO2: true,
-  XKHO2: true,
-  XKH2O: true,
-  XZH2O: true,
-  XZHO2: true,
-  XLH2O: true,
-  XLHO2: true,
-  XGH2O: true,
-  XGHO2: true
-};
-var TerminalMarket = class {
-  /**
-   * Verkauft höchstens eine Ressource je Aufruf über eine Kauf-Order am Markt.
-   * Energie wird nie verkauft, sondern nur als Deckung für die Transferkosten
-   * geprüft.
-   */
-  sell(terminal) {
-    if (terminal.cooldown > 1) return;
-    const terminalEnergy = terminal.store.getUsedCapacity(RESOURCE_ENERGY);
-    if (terminalEnergy < 1e3 || terminalEnergy >= terminal.store.getUsedCapacity())
-      return;
-    for (const resource in terminal.store) {
-      if (NEVER_SELL[resource]) continue;
-      const minPrice = this.getFallbackPrice(resource);
-      if (!minPrice) continue;
-      const orders = Game.market.getAllOrders({
-        type: ORDER_BUY,
-        resourceType: resource
-      });
-      const marketOrdersWithDistances = orders.filter((o) => o.price >= minPrice).map((order) => {
-        const distance = terminal.pos.getRangeTo(
-          new RoomPosition(25, 25, order.roomName)
-        );
-        return {
-          order,
-          distance
-        };
-      }).sort((a, b) => a.distance - b.distance);
-      const capa = terminal.store.getUsedCapacity(resource);
-      for (let i = 0; i < marketOrdersWithDistances.length; i++) {
-        const order = marketOrdersWithDistances[i].order;
-        let amount = order.amount > capa ? capa : order.amount;
-        const transferEnergyCost = Game.market.calcTransactionCost(
-          amount,
-          terminal.room.name,
-          order.roomName
-        );
-        const costPerRes = transferEnergyCost / amount;
-        if (costPerRes < 0.789) {
-          if (transferEnergyCost > terminalEnergy)
-            amount = Math.floor(terminalEnergy / costPerRes);
-          if (OK == Game.market.deal(order.id, amount, terminal.room.name)) {
-            console.log(
-              "[" + terminal.room.name + "] " + resource + " verkauft: " + amount + " zu " + order.price
-            );
-            return;
-          }
-        }
-      }
-    }
-  }
-  /**
-   * Kauft Pixel, solange ein Angebot unter der fairen Preisgrenze liegt.
-   * Effektivpreis schließt die Transferenergie mit ein.
-   */
-  buyPixel(terminal) {
-    if (terminal.cooldown > 1) return;
-    const terminalEnergy = terminal.store.getUsedCapacity("energy");
-    const freeCapacity = terminal.store.getFreeCapacity();
-    if (terminalEnergy < 1e3 || freeCapacity <= 10) return;
-    const resource = "pixel";
-    const avgPrice = this.averageHistoryPrice(resource);
-    if (avgPrice === null) return;
-    const fairPrice = Math.floor(avgPrice * 1.1);
-    const orders = Game.market.getAllOrders({
-      type: ORDER_SELL,
-      resourceType: resource
-    });
-    if (!orders.length) return;
-    const valid = orders.filter((o) => o.roomName).map((o) => {
-      const energyCost = Game.market.calcTransactionCost(
-        1,
-        terminal.room.name,
-        o.roomName
-      );
-      const effectivePrice = o.price + energyCost / Math.min(o.amount, 50);
-      return { o, energyCost, effectivePrice };
-    }).filter(
-      (x) => x.effectivePrice <= fairPrice && x.energyCost <= terminalEnergy
-    ).sort((a, b) => a.effectivePrice - b.effectivePrice);
-    if (!valid.length) return;
-    const order = valid[0].o;
-    const amount = Math.min(
-      50,
-      order.amount,
-      Math.floor(Game.market.credits / order.price),
-      Math.floor(
-        terminalEnergy / Game.market.calcTransactionCost(1, terminal.room.name, order.roomName)
-      )
-    );
-    if (amount <= 0) return;
-    if (OK === Game.market.deal(order.id, amount, terminal.room.name)) {
-      console.log(
-        `[${terminal.room.name}] Pixel Sniper: ${amount} zu ${order.price} (effektiv inkl. Energie: ${valid[0].effectivePrice.toFixed(2)})`
-      );
-    }
-  }
-  /**
-   * Ersatzpreis für eine Ressource ohne eigene Order-Logik: T1-Boosts und
-   * ihre Zwischenprodukte sind praktisch geschenkt, sonst 70 % des
-   * Historiendurchschnitts. `null`, wenn auch das nicht zu ermitteln ist.
-   */
-  getFallbackPrice(resource) {
-    if (T1_BOOSTS[resource]) {
-      return 1e-3;
-    }
-    if (T1_INTERMEDIATES[resource]) {
-      return 1e-3;
-    }
-    const avg = this.averageHistoryPrice(resource);
-    if (avg === null) return null;
-    return avg * 0.7;
-  }
-  /**
-   * Durchschnittspreis über die komplette Markthistorie einer Ressource,
-   * `null` ohne Historie. Der Faktor auf diesen Durchschnitt (0,7 beim
-   * Verkauf, 1,1 beim Pixelkauf) bleibt bei den Aufrufern — das ist fachlich
-   * verschieden und keine Wiederholung.
-   */
-  averageHistoryPrice(resource) {
-    const history = Game.market.getHistory(resource);
-    if (!history || !history.length) return null;
-    return history.reduce((sum, entry) => sum + entry.avgPrice, 0) / history.length;
-  }
-};
-TerminalMarket = __decorateClass([
-  profile
-], TerminalMarket);
-var terminalMarket = new TerminalMarket();
-function installTerminalMarket() {
-  StructureTerminal.prototype.sell = function() {
-    terminalMarket.sell(this);
-  };
-  StructureTerminal.prototype.buyPixel = function() {
-    terminalMarket.buyPixel(this);
-  };
-}
-
-// src/roles/collector.ts
-var role3 = "collector";
-var TERMINAL_ENERGY_TARGET = 2e4;
-var TERMINAL_FREE_MIN = 5e4;
-var STORAGE_ENERGY_RESERVE = 5e4;
-var Collector = class {
-  /** Sammelt oder liefert ab, je nach `memory.harvest`. */
-  doJob(creep) {
-    const controller = creep.room.controller;
-    if (!controller || controller.level < 6) return;
-    if (!creep.room.terminal) return;
-    creep.checkHarvest();
-    if (creep.memory.harvest) {
-      this._collect(creep);
-      return;
-    }
-    this._deliver(creep);
-  }
-  /**
-   * Sammeln, sortiert nach Verfallsgeschwindigkeit: was zuerst verschwindet,
-   * kommt zuerst dran. Grabsteine nehmen ihren Inhalt beim Zerfall mit, Drops
-   * schrumpfen je Tick, Ruinen halten länger; was im Storage liegt, verfällt
-   * gar nicht und wartet.
-   */
-  _collect(creep) {
-    if (harvestCompleteRoomTombstones(creep)) return;
-    if (harvestRoomDrops(creep, RESOURCE_ENERGY)) return;
-    if (harvestRoomRuins(creep, RESOURCE_ENERGY)) return;
-    if (this._terminalHasRoom(creep)) {
-      if (this._collectMineralContainer(creep)) return;
-      if (this._collectSellable(creep)) return;
-      if (this._collectTerminalEnergy(creep)) return;
-    }
-    if (creep.store.getUsedCapacity() > 0) {
-      creep.memory.harvest = false;
-    }
-  }
-  /**
-   * Hat das Terminal überhaupt noch Platz?
-   *
-   * Ohne diese Prüfung trüge der Collector Ware zu einem vollen Terminal und
-   * legte sie über den Rückfall wieder ins Storage — ein Umlauf ohne Wirkung.
-   */
-  _terminalHasRoom(creep) {
-    var _a;
-    const terminal = creep.room.terminal;
-    return Boolean(terminal && ((_a = terminal.store.getFreeCapacity()) != null ? _a : 0) > TERMINAL_FREE_MIN);
-  }
-  /**
-   * Leert den Container am Mineralvorkommen.
-   *
-   * Den holt seit Plan 10 sonst niemand ab: `Hauler.spawn` läuft über
-   * `energySources` und `Hauler.doJob` holt ausschließlich Energie. Die Id
-   * landet in `memory.container`, denn genau dort liest `harvestMyContainer`
-   * sie. Zeigt eine gemerkte Id ins Leere, wird der Schlüssel geräumt und die
-   * Auflösung beginnt im nächsten Tick von vorn.
-   */
-  _collectMineralContainer(creep) {
-    const containerId = this._mineralContainerId(creep);
-    if (!containerId) return false;
-    creep.memory.container = containerId;
-    const container = Game.getObjectById(containerId);
-    if (!container) {
-      creep.memory.container = "";
-      return false;
-    }
-    const mineral = Object.keys(container.store).find((resource) => resource !== RESOURCE_ENERGY);
-    if (!mineral) return false;
-    return harvestMyContainer(creep, mineral);
-  }
-  /**
-   * Die Id des Containers am Mineralvorkommen, in drei Stufen: die Config,
-   * dann die gemerkte Id, zuletzt eine Suche neben den Vorkommen.
-   *
-   * Die Config zuerst, weil dieselbe Id dort schon als
-   * `bot.room[<raum>].mineralContainerId` steht und `creep/transport.ts` sie
-   * von dort liest — zwei unabhängige Herleitungen derselben Sache liefen
-   * auseinander. Die Suche ist nur noch der Rückfall für Räume, in denen der
-   * Schlüssel fehlt; sie kostet ein `findInRange` und lief vorher in **jedem**
-   * Tick.
-   */
-  _mineralContainerId(creep) {
-    var _a;
-    const configured = (_a = bot.room[creep.memory.workroom]) == null ? void 0 : _a.mineralContainerId;
-    if (configured) return configured;
-    if (creep.memory.container) return creep.memory.container;
-    for (const mineralId of mineralSources(creep.room.name)) {
-      const mineral = Game.getObjectById(mineralId);
-      if (!mineral) continue;
-      const containers = mineral.pos.findInRange(FIND_STRUCTURES, 1, {
-        filter: { structureType: STRUCTURE_CONTAINER }
-      });
-      if (containers.length > 0) return containers[0].id;
-    }
-    return null;
-  }
-  /**
-   * Die erste verkaufbare Ressource aus dem Storage.
-   *
-   * Dieselbe Auswahl, die der Debitor traf, bevor er im Heimatraum nicht mehr
-   * spawnte: mehr als 100 Einheiten, nicht Energie, nicht auf `NEVER_SELL`.
-   */
-  _collectSellable(creep) {
-    const storage = creep.room.storage;
-    if (!storage) return false;
-    const sellable = Object.keys(storage.store).find(
-      (resource) => resource !== RESOURCE_ENERGY && !NEVER_SELL[resource] && storage.store[resource] > 100
-    );
-    if (!sellable) return false;
-    return harvestRoomStorage(creep, sellable);
-  }
-  /**
-   * Energie aus dem Storage, solange das Terminal unter der Zielgröße liegt
-   * **und** der Raum sie entbehren kann.
-   *
-   * Ein Umlauf trägt 500 Einheiten in rund zehn Ticks, das sind etwa 50
-   * Energie je Tick — mehr, als zwei Quellen liefern (20/Tick) —, und das über
-   * rund 400 Ticks, bis das Terminal voll ist. Zwei Vorbehalte halten das vom
-   * laufenden Betrieb fern: hängt der Raum am Prioritätsspawn, bekommt der
-   * Spawn die Energie, nicht der Markt; und unterhalb von
-   * `STORAGE_ENERGY_RESERVE` wird das Storage gar nicht erst angezapft.
-   */
-  _collectTerminalEnergy(creep) {
-    const terminal = creep.room.terminal;
-    if (!terminal) return false;
-    if (Memory.rooms[creep.memory.workroom].aktivPrioSpawn) return false;
-    const storage = creep.room.storage;
-    if (!storage) return false;
-    if (storage.store[RESOURCE_ENERGY] > STORAGE_ENERGY_RESERVE && terminal.store.getUsedCapacity(RESOURCE_ENERGY) < TERMINAL_ENERGY_TARGET) {
-      return harvestRoomStorage(creep, RESOURCE_ENERGY);
-    }
-    return false;
-  }
-  /**
-   * Abliefern: erst das Terminal, dann das Storage als Rückfall.
-   *
-   * `fromId` wird vor dem Rückfall geräumt: nach `harvestRoomStorage` zeigt es
-   * auf das Storage, und `TransportToHomeStorage` liefert grundsätzlich nicht
-   * dorthin zurück, woher gerade geholt wurde. Ohne das Räumen bliebe der
-   * Creep beladen stehen, sobald das Terminal einmal nichts annimmt — bis zu
-   * seinem Tod. `null` wie in `checkHarvest()` (`prototypes/creep-checks.ts`),
-   * der einzigen bestehenden Stelle, die `fromId` räumt.
-   */
-  _deliver(creep) {
-    if (TransportToHomeTerminal2(creep)) return;
-    creep.memory.fromId = null;
-    TransportToHomeStorage2(creep);
-  }
-  /**
-   * Spawnt den einzigen Collector für `workroom`.
-   *
-   * Abgeleitet statt konfiguriert: ein eigener Raum mit Storage **und**
-   * Terminal bekommt einen. Kein Config-Schlüssel — beides sind Tatsachen über
-   * die Welt, und die gehören nach CLAUDE.md nicht in die Config.
-   *
-   * Am Bauwerk festgemacht und nicht am RCL: ein Raum kann RCL 6 erreicht
-   * haben, ohne das Terminal gebaut zu haben. Dieselbe Begründung steht schon
-   * bei `Filler.spawn`.
-   */
-  spawn(spawn3, workroom) {
-    if (spawn3.room.name != workroom)
-      return false;
-    if (!spawn3.room.storage || !spawn3.room.terminal)
-      return false;
-    if (_.filter(Game.creeps, (creep) => creep.memory.role == role3 && creep.memory.workroom == workroom).length >= 1)
-      return false;
-    return spawn(
-      spawn3,
-      BODIES.collector.build(spawn3.room.energyCapacityAvailable),
-      role3 + "_" + Game.time,
-      // `mineral` wie bei Filler und Hauler: fehlt der Schlüssel, ist er
-      // `undefined`, `checkHarvest` liest ihn als "nicht Energie" und
-      // kippt den Creep bei jeder Teilladung sofort zurück ins Abliefern.
-      { role: role3, workroom, home: spawn3.room.name, harvest: true, container: "", mineral: RESOURCE_ENERGY }
-    );
-  }
-};
-Collector = __decorateClass([
-  profile
-], Collector);
-var collector_default = new Collector();
-
 // src/creep/round-trip.ts
 var RoundTrip = class {
   constructor(workroom, keys) {
@@ -3404,8 +3027,23 @@ var RoundTrip = class {
 };
 
 // src/roles/debitor.ts
-var role4 = "debitor";
+var role3 = "debitor";
 var ROUND_TRIP_KEYS = { samples: "distances", size: "needDebitorSize", count: "needDebitors" };
+var NEVER_SELL = {
+  "energy": true,
+  "power": true,
+  "pixel": true,
+  "XUH2O": true,
+  "XUHO2": true,
+  "XKHO2": true,
+  "XKH2O": true,
+  "XZH2O": true,
+  "XZHO2": true,
+  "XLH2O": true,
+  "XLHO2": true,
+  "XGH2O": true,
+  "XGHO2": true
+};
 var Debitor = class {
   /** Holt Energie/Mineralien aus dem Arbeitsraum und transportiert sie in den Heimatraum. */
   doJob(creep) {
@@ -3576,7 +3214,7 @@ var Debitor = class {
       containerId = container[0].id;
       var count = _.filter(
         Game.creeps,
-        (creep) => creep.memory.role == role4 && creep.memory.workroom == workroom && creep.memory.container == containerId && !creep.memory.notfall && (creep.ticksToLive > 100 || creep.spawning)
+        (creep) => creep.memory.role == role3 && creep.memory.workroom == workroom && creep.memory.container == containerId && !creep.memory.notfall && (creep.ticksToLive > 100 || creep.spawning)
       ).length;
       if (!Memory.rooms[workroom].needDebitors)
         Memory.rooms[workroom].needDebitors = 1;
@@ -3594,7 +3232,7 @@ var Debitor = class {
       bot.logWorkroom(workroom, "2");
       var count = _.filter(
         Game.creeps,
-        (creep) => creep.memory.role == role4 && creep.memory.workroom == workroom && creep.memory.container == "" && !creep.memory.notfall && (creep.ticksToLive > 100 || creep.spawning)
+        (creep) => creep.memory.role == role3 && creep.memory.workroom == workroom && creep.memory.container == "" && !creep.memory.notfall && (creep.ticksToLive > 100 || creep.spawning)
       ).length;
       if (bot.room[workroom].debitorAsFreelancer <= count)
         return false;
@@ -3603,13 +3241,13 @@ var Debitor = class {
     }
     var profil = this.bodyFor(spawn3, workroom, mineraltype, containerId);
     bot.logWorkroom(workroom, "4");
-    if (!spawn(spawn3, profil, role4 + "_" + Game.time, { role: role4, harvest: true, workroom, home: spawn3.room.name, mineral: mineraltype, container: containerId, notfall: false, distance: 0 })) {
-      if (_.filter(Game.creeps, (creep) => creep.memory.role == role4 && creep.memory.workroom == workroom).length == 0 && spawn3.room.name == workroom) {
+    if (!spawn(spawn3, profil, role3 + "_" + Game.time, { role: role3, harvest: true, workroom, home: spawn3.room.name, mineral: mineraltype, container: containerId, notfall: false, distance: 0 })) {
+      if (_.filter(Game.creeps, (creep) => creep.memory.role == role3 && creep.memory.workroom == workroom).length == 0 && spawn3.room.name == workroom) {
         console.log("[" + spawn3.room.name + "|" + workroom + "]Notfallspawn Debitor");
         var min = Math.min(Math.max(parseInt(spawn3.room.energyAvailable / 100), 1), 16);
         profil = Array(min).fill(CARRY).concat(Array(min).fill(MOVE));
         mineraltype = RESOURCE_ENERGY;
-        return spawn(spawn3, profil, role4 + "_" + Game.time, { role: role4, harvest: true, workroom, home: spawn3.room.name, mineral: mineraltype, container: "", notfall: true });
+        return spawn(spawn3, profil, role3 + "_" + Game.time, { role: role3, harvest: true, workroom, home: spawn3.room.name, mineral: mineraltype, container: "", notfall: true });
       }
       return false;
     }
@@ -3622,7 +3260,7 @@ Debitor = __decorateClass([
 var debitor_default = new Debitor();
 
 // src/roles/defender.ts
-var role5 = "defender";
+var role4 = "defender";
 var Defender = class {
   /** Bewegt den Creep in den Arbeitsraum und greift Feinde bzw. markierte Ziele an. */
   doJob(creep) {
@@ -3704,10 +3342,10 @@ var Defender = class {
   spawn(spawn3, workroom) {
     if (!Memory.rooms[workroom].needDefence && !Memory.rooms[workroom].invaderCore || !bot.room[workroom].sendDefender)
       return false;
-    var count = _.filter(Game.creeps, (creep) => creep.memory.role == role5 && creep.memory.workroom == workroom).length;
+    var count = _.filter(Game.creeps, (creep) => creep.memory.role == role4 && creep.memory.workroom == workroom).length;
     if (Memory.rooms[workroom].needDefence && 2 <= count || Memory.rooms[workroom].invaderCore && 4 <= count)
       return false;
-    if (spawn(spawn3, BODIES.defender.build(spawn3.room.energyAvailable), role5 + "_" + Game.time, { role: role5, workroom, home: spawn3.room.name })) {
+    if (spawn(spawn3, BODIES.defender.build(spawn3.room.energyAvailable), role4 + "_" + Game.time, { role: role4, workroom, home: spawn3.room.name })) {
       Memory.cOfDefender += 1;
       return true;
     }
@@ -3720,7 +3358,7 @@ Defender = __decorateClass([
 var defender_default = new Defender();
 
 // src/roles/extupgrader.ts
-var role6 = "extupgrader";
+var role5 = "extupgrader";
 var ExtUpgrader = class {
   /** Beschafft Energie aus Link/Storage/Container/Quelle und upgradet damit den Controller. */
   doJob(creep) {
@@ -3752,12 +3390,12 @@ var ExtUpgrader = class {
       return false;
     var count = _.filter(
       Game.creeps,
-      (creep) => creep.memory.role == role6 && creep.memory.workroom == workroom && (creep.ticksToLive > 300 || creep.spawning)
+      (creep) => creep.memory.role == role5 && creep.memory.workroom == workroom && (creep.ticksToLive > 300 || creep.spawning)
     ).length;
     if (uppis <= count)
       return false;
     var profil = this.bodyFor(spawn3, workroom);
-    return spawn(spawn3, profil, role6 + "_" + Game.time, { role: role6, workroom, home: spawn3.room.name, repairs: 0 });
+    return spawn(spawn3, profil, role5 + "_" + Game.time, { role: role5, workroom, home: spawn3.room.name, repairs: 0 });
   }
 };
 ExtUpgrader = __decorateClass([
@@ -3766,7 +3404,7 @@ ExtUpgrader = __decorateClass([
 var extupgrader_default = new ExtUpgrader();
 
 // src/roles/filler.ts
-var role7 = "filler";
+var role6 = "filler";
 var Filler = class {
   /** Holt Energie aus dem Storage (Rückfall: Quellcontainer) und verteilt sie an Spawn und Türme. */
   doJob(creep) {
@@ -3791,18 +3429,18 @@ var Filler = class {
     const wanted = Math.max(1, (_a = bot.room[workroom].debitorAsFreelancer) != null ? _a : 0);
     const count = _.filter(
       Game.creeps,
-      (creep) => creep.memory.role == role7 && creep.memory.workroom == workroom && (creep.ticksToLive > 100 || creep.spawning)
+      (creep) => creep.memory.role == role6 && creep.memory.workroom == workroom && (creep.ticksToLive > 100 || creep.spawning)
     ).length;
     if (count >= wanted)
       return false;
     const profil = BODIES.debitorWithoutContainer.build(spawn3.room.energyCapacityAvailable);
-    if (spawn(spawn3, profil, role7 + "_" + Game.time, { role: role7, harvest: true, workroom, home: spawn3.room.name, mineral: RESOURCE_ENERGY, container: "", notfall: false }))
+    if (spawn(spawn3, profil, role6 + "_" + Game.time, { role: role6, harvest: true, workroom, home: spawn3.room.name, mineral: RESOURCE_ENERGY, container: "", notfall: false }))
       return true;
-    if (_.filter(Game.creeps, (creep) => creep.memory.role == role7 && creep.memory.workroom == workroom).length == 0) {
+    if (_.filter(Game.creeps, (creep) => creep.memory.role == role6 && creep.memory.workroom == workroom).length == 0) {
       console.log("[" + spawn3.room.name + "|" + workroom + "]Notfallspawn Filler");
       const min = Math.min(Math.max(parseInt(spawn3.room.energyAvailable / 100), 1), 16);
       const notfallProfil = Array(min).fill(CARRY).concat(Array(min).fill(MOVE));
-      return spawn(spawn3, notfallProfil, role7 + "_" + Game.time, { role: role7, harvest: true, workroom, home: spawn3.room.name, mineral: RESOURCE_ENERGY, container: "", notfall: false });
+      return spawn(spawn3, notfallProfil, role6 + "_" + Game.time, { role: role6, harvest: true, workroom, home: spawn3.room.name, mineral: RESOURCE_ENERGY, container: "", notfall: false });
     }
     return false;
   }
@@ -3813,7 +3451,7 @@ Filler = __decorateClass([
 var filler_default = new Filler();
 
 // src/roles/hauler.ts
-var role8 = "hauler";
+var role7 = "hauler";
 var Hauler = class {
   /** Holt Energie aus dem Quellcontainer und bringt sie ins Storage des Heimatraums. */
   doJob(creep) {
@@ -3851,7 +3489,7 @@ var Hauler = class {
     const containerId = container[0].id;
     const count = _.filter(
       Game.creeps,
-      (creep) => creep.memory.role == role8 && creep.memory.workroom == workroom && creep.memory.container == containerId && (creep.ticksToLive > 100 || creep.spawning)
+      (creep) => creep.memory.role == role7 && creep.memory.workroom == workroom && creep.memory.container == containerId && (creep.ticksToLive > 100 || creep.spawning)
     ).length;
     if (1 <= count)
       return false;
@@ -3863,8 +3501,8 @@ var Hauler = class {
       if (linksDeliver(workroom))
         return false;
     }
-    return spawn(spawn3, BODIES.debitor.build(spawn3.room.energyCapacityAvailable), role8 + "_" + Game.time, {
-      role: role8,
+    return spawn(spawn3, BODIES.debitor.build(spawn3.room.energyCapacityAvailable), role7 + "_" + Game.time, {
+      role: role7,
       harvest: true,
       workroom,
       home: spawn3.room.name,
@@ -3880,7 +3518,7 @@ Hauler = __decorateClass([
 var hauler_default = new Hauler();
 
 // src/roles/linkkeeper.ts
-var role9 = "linkkeeper";
+var role8 = "linkkeeper";
 var blockingStructureTypes2 = OBSTACLE_OBJECT_TYPES;
 var LinkKeeper = class {
   /** Bewegt den Creep auf seinen Standplatz zwischen Link und Storage und pendelt dort Energie um. */
@@ -3949,9 +3587,9 @@ var LinkKeeper = class {
       return false;
     if (!spawn3.room.storage)
       return false;
-    if (_.filter(Game.creeps, (creep) => creep.memory.role == role9 && creep.memory.workroom == workroom).length >= 1)
+    if (_.filter(Game.creeps, (creep) => creep.memory.role == role8 && creep.memory.workroom == workroom).length >= 1)
       return false;
-    return spawn(spawn3, BODIES.linkkeeper.build(spawn3.room.energyCapacityAvailable), role9 + "_" + Game.time, { role: role9, workroom, home: spawn3.room.name });
+    return spawn(spawn3, BODIES.linkkeeper.build(spawn3.room.energyCapacityAvailable), role8 + "_" + Game.time, { role: role8, workroom, home: spawn3.room.name });
   }
 };
 LinkKeeper = __decorateClass([
@@ -3960,7 +3598,7 @@ LinkKeeper = __decorateClass([
 var linkkeeper_default = new LinkKeeper();
 
 // src/roles/miner.ts
-var role10 = "miner";
+var role9 = "miner";
 var Miner = class {
   _clearMemory(creep) {
     delete creep.memory.pos;
@@ -3971,7 +3609,7 @@ var Miner = class {
   doJob(creep) {
     var _a;
     if (creep.memory.notfall) {
-      var replacement = _.find(Game.creeps, (c) => c.name != creep.name && c.memory.role == role10 && c.memory.workroom == creep.memory.workroom && c.memory.source == creep.memory.source && !c.memory.notfall && !c.spawning);
+      var replacement = _.find(Game.creeps, (c) => c.name != creep.name && c.memory.role == role9 && c.memory.workroom == creep.memory.workroom && c.memory.source == creep.memory.source && !c.memory.notfall && !c.spawning);
       if (replacement) {
         bot.logWorkroom(creep.memory.workroom, "Notfallminer " + creep.name + " durch " + replacement.name + " ersetzt, beende mich.");
         creep.suicide();
@@ -4234,20 +3872,20 @@ var Miner = class {
     }
     var count = _.filter(
       Game.creeps,
-      (creep) => creep.memory.role == role10 && creep.memory.workroom == workroom && creep.memory.source == source && !creep.memory.notfall && (creep.ticksToLive > time || creep.spawning)
+      (creep) => creep.memory.role == role9 && creep.memory.workroom == workroom && creep.memory.source == source && !creep.memory.notfall && (creep.ticksToLive > time || creep.spawning)
     ).length;
     if (1 <= count) {
       Memory.rooms[spawn3.room.name].aktivPrioSpawn = false;
       return false;
     }
-    if (!spawn(spawn3, BODIES.miner.build(spawn3.room.energyCapacityAvailable), role10 + "_" + Game.time, { role: role10, workroom, home: spawn3.room.name, source, mineEnergy, notfall: false })) {
+    if (!spawn(spawn3, BODIES.miner.build(spawn3.room.energyCapacityAvailable), role9 + "_" + Game.time, { role: role9, workroom, home: spawn3.room.name, source, mineEnergy, notfall: false })) {
       Memory.rooms[spawn3.room.name].aktivPrioSpawn = true;
       Memory.rooms[spawn3.room.name].aktivPrioSpawnCount = (Memory.rooms[spawn3.room.name].aktivPrioSpawnCount || 0) + 1;
       if (Memory.rooms[spawn3.room.name].aktivPrioSpawnCount > 25) {
-        if (_.filter(Game.creeps, (creep) => creep.memory.role == role10 && creep.memory.workroom == workroom && creep.memory.source == source).length > 0)
+        if (_.filter(Game.creeps, (creep) => creep.memory.role == role9 && creep.memory.workroom == workroom && creep.memory.source == source).length > 0)
           return false;
         console.log("[" + spawn3.room.name + "|" + workroom + "] Spawn NotfallMiner!!!");
-        spawn(spawn3, [WORK, CARRY, MOVE], role10 + "_" + Game.time, { role: role10, workroom, home: spawn3.room.name, source, mineEnergy, notfall: true });
+        spawn(spawn3, [WORK, CARRY, MOVE], role9 + "_" + Game.time, { role: role9, workroom, home: spawn3.room.name, source, mineEnergy, notfall: true });
         Memory.rooms[spawn3.room.name].aktivPrioSpawnCount = 0;
         return true;
       }
@@ -4263,7 +3901,7 @@ Miner = __decorateClass([
 var miner_default = new Miner();
 
 // src/roles/repairer.ts
-var role11 = "repairer";
+var role10 = "repairer";
 var Repairer = class {
   /** Repariert priorisierte und beschädigte Strukturen im Arbeitsraum, sonst wird der Controller aufgewertet. */
   doJob(creep) {
@@ -4358,7 +3996,7 @@ var Repairer = class {
       return false;
     if (spawn3.room.name != workroom && !Memory.rooms[workroom].claimed)
       return false;
-    var count = _.filter(Game.creeps, (creep) => creep.memory.role == role11 && creep.memory.workroom == workroom).length;
+    var count = _.filter(Game.creeps, (creep) => creep.memory.role == role10 && creep.memory.workroom == workroom).length;
     if (count == void 0)
       count = 0;
     if (minRepairer <= count)
@@ -4373,7 +4011,7 @@ var Repairer = class {
     });
     if (structuresToRepair.length <= 1)
       return false;
-    return spawn(spawn3, BODIES.repairer.build(spawn3.room.energyCapacityAvailable), role11 + "_" + Game.time, { role: role11, workroom, home: spawn3.room.name, repairs: 0 });
+    return spawn(spawn3, BODIES.repairer.build(spawn3.room.energyCapacityAvailable), role10 + "_" + Game.time, { role: role10, workroom, home: spawn3.room.name, repairs: 0 });
   }
 };
 Repairer = __decorateClass([
@@ -4382,7 +4020,7 @@ Repairer = __decorateClass([
 var repairer_default = new Repairer();
 
 // src/roles/transfer.ts
-var role12 = "transfer";
+var role11 = "transfer";
 var ROUND_TRIP_KEYS2 = { samples: "transferDistances", size: "transferSize", count: "transferCount" };
 var Transfer = class {
   /** Sammelt Energie/Mineralien aus dem Arbeitsraum und bringt sie zum Heimatraum bzw. an bedürftige Builder. */
@@ -4465,7 +4103,7 @@ var Transfer = class {
   _spawn(spawn3, workroom, mineraltype) {
     var count = _.filter(
       Game.creeps,
-      (creep) => creep.memory.role == role12 && creep.memory.workroom == workroom && creep.memory.home == spawn3.room.name && //hier wichtig, da mehere spawns infrage kommem
+      (creep) => creep.memory.role == role11 && creep.memory.workroom == workroom && creep.memory.home == spawn3.room.name && //hier wichtig, da mehere spawns infrage kommem
       (creep.ticksToLive > 100 || creep.spawning)
     ).length;
     if (1 <= count)
@@ -4477,7 +4115,7 @@ var Transfer = class {
     const maxSetsForEnergy = BODIES.transfer.setsFor(spawn3.room.energyCapacityAvailable);
     const carry = roundTrip.carryFor(maxSetsForEnergy);
     var profil = Number.isFinite(carry) ? carryMove(carry) : BODIES.transfer.build(spawn3.room.energyCapacityAvailable);
-    return spawn(spawn3, profil, role12 + "_" + Game.time, { role: role12, harvest: true, workroom, home: spawn3.room.name, mineral: mineraltype, distance: 0 });
+    return spawn(spawn3, profil, role11 + "_" + Game.time, { role: role11, harvest: true, workroom, home: spawn3.room.name, mineral: mineraltype, distance: 0 });
   }
 };
 Transfer = __decorateClass([
@@ -4486,7 +4124,7 @@ Transfer = __decorateClass([
 var transfer_default = new Transfer();
 
 // src/roles/upgrader.ts
-var role13 = "upgrader";
+var role12 = "upgrader";
 var RCL8_WORK_RESERVE = 1e5;
 var DOWNGRADE_ALARM = 1e5;
 var Upgrader = class {
@@ -4584,13 +4222,13 @@ var Upgrader = class {
       return false;
     var count = _.filter(
       Game.creeps,
-      (creep) => creep.memory.role == role13 && creep.memory.workroom == workroom && (creep.ticksToLive > 160 || creep.spawning)
+      (creep) => creep.memory.role == role12 && creep.memory.workroom == workroom && (creep.ticksToLive > 160 || creep.spawning)
     ).length;
     const target = forced ? Math.max(1, uppis != null ? uppis : 0) : uppis;
     if (target <= count)
       return false;
     var profil = this.bodyFor(spawn3, workroom);
-    return spawn(spawn3, profil, role13 + "_" + Game.time, { role: role13, workroom, home: spawn3.room.name, repairs: 0, noLink: false });
+    return spawn(spawn3, profil, role12 + "_" + Game.time, { role: role12, workroom, home: spawn3.room.name, repairs: 0 });
   }
 };
 Upgrader = __decorateClass([
@@ -4599,7 +4237,7 @@ Upgrader = __decorateClass([
 var upgrader_default = new Upgrader();
 
 // src/roles/wally.ts
-var role14 = "wally";
+var role13 = "wally";
 var Wally = class {
   /** Erntet, weicht bei Invasion aus, repariert Walls/Ramparts oder upgradet sonst den Controller. */
   doJob(creep) {
@@ -4663,7 +4301,7 @@ var Wally = class {
   spawn(spawn3, workroom) {
     if (spawn3.room.name != workroom && !Memory.rooms[workroom].claimed)
       return false;
-    var count = _.filter(Game.creeps, (creep) => creep.memory.role == role14 && creep.memory.workroom == workroom).length;
+    var count = _.filter(Game.creeps, (creep) => creep.memory.role == role13 && creep.memory.workroom == workroom).length;
     if (bot.room[workroom].maxwallRepairer <= count)
       return false;
     var room = Game.rooms[workroom];
@@ -4678,7 +4316,7 @@ var Wally = class {
     if (storage && storage.store[RESOURCE_ENERGY] < 5e4 || !storage)
       return false;
     var p = BODIES.wally.build(spawn3.room.energyCapacityAvailable);
-    return spawn(spawn3, p, role14 + "_" + Game.time, { role: role14, workroom, home: spawn3.room.name });
+    return spawn(spawn3, p, role13 + "_" + Game.time, { role: role13, workroom, home: spawn3.room.name });
   }
 };
 Wally = __decorateClass([
@@ -4707,10 +4345,6 @@ var jobs = {
   upgrader: upgrader_default,
   extupgrader: extupgrader_default,
   defender: defender_default,
-  // Wirtschaft statt Durchsatz: der Collector räumt auf und beliefert das
-  // Terminal. Hinter der Verteidigung, weil ein Raum unter Beschuss andere
-  // Sorgen hat — vor `wally`, weil Einsammeln mehr bringt als Mauerreparatur.
-  collector: collector_default,
   wally: wally_default
 };
 
@@ -5227,8 +4861,8 @@ function writeStats(metrics) {
   for (const section of metrics.sections) {
     set(stats, `profiler.section.${section.name}.cpuPerTick`, section.cpuPerTick);
   }
-  for (const role15 of metrics.roles) {
-    set(stats, `profiler.role.${role15.name}.cpuPerTick`, role15.cpuPerTick);
+  for (const role14 of metrics.roles) {
+    set(stats, `profiler.role.${role14.name}.cpuPerTick`, role14.cpuPerTick);
   }
   statsMemory.stats = stats;
 }
@@ -5603,6 +5237,184 @@ function installCreepChecks() {
       return true;
     }
     return false;
+  };
+}
+
+// src/prototypes/terminal-market.ts
+var T1_BOOSTS = {
+  UH2O: true,
+  UHO2: true,
+  KH2O: true,
+  KHO2: true,
+  ZH2O: true,
+  ZHO2: true,
+  LH2O: true,
+  LHO2: true,
+  GH2O: true,
+  GHO2: true
+};
+var T1_INTERMEDIATES = {
+  UH: true,
+  UO: true,
+  KH: true,
+  KO: true,
+  ZH: true,
+  ZO: true,
+  LH: true,
+  LO: true,
+  GH: true,
+  GO: true
+};
+var NEVER_SELL2 = {
+  energy: true,
+  power: true,
+  pixel: true,
+  XUH2O: true,
+  XUHO2: true,
+  XKHO2: true,
+  XKH2O: true,
+  XZH2O: true,
+  XZHO2: true,
+  XLH2O: true,
+  XLHO2: true,
+  XGH2O: true,
+  XGHO2: true
+};
+var TerminalMarket = class {
+  /**
+   * Verkauft höchstens eine Ressource je Aufruf über eine Kauf-Order am Markt.
+   * Energie wird nie verkauft, sondern nur als Deckung für die Transferkosten
+   * geprüft.
+   */
+  sell(terminal) {
+    if (terminal.cooldown > 1) return;
+    const terminalEnergy = terminal.store.getUsedCapacity(RESOURCE_ENERGY);
+    if (terminalEnergy < 1e3 || terminalEnergy >= terminal.store.getUsedCapacity())
+      return;
+    for (const resource in terminal.store) {
+      if (NEVER_SELL2[resource]) continue;
+      const minPrice = this.getFallbackPrice(resource);
+      if (!minPrice) continue;
+      const orders = Game.market.getAllOrders({
+        type: ORDER_BUY,
+        resourceType: resource
+      });
+      const marketOrdersWithDistances = orders.filter((o) => o.price >= minPrice).map((order) => {
+        const distance = terminal.pos.getRangeTo(
+          new RoomPosition(25, 25, order.roomName)
+        );
+        return {
+          order,
+          distance
+        };
+      }).sort((a, b) => a.distance - b.distance);
+      const capa = terminal.store.getUsedCapacity(resource);
+      for (let i = 0; i < marketOrdersWithDistances.length; i++) {
+        const order = marketOrdersWithDistances[i].order;
+        let amount = order.amount > capa ? capa : order.amount;
+        const transferEnergyCost = Game.market.calcTransactionCost(
+          amount,
+          terminal.room.name,
+          order.roomName
+        );
+        const costPerRes = transferEnergyCost / amount;
+        if (costPerRes < 0.789) {
+          if (transferEnergyCost > terminalEnergy)
+            amount = Math.floor(terminalEnergy / costPerRes);
+          if (OK == Game.market.deal(order.id, amount, terminal.room.name)) {
+            console.log(
+              "[" + terminal.room.name + "] " + resource + " verkauft: " + amount + " zu " + order.price
+            );
+            return;
+          }
+        }
+      }
+    }
+  }
+  /**
+   * Kauft Pixel, solange ein Angebot unter der fairen Preisgrenze liegt.
+   * Effektivpreis schließt die Transferenergie mit ein.
+   */
+  buyPixel(terminal) {
+    if (terminal.cooldown > 1) return;
+    const terminalEnergy = terminal.store.getUsedCapacity("energy");
+    const freeCapacity = terminal.store.getFreeCapacity();
+    if (terminalEnergy < 1e3 || freeCapacity <= 10) return;
+    const resource = "pixel";
+    const avgPrice = this.averageHistoryPrice(resource);
+    if (avgPrice === null) return;
+    const fairPrice = Math.floor(avgPrice * 1.1);
+    const orders = Game.market.getAllOrders({
+      type: ORDER_SELL,
+      resourceType: resource
+    });
+    if (!orders.length) return;
+    const valid = orders.filter((o) => o.roomName).map((o) => {
+      const energyCost = Game.market.calcTransactionCost(
+        1,
+        terminal.room.name,
+        o.roomName
+      );
+      const effectivePrice = o.price + energyCost / Math.min(o.amount, 50);
+      return { o, energyCost, effectivePrice };
+    }).filter(
+      (x) => x.effectivePrice <= fairPrice && x.energyCost <= terminalEnergy
+    ).sort((a, b) => a.effectivePrice - b.effectivePrice);
+    if (!valid.length) return;
+    const order = valid[0].o;
+    const amount = Math.min(
+      50,
+      order.amount,
+      Math.floor(Game.market.credits / order.price),
+      Math.floor(
+        terminalEnergy / Game.market.calcTransactionCost(1, terminal.room.name, order.roomName)
+      )
+    );
+    if (amount <= 0) return;
+    if (OK === Game.market.deal(order.id, amount, terminal.room.name)) {
+      console.log(
+        `[${terminal.room.name}] Pixel Sniper: ${amount} zu ${order.price} (effektiv inkl. Energie: ${valid[0].effectivePrice.toFixed(2)})`
+      );
+    }
+  }
+  /**
+   * Ersatzpreis für eine Ressource ohne eigene Order-Logik: T1-Boosts und
+   * ihre Zwischenprodukte sind praktisch geschenkt, sonst 70 % des
+   * Historiendurchschnitts. `null`, wenn auch das nicht zu ermitteln ist.
+   */
+  getFallbackPrice(resource) {
+    if (T1_BOOSTS[resource]) {
+      return 1e-3;
+    }
+    if (T1_INTERMEDIATES[resource]) {
+      return 1e-3;
+    }
+    const avg = this.averageHistoryPrice(resource);
+    if (avg === null) return null;
+    return avg * 0.7;
+  }
+  /**
+   * Durchschnittspreis über die komplette Markthistorie einer Ressource,
+   * `null` ohne Historie. Der Faktor auf diesen Durchschnitt (0,7 beim
+   * Verkauf, 1,1 beim Pixelkauf) bleibt bei den Aufrufern — das ist fachlich
+   * verschieden und keine Wiederholung.
+   */
+  averageHistoryPrice(resource) {
+    const history = Game.market.getHistory(resource);
+    if (!history || !history.length) return null;
+    return history.reduce((sum, entry) => sum + entry.avgPrice, 0) / history.length;
+  }
+};
+TerminalMarket = __decorateClass([
+  profile
+], TerminalMarket);
+var terminalMarket = new TerminalMarket();
+function installTerminalMarket() {
+  StructureTerminal.prototype.sell = function() {
+    terminalMarket.sell(this);
+  };
+  StructureTerminal.prototype.buyPixel = function() {
+    terminalMarket.buyPixel(this);
   };
 }
 

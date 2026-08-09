@@ -10,6 +10,7 @@
 
 import { bot } from "../globals";
 import { LinkList } from "../controller/link-list";
+import { storageIsFull } from "../controller/storage-pressure";
 import * as creepBase from "../creep/base";
 import { BODIES } from "../creep/bodies";
 import type { CreepRole } from "../roles";
@@ -50,7 +51,20 @@ export class Upgrader implements CreepRole {
 
         if (creep.memory.harvest)
         {
-            if(!creep.memory.noLink && new LinkList(creep.memory.workroom).controllerLink && (creep.room.controller!.my && creep.room.controller!.level >= 5) )
+            // Am Inhalt entschieden, nicht an einer Flagge: `noLink` wurde nie
+            // zurückgesetzt, ein Upgrader hätte den Link nach dem ersten leeren
+            // Antreffen für den Rest seines Lebens ignoriert — und damit auch
+            // jeden Nachschub aus dem Storage. Die Schwelle ist dieselbe, die
+            // `harvestControllerLink` prüft.
+            //
+            // Die Flagge selbst ist entfallen; ein Creep, der sie aus der Zeit
+            // davor noch im Memory trägt, arbeitet ab dem nächsten Tick normal
+            // weiter — sie wird nirgends mehr gelesen und absichtlich nicht
+            // gelöscht, damit kein Migrationsschritt nötig ist. Dasselbe
+            // Vorgehen ist unten für `sparmodus` dokumentiert.
+            const controllerLink = new LinkList(creep.memory.workroom).controllerLink;
+
+            if(controllerLink && controllerLink.store[RESOURCE_ENERGY] > 100 && (creep.room.controller!.my && creep.room.controller!.level >= 5) )
             {
                 if(creepBase.harvestControllerLink(creep,RESOURCE_ENERGY)) return;
 
@@ -147,18 +161,34 @@ export class Upgrader implements CreepRole {
         return profil.build(spawn.room.energyCapacityAvailable);
     }
 
-    /** Spawnt einen Upgrader für `workroom`, falls die konfigurierte Anzahl noch nicht erreicht ist. */
+    /**
+     * Spawnt einen Upgrader für `workroom`, falls die konfigurierte Anzahl noch
+     * nicht erreicht ist.
+     *
+     * Ausnahme: läuft der Storage über (`storageIsFull`), steht **mindestens
+     * einer** da — auch bei `upgrader: 0` in der Config und auch dann, wenn das
+     * RCL8-Gate ihn sonst verhinderte. Der Fall ist nicht theoretisch: bei 95
+     * Prozent Belegung mit viel Mineral und 150 000 Energie greift das Gate
+     * `storage < 250000` heute genau dann, wenn man den Upgrader braucht.
+     *
+     * Bewusst `Math.max(1, …)` und keine höhere Zahl: ab RCL8 nimmt der
+     * Controller nur noch `CONTROLLER_MAX_UPGRADE_PER_TICK` (15) Energie je Tick
+     * an — für den ganzen Raum. `BODIES.upgraderRcl8` schöpft das mit 15 WORK
+     * allein aus, ein zweiter Upgrader brächte dort nichts.
+     */
     spawn(spawn: StructureSpawn, workroom: string): boolean
     {
+        const forced = storageIsFull(workroom);
+
         var uppis = bot.room[workroom]!.upgrader
 
-        if(!uppis || uppis < 1)
+        if(!forced && (!uppis || uppis < 1))
             return false;
 
         if(spawn.room.name != workroom)
             return false;
 
-        if(spawn.room.controller!.level > 7 && spawn.room.controller!.ticksToDowngrade > 100000 && spawn.room.storage && spawn.room.storage.store.getUsedCapacity(RESOURCE_ENERGY) < 250000)
+        if(!forced && spawn.room.controller!.level > 7 && spawn.room.controller!.ticksToDowngrade > 100000 && spawn.room.storage && spawn.room.storage.store.getUsedCapacity(RESOURCE_ENERGY) < 250000)
             return false;
 
         var count = _.filter(Game.creeps, (creep: Creep) => creep.memory.role == role &&
@@ -166,12 +196,14 @@ export class Upgrader implements CreepRole {
                                                     (creep.ticksToLive! > 160 || creep.spawning)
                                                     ).length;
 
-        if ( uppis <= count)
+        const target = forced ? Math.max(1, uppis ?? 0) : uppis!;
+
+        if ( target <= count)
             return false;
 
         var profil = this.bodyFor(spawn, workroom);
 
-        return creepBase.spawn(spawn, profil, role + '_' + Game.time,{ role: role, workroom: workroom, home: spawn.room.name, repairs:0, noLink: false});
+        return creepBase.spawn(spawn, profil, role + '_' + Game.time,{ role: role, workroom: workroom, home: spawn.room.name, repairs:0});
     }
 }
 
