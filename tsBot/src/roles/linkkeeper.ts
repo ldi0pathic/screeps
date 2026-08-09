@@ -7,10 +7,15 @@
  * bleiben dann selbst voll und können keine neue Energie mehr aufnehmen.
  * Link und Storage stehen in der Basis so, dass genau ein Feld an beide
  * angrenzt; dort steht der Creep dauerhaft.
+ *
+ * Seit der Storage-Link auch senden kann, pendelt der Keeper in **beide**
+ * Richtungen: `needsStorageFeed` (`controller/links.ts`) entscheidet je Tick,
+ * ob er den Link leert oder ihn aus dem Storage füllt.
  */
 
 import { bot } from "../globals";
 import { LinkList, usesLinks } from "../controller/link-list";
+import { needsStorageFeed } from "../controller/links";
 import * as creepBase from "../creep/base";
 import { BODIES } from "../creep/bodies";
 import type { CreepRole } from "../roles";
@@ -67,6 +72,19 @@ export class LinkKeeper implements CreepRole {
 
         const carrying = creep.store.getUsedCapacity(RESOURCE_ENERGY);
         const inLink = link.store.getUsedCapacity(RESOURCE_ENERGY);
+
+        // Muss der Raum den Controller-Link nachfüllen, kehrt sich die Richtung
+        // um: der Keeper holt dann aus dem Storage und legt in den Link, statt
+        // ihn zu leeren. Gefragt wird dieselbe Funktion, die auch das Sendenetz
+        // fragt — der Keeper handelt im selben Tick **vor** dem Netz (`main.ts`
+        // fährt erst alle Creeps, dann `timing.controll()`). Eine eigene Regel
+        // oder eine Flagge aus dem Vortick zöge den Link genau in dem Tick leer,
+        // in dem das Netz ihn senden wollte.
+        if (needsStorageFeed(creep.memory.workroom)) {
+            if (carrying > 0) creep.transfer(link, RESOURCE_ENERGY);
+            else creep.withdraw(storage, RESOURCE_ENERGY);
+            return;
+        }
 
         // Bewusst jeden Tick geprüft statt eine Schlafdauer zu raten: der
         // empfangende Link hat keinen eigenen Cooldown (der liegt beim

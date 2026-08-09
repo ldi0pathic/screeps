@@ -64,18 +64,26 @@ bevor sie in Code wandern — nicht abschreiben.
 
 ## Was wir schon besser machen
 
-`roles/debitor.ts:43-51,195-221` **misst** die tatsächliche Umlaufzeit pro Creep,
-bildet den Median über mehrere Creeps und rechnet `carry = ceil(2 × median / 5)`.
+Der Debitor **misst** die tatsächliche Umlaufzeit pro Creep, bildet den Median
+über mehrere Creeps und rechnet `carry = ceil(2 × median / 5)`. Gemessen wird in
+`Debitor.doJob` (der `creep.memory.distance`-Zähler und die beiden
+`checkHarvest`-Rückrufe) und in `Debitor.recordRoundTrip`; gerechnet wird in
+`Debitor.bodyFor`, Zweig „Arbeitsraum ist nicht der Heimatraum". Die Arithmetik
+selbst steht inzwischen in der Klasse `RoundTrip` (`creep/round-trip.ts`,
+`record()` und `carryFor()`) — hier stehen bewusst Namen und keine
+Zeilennummern, die beim nächsten Refactoring wieder verrotten.
+
 Der Vergleichsbot schätzt stattdessen aus Raumsprüngen — und zwar an zwei
 Stellen widersprüchlich (`routeDistance × 6` gegen `routeLen × 3`). Seine
 eigene Plandatei 17 führt „gemessene Umlaufzeit" als offenen Wunsch und nennt
 als Quelle unseren alten `creep.debitor.js`.
 
-**Also: nichts übernehmen, sondern ausweiten.** Die Messlogik aus `debitor.ts`
-ist die Vorlage für `transfer.ts:78-82`, das heute stumpf
-`min(25, floor(energyCapacityAvailable / 100))` rechnet — bei RCL8 also 25 CARRY
-und 25 MOVE für 2500 Energie und 150 Spawnticks, unabhängig davon, ob der Weg
-vom Container zum Storage fünf oder fünfzig Felder lang ist.
+**Also: nichts übernehmen, sondern ausweiten.** Für `Transfer.spawn` ist das
+inzwischen geschehen: die Rolle benutzt dieselbe `RoundTrip`-Klasse, statt wie
+früher stumpf `min(25, floor(energyCapacityAvailable / 100))` zu rechnen — das
+ergab bei RCL8 25 CARRY und 25 MOVE für 2500 Energie und 150 Spawnticks,
+unabhängig davon, ob der Weg vom Container zum Storage fünf oder fünfzig Felder
+lang ist.
 
 ## Vorgehen
 

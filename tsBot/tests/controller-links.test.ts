@@ -81,10 +81,18 @@ function stubLink(id: string, energy: number, freeCapacity: number, cooldown = 0
  * `usesLinks()` liest `controller.my` und `controller.level` direkt vom Raum
  * (nicht mehr aus der Config) — deshalb trägt der Stub standardmäßig einen
  * eigenen Controller (`my: true`), sofern ein Level angegeben ist.
+ *
+ * `storage` ist seit `needsStorageFeed` nicht mehr fest `undefined`: die Regel
+ * liest Belegung und Energiebestand des Storage.
  */
 function stubRoom(
   name: string,
-  options: { controllerLevel?: number; controllerMy?: boolean; links?: any[] } = {},
+  options: {
+    controllerLevel?: number;
+    controllerMy?: boolean;
+    links?: any[];
+    storage?: any;
+  } = {},
 ) {
   return {
     name,
@@ -92,11 +100,31 @@ function stubRoom(
       options.controllerLevel !== undefined
         ? { my: options.controllerMy ?? true, level: options.controllerLevel }
         : undefined,
-    storage: undefined,
+    storage: options.storage,
     find(type: number, opts?: { filter?: (structure: any) => boolean }): any[] {
       if (type !== FIND_MY_STRUCTURES) return [];
       const links = options.links ?? [];
       return opts?.filter ? links.filter(opts.filter) : links;
+    },
+  };
+}
+
+/**
+ * Ein Storage-Stub mit Gesamtbelegung und Energieanteil.
+ *
+ * `used` ist die Gesamtbelegung (für `storageIsFull`), `energy` der
+ * Energieanteil (für `STORAGE_FEED_RESERVE`). Voreinstellung: reichlich Energie,
+ * aber weit unter dem Überlauf — der Normalfall in den meisten Tests.
+ */
+function stubStorage(options: { used?: number; energy?: number } = {}) {
+  const energy = options.energy ?? 300000;
+  const used = options.used ?? energy;
+
+  return {
+    store: {
+      [RESOURCE_ENERGY]: energy,
+      getCapacity: (): number => 1000000,
+      getUsedCapacity: (resource?: string): number => (resource === undefined ? used : energy),
     },
   };
 }
@@ -362,4 +390,304 @@ test("sendAll() läuft über alle konfigurierten Räume und überspringt Räume,
 
   assert.equal(transferCalls.length, 1, "nur der Raum mit ausreichendem RCL sendet");
   assert.equal(transferCalls[0]!.senderId, "sender-a");
+});
+
+// --- needsStorageFeed --------------------------------------------------------
+
+/**
+ * Baut die Standardwelt für `needsStorageFeed`: Raum mit RCL7, Storage,
+ * Controller-Link, Storage-Link und einem Quell-Link.
+ *
+ * Die vier Zahlen sind die Stellschrauben der Regel — jeder Test dreht genau an
+ * einer davon.
+ */
+function setupFeedWorld(options: {
+  controllerLinkEnergy: number;
+  senderEnergy: number;
+  storageEnergy: number;
+  storageUsed?: number;
+  controllerLevel?: number;
+}): void {
+  const roomName = "E58N6";
+
+  registerRoom(roomName);
+  setRoomKnown(roomName);
+
+  const controllerLink = stubLink("controller-link", options.controllerLinkEnergy, LINK_CAPACITY);
+  const spawnLink = stubLink("spawn-link", 0, LINK_CAPACITY);
+  const sender = stubLink("sender", options.senderEnergy, 0);
+  setLinks(roomName, { controller: controllerLink.id, spawn: spawnLink.id, sender: [sender.id] });
+
+  anyGlobal.Game.rooms[roomName] = stubRoom(roomName, {
+    controllerLevel: options.controllerLevel ?? 7,
+    storage: stubStorage({ energy: options.storageEnergy, used: options.storageUsed }),
+  });
+}
+
+test("Rückfall: leerer Controller-Link, kein Quell-Link mit Ladung, Storage über der Reserve", async () => {
+  const { needsStorageFeed, SEND_MIN } = await loadLinks();
+
+  setupFeedWorld({
+    controllerLinkEnergy: SEND_MIN - 1,
+    senderEnergy: SEND_MIN - 1,
+    storageEnergy: 300000,
+  });
+
+  assert.equal(needsStorageFeed("E58N6"), true);
+});
+
+test("ein Quell-Link mit Ladung liefert selbst: kein Nachschub aus dem Storage", async () => {
+  const { needsStorageFeed, SEND_MIN } = await loadLinks();
+
+  setupFeedWorld({
+    controllerLinkEnergy: 0,
+    senderEnergy: SEND_MIN,
+    storageEnergy: 300000,
+  });
+
+  assert.equal(
+    needsStorageFeed("E58N6"),
+    false,
+    "gemessen wird der Inhalt des Quell-Links, nicht sein Cooldown — er liefert ab, sobald der fällt",
+  );
+});
+
+test("der Controller-Link ist ausreichend gefüllt: kein Nachschub", async () => {
+  const { needsStorageFeed, SEND_MIN } = await loadLinks();
+
+  setupFeedWorld({
+    controllerLinkEnergy: SEND_MIN,
+    senderEnergy: 0,
+    storageEnergy: 300000,
+  });
+
+  assert.equal(needsStorageFeed("E58N6"), false, "genau SEND_MIN reicht — die Bedingung ist `<`");
+});
+
+test("Storage unter der Reserve: kein Nachschub, egal wie leer der Controller-Link ist", async () => {
+  const { needsStorageFeed, STORAGE_FEED_RESERVE } = await loadLinks();
+
+  setupFeedWorld({
+    controllerLinkEnergy: 0,
+    senderEnergy: 0,
+    storageEnergy: STORAGE_FEED_RESERVE,
+  });
+
+  assert.equal(needsStorageFeed("E58N6"), false, "genau die Reserve reicht nicht — die Bedingung ist `>`");
+});
+
+test("Vollpumpmodus: überlaufender Storage schiebt nach, auch bei liefernden Quellen und vollem Controller-Link", async () => {
+  const { needsStorageFeed } = await loadLinks();
+
+  setupFeedWorld({
+    controllerLinkEnergy: LINK_CAPACITY,
+    senderEnergy: 500,
+    storageEnergy: 400000,
+    storageUsed: 950000,
+  });
+
+  assert.equal(needsStorageFeed("E58N6"), true);
+});
+
+test("ohne erhobenen Storage-Link gibt es nichts zu speisen", async () => {
+  const { needsStorageFeed } = await loadLinks();
+  const roomName = "E58N6";
+
+  registerRoom(roomName);
+  setRoomKnown(roomName);
+  const controllerLink = stubLink("controller-link", 0, LINK_CAPACITY);
+  setLinks(roomName, { controller: controllerLink.id, sender: [] });
+  anyGlobal.Game.rooms[roomName] = stubRoom(roomName, {
+    controllerLevel: 7,
+    storage: stubStorage({ energy: 300000 }),
+  });
+
+  assert.equal(needsStorageFeed(roomName), false);
+});
+
+test("ohne Storage im Raum und ohne Sicht: false, kein Wurf", async () => {
+  const { needsStorageFeed } = await loadLinks();
+  const roomName = "E58N6";
+
+  registerRoom(roomName);
+  setRoomKnown(roomName);
+  const controllerLink = stubLink("controller-link", 0, LINK_CAPACITY);
+  const spawnLink = stubLink("spawn-link", 0, LINK_CAPACITY);
+  setLinks(roomName, { controller: controllerLink.id, spawn: spawnLink.id, sender: [] });
+  anyGlobal.Game.rooms[roomName] = stubRoom(roomName, { controllerLevel: 7 });
+
+  assert.equal(needsStorageFeed(roomName), false, "Raum sichtbar, aber ohne Storage");
+
+  installLinkWorld();
+  registerRoom(roomName);
+  setRoomKnown(roomName);
+  assert.doesNotThrow(() => needsStorageFeed(roomName));
+  assert.equal(needsStorageFeed(roomName), false, "ohne Sicht auf den Raum");
+});
+
+// --- Storage-Link als Sender --------------------------------------------------
+
+test("der Storage-Link sendet an den Controller-Link, wenn kein Quell-Link liefert", async () => {
+  const { LinkNetwork, SEND_MIN } = await loadLinks();
+  const roomName = "E58N6";
+
+  registerRoom(roomName);
+  setRoomKnown(roomName);
+  const emptySender = stubLink("sender", SEND_MIN - 1, 0);
+  const controllerLink = stubLink("controller-link", 0, LINK_CAPACITY);
+  const spawnLink = stubLink("spawn-link", 500, 0);
+  setLinks(roomName, { controller: controllerLink.id, spawn: spawnLink.id, sender: [emptySender.id] });
+  anyGlobal.Game.rooms[roomName] = stubRoom(roomName, {
+    controllerLevel: 7,
+    storage: stubStorage({ energy: 300000 }),
+  });
+
+  new LinkNetwork(roomName).send();
+
+  assert.equal(transferCalls.length, 1);
+  assert.equal(transferCalls[0]!.senderId, "spawn-link");
+  assert.equal(transferCalls[0]!.receiverId, "controller-link");
+  assert.equal(transferCalls[0]!.amount, 500, "min(Ladung des Storage-Links, freier Platz am Controller)");
+});
+
+test("solange nachgeschoben wird, ist der Storage-Link kein Empfänger", async () => {
+  const { LinkNetwork } = await loadLinks();
+  const roomName = "E58N6";
+
+  registerRoom(roomName);
+  setRoomKnown(roomName);
+  // Ein Quell-Link mit Ladung würde den Rückfall ausschließen — deshalb hier der
+  // Vollpumpmodus, in dem beides zugleich gilt.
+  const readySender = stubLink("sender", 500, 0);
+  const controllerLink = stubLink("controller-link", 0, LINK_CAPACITY);
+  const spawnLink = stubLink("spawn-link", 500, LINK_CAPACITY);
+  setLinks(roomName, { controller: controllerLink.id, spawn: spawnLink.id, sender: [readySender.id] });
+  anyGlobal.Game.rooms[roomName] = stubRoom(roomName, {
+    controllerLevel: 8,
+    storage: stubStorage({ energy: 400000, used: 950000 }),
+  });
+
+  new LinkNetwork(roomName).send();
+
+  assert.equal(
+    transferCalls.every(call => call.receiverId !== "spawn-link"),
+    true,
+    "ein überlaufender Storage soll nicht noch weiter befüllt werden — auch nicht auf RCL8, wo er sonst Vorrang hätte",
+  );
+});
+
+test("im Vollpumpmodus bedient zuerst der Quell-Link den Controller, der Storage-Link steht hinten", async () => {
+  const { LinkNetwork } = await loadLinks();
+  const roomName = "E58N6";
+
+  registerRoom(roomName);
+  setRoomKnown(roomName);
+  const readySender = stubLink("sender", 500, 0);
+  const controllerLink = stubLink("controller-link", 0, LINK_CAPACITY);
+  const spawnLink = stubLink("spawn-link", 500, LINK_CAPACITY);
+  setLinks(roomName, { controller: controllerLink.id, spawn: spawnLink.id, sender: [readySender.id] });
+  anyGlobal.Game.rooms[roomName] = stubRoom(roomName, {
+    controllerLevel: 7,
+    storage: stubStorage({ energy: 400000, used: 950000 }),
+  });
+
+  new LinkNetwork(roomName).send();
+
+  assert.equal(transferCalls.length, 1, "es gibt nur einen Empfänger, also kommt nur ein Sender zum Zug");
+  assert.equal(
+    transferCalls[0]!.senderId,
+    "sender",
+    "geschenkte Quellenergie vor einer Abbuchung aus dem Vorrat",
+  );
+});
+
+test("Storage-Link mit Cooldown oder zu wenig Ladung: kein Nachschub, kein Wurf", async () => {
+  const { LinkNetwork, SEND_MIN } = await loadLinks();
+  const roomName = "E58N6";
+
+  function runWithSpawnLink(energy: number, cooldown: number): number {
+    installLinkWorld();
+    registerRoom(roomName);
+    setRoomKnown(roomName);
+    const weakSender = stubLink("sender", 0, 0);
+    const controllerLink = stubLink("controller-link", 0, LINK_CAPACITY);
+    const spawnLink = stubLink("spawn-link", energy, 0, cooldown);
+    setLinks(roomName, { controller: controllerLink.id, spawn: spawnLink.id, sender: [weakSender.id] });
+    anyGlobal.Game.rooms[roomName] = stubRoom(roomName, {
+      controllerLevel: 7,
+      storage: stubStorage({ energy: 300000 }),
+    });
+
+    new LinkNetwork(roomName).send();
+    return transferCalls.length;
+  }
+
+  assert.equal(runWithSpawnLink(500, 5), 0, "der Storage-Link hat Cooldown");
+  assert.equal(runWithSpawnLink(SEND_MIN - 1, 0), 0, "der Storage-Link hat zu wenig Ladung");
+  assert.equal(runWithSpawnLink(SEND_MIN, 0), 1, "genau SEND_MIN genügt");
+});
+
+test("ohne Bedarf bleibt alles wie bisher: der Storage-Link ist Empfänger", async () => {
+  const { LinkNetwork } = await loadLinks();
+  const roomName = "E58N6";
+
+  registerRoom(roomName);
+  setRoomKnown(roomName);
+  const senderA = stubLink("sender-a", 500, 0);
+  const senderB = stubLink("sender-b", 500, 0);
+  const controllerLink = stubLink("controller-link", 500, LINK_CAPACITY);
+  const spawnLink = stubLink("spawn-link", 0, LINK_CAPACITY);
+  setLinks(roomName, { controller: controllerLink.id, spawn: spawnLink.id, sender: [senderA.id, senderB.id] });
+  anyGlobal.Game.rooms[roomName] = stubRoom(roomName, {
+    controllerLevel: 7,
+    storage: stubStorage({ energy: 300000 }),
+  });
+
+  new LinkNetwork(roomName).send();
+
+  assert.deepEqual(
+    transferCalls.map(call => call.receiverId).sort(),
+    ["controller-link", "spawn-link"],
+    "beide Empfänger werden bedient wie vor der Änderung",
+  );
+});
+
+test("voller Controller-Link: kein Nachschub, und die Quell-Links behalten ihr Ausweichziel", async () => {
+  const { LinkNetwork, needsStorageFeed, SEND_MIN } = await loadLinks();
+  const roomName = "E58N6";
+
+  registerRoom(roomName);
+  setRoomKnown(roomName);
+  const sender = stubLink("sender", 500, 0);
+  // Weniger als SEND_MIN frei: der Controller-Link kann nichts mehr annehmen.
+  const fullControllerLink = stubLink("controller-link", LINK_CAPACITY, SEND_MIN - 1);
+  const spawnLink = stubLink("spawn-link", 500, LINK_CAPACITY);
+  setLinks(roomName, { controller: fullControllerLink.id, spawn: spawnLink.id, sender: [sender.id] });
+  anyGlobal.Game.rooms[roomName] = stubRoom(roomName, {
+    controllerLevel: 8,
+    storage: stubStorage({ energy: 400000, used: 950000 }),
+  });
+
+  assert.equal(needsStorageFeed(roomName), false, "ein voller Controller-Link nimmt nichts mehr an");
+
+  new LinkNetwork(roomName).send();
+
+  assert.equal(transferCalls.length, 1, "der Quell-Link kommt trotzdem zum Zug");
+  assert.equal(
+    transferCalls[0]!.receiverId,
+    "spawn-link",
+    "der Storage-Link ist wieder Empfänger — sonst stünde das ganze Linknetz still",
+  );
+});
+
+test("der Rückfall bleibt vom neuen Guard unberührt", async () => {
+  const { needsStorageFeed, SEND_MIN } = await loadLinks();
+
+  setupFeedWorld({
+    controllerLinkEnergy: SEND_MIN - 1,
+    senderEnergy: SEND_MIN - 1,
+    storageEnergy: 300000,
+  });
+
+  assert.equal(needsStorageFeed("E58N6"), true, "unter SEND_MIN im Link ist reichlich frei");
 });

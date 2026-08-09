@@ -1,4 +1,4 @@
-// Build: 2026-08-08 16:14:13 +02:00
+// Build: 2026-08-08 19:14:16 +02:00
 "use strict";
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
@@ -1688,26 +1688,8 @@ function planReceiverLinks(onlyRoom) {
   }
 }
 
-// src/controller/storage-pressure.ts
-var STORAGE_FULL_RATIO = 0.9;
-var STORAGE_FULL_MIN_ENERGY = 1e5;
-function storageIsFull(roomName) {
-  var _a, _b, _c;
-  const storage = (_a = Game.rooms[roomName]) == null ? void 0 : _a.storage;
-  if (!storage) {
-    return false;
-  }
-  const capacity = (_b = storage.store.getCapacity()) != null ? _b : 0;
-  if (capacity <= 0) {
-    return false;
-  }
-  const used = (_c = storage.store.getUsedCapacity()) != null ? _c : 0;
-  return used / capacity > STORAGE_FULL_RATIO && storage.store[RESOURCE_ENERGY] > STORAGE_FULL_MIN_ENERGY;
-}
-
 // src/controller/links.ts
 var SEND_MIN = LINK_CAPACITY / 4;
-var STORAGE_FEED_RESERVE = 2e4;
 var LinkNetwork = class {
   constructor(roomName) {
     this.roomName = roomName;
@@ -1728,14 +1710,10 @@ var LinkNetwork = class {
       return;
     }
     const senders = this.readySenders();
-    const feed = this.feedSender();
-    if (feed) {
-      senders.push(feed);
-    }
     if (senders.length === 0) {
       return;
     }
-    const receivers = this.receiversByPriority(room, feed !== null);
+    const receivers = this.receiversByPriority(room);
     for (const sender of senders) {
       const receiver = receivers.shift();
       if (!receiver) {
@@ -1753,24 +1731,6 @@ var LinkNetwork = class {
     return this.list.senders().filter((link) => link.cooldown === 0 && link.store[RESOURCE_ENERGY] >= SEND_MIN);
   }
   /**
-   * Der Storage-Link als Sender, wenn der Raum nachschieben muss — sonst `null`.
-   *
-   * Cooldown und Mindestladung werden hier geprüft und nicht in
-   * `needsStorageFeed`: die Frage "muss nachgeschoben werden" beantwortet auch
-   * der Linkkeeper, und für ihn ist der Cooldown des Links belanglos — er füllt
-   * ihn ja gerade erst.
-   */
-  feedSender() {
-    const link = this.list.spawnLink;
-    if (!link || link.cooldown !== 0 || link.store[RESOURCE_ENERGY] < SEND_MIN) {
-      return null;
-    }
-    if (!needsStorageFeed(this.roomName)) {
-      return null;
-    }
-    return link;
-  }
-  /**
    * Empfänger nach Vorrang, gefiltert auf ausreichend freien Platz.
    *
    * Der Vorrang kippt bei RCL8: darunter bekommt der Controller-Link zuerst
@@ -1778,24 +1738,11 @@ var LinkNetwork = class {
    * (dort zahlt Upgraden nur noch auf GCL ein). Empfänger dürfen dabei
    * teilweise befüllt werden — wer nur ganze Ladungen annimmt, bekäme als
    * halb gefüllter Empfänger nie etwas ab.
-   *
-   * `storageFeeds` überstimmt beides: sendet der Storage-Link gerade selbst,
-   * fällt er aus der Liste. Sonst könnte `receivers.shift()` ihm sich selbst
-   * zuteilen — und der Nebeneffekt ist erwünscht, weil die Quell-Ladungen dann
-   * direkt an den Controller gehen statt über einen zweiten Sprung mit weiteren
-   * drei Prozent Verlust.
    */
-  receiversByPriority(room, storageFeeds) {
+  receiversByPriority(room) {
     var _a, _b;
     const controllerFirst = ((_b = (_a = room.controller) == null ? void 0 : _a.level) != null ? _b : 0) < 8;
-    let ordered;
-    if (storageFeeds) {
-      ordered = [this.list.controllerLink];
-    } else if (controllerFirst) {
-      ordered = [this.list.controllerLink, this.list.spawnLink];
-    } else {
-      ordered = [this.list.spawnLink, this.list.controllerLink];
-    }
+    const ordered = controllerFirst ? [this.list.controllerLink, this.list.spawnLink] : [this.list.spawnLink, this.list.controllerLink];
     return ordered.filter(
       (link) => {
         var _a2;
@@ -1804,34 +1751,6 @@ var LinkNetwork = class {
     );
   }
 };
-function needsStorageFeed(roomName) {
-  var _a, _b;
-  if (!usesLinks(roomName)) {
-    return false;
-  }
-  const storage = (_a = Game.rooms[roomName]) == null ? void 0 : _a.storage;
-  if (!storage) {
-    return false;
-  }
-  const list = new LinkList(roomName);
-  const controllerLink = list.controllerLink;
-  if (!controllerLink || !list.spawnLink) {
-    return false;
-  }
-  if (((_b = controllerLink.store.getFreeCapacity(RESOURCE_ENERGY)) != null ? _b : 0) < SEND_MIN) {
-    return false;
-  }
-  if (storageIsFull(roomName)) {
-    return true;
-  }
-  if (controllerLink.store[RESOURCE_ENERGY] >= SEND_MIN) {
-    return false;
-  }
-  if (list.senders().some((link) => link.store[RESOURCE_ENERGY] >= SEND_MIN)) {
-    return false;
-  }
-  return storage.store[RESOURCE_ENERGY] > STORAGE_FEED_RESERVE;
-}
 function sendAll() {
   for (const roomName in bot.room) {
     new LinkNetwork(roomName).send();
@@ -2504,6 +2423,7 @@ function harvestControllerLink(creep, type) {
   if (link && link.store[type] > 100) {
     return withdrawFrom(creep, link, type);
   }
+  creep.memory.noLink = true;
   return false;
 }
 function harvestMyContainer(creep, type) {
@@ -3153,13 +3073,9 @@ function installTerminalMarket() {
 var role3 = "collector";
 var TERMINAL_ENERGY_TARGET = 2e4;
 var TERMINAL_FREE_MIN = 5e4;
-var STORAGE_ENERGY_RESERVE = 5e4;
 var Collector = class {
   /** Sammelt oder liefert ab, je nach `memory.harvest`. */
   doJob(creep) {
-    const controller = creep.room.controller;
-    if (!controller || controller.level < 6) return;
-    if (!creep.room.terminal) return;
     creep.checkHarvest();
     if (creep.memory.harvest) {
       this._collect(creep);
@@ -3177,14 +3093,10 @@ var Collector = class {
     if (harvestCompleteRoomTombstones(creep)) return;
     if (harvestRoomDrops(creep, RESOURCE_ENERGY)) return;
     if (harvestRoomRuins(creep, RESOURCE_ENERGY)) return;
-    if (this._terminalHasRoom(creep)) {
-      if (this._collectMineralContainer(creep)) return;
-      if (this._collectSellable(creep)) return;
-      if (this._collectTerminalEnergy(creep)) return;
-    }
-    if (creep.store.getUsedCapacity() > 0) {
-      creep.memory.harvest = false;
-    }
+    if (!this._terminalHasRoom(creep)) return;
+    if (this._collectMineralContainer(creep)) return;
+    if (this._collectSellable(creep)) return;
+    this._collectTerminalEnergy(creep);
   }
   /**
    * Hat das Terminal überhaupt noch Platz?
@@ -3202,9 +3114,8 @@ var Collector = class {
    *
    * Den holt seit Plan 10 sonst niemand ab: `Hauler.spawn` läuft über
    * `energySources` und `Hauler.doJob` holt ausschließlich Energie. Die Id
-   * landet in `memory.container`, denn genau dort liest `harvestMyContainer`
-   * sie. Zeigt eine gemerkte Id ins Leere, wird der Schlüssel geräumt und die
-   * Auflösung beginnt im nächsten Tick von vorn.
+   * landet in `memory.container`, damit `harvestMyContainer` sie benutzen kann
+   * — eine eigene Suche braucht es dafür nicht.
    */
   _collectMineralContainer(creep) {
     const containerId = this._mineralContainerId(creep);
@@ -3219,22 +3130,8 @@ var Collector = class {
     if (!mineral) return false;
     return harvestMyContainer(creep, mineral);
   }
-  /**
-   * Die Id des Containers am Mineralvorkommen, in drei Stufen: die Config,
-   * dann die gemerkte Id, zuletzt eine Suche neben den Vorkommen.
-   *
-   * Die Config zuerst, weil dieselbe Id dort schon als
-   * `bot.room[<raum>].mineralContainerId` steht und `creep/transport.ts` sie
-   * von dort liest — zwei unabhängige Herleitungen derselben Sache liefen
-   * auseinander. Die Suche ist nur noch der Rückfall für Räume, in denen der
-   * Schlüssel fehlt; sie kostet ein `findInRange` und lief vorher in **jedem**
-   * Tick.
-   */
+  /** Der Container neben dem Mineralvorkommen des Raums, oder `null`. */
   _mineralContainerId(creep) {
-    var _a;
-    const configured = (_a = bot.room[creep.memory.workroom]) == null ? void 0 : _a.mineralContainerId;
-    if (configured) return configured;
-    if (creep.memory.container) return creep.memory.container;
     for (const mineralId of mineralSources(creep.room.name)) {
       const mineral = Game.getObjectById(mineralId);
       if (!mineral) continue;
@@ -3260,24 +3157,11 @@ var Collector = class {
     if (!sellable) return false;
     return harvestRoomStorage(creep, sellable);
   }
-  /**
-   * Energie aus dem Storage, solange das Terminal unter der Zielgröße liegt
-   * **und** der Raum sie entbehren kann.
-   *
-   * Ein Umlauf trägt 500 Einheiten in rund zehn Ticks, das sind etwa 50
-   * Energie je Tick — mehr, als zwei Quellen liefern (20/Tick) —, und das über
-   * rund 400 Ticks, bis das Terminal voll ist. Zwei Vorbehalte halten das vom
-   * laufenden Betrieb fern: hängt der Raum am Prioritätsspawn, bekommt der
-   * Spawn die Energie, nicht der Markt; und unterhalb von
-   * `STORAGE_ENERGY_RESERVE` wird das Storage gar nicht erst angezapft.
-   */
+  /** Energie aus dem Storage, solange das Terminal unter der Zielgröße liegt. */
   _collectTerminalEnergy(creep) {
     const terminal = creep.room.terminal;
     if (!terminal) return false;
-    if (Memory.rooms[creep.memory.workroom].aktivPrioSpawn) return false;
-    const storage = creep.room.storage;
-    if (!storage) return false;
-    if (storage.store[RESOURCE_ENERGY] > STORAGE_ENERGY_RESERVE && terminal.store.getUsedCapacity(RESOURCE_ENERGY) < TERMINAL_ENERGY_TARGET) {
+    if (terminal.store.getUsedCapacity(RESOURCE_ENERGY) < TERMINAL_ENERGY_TARGET) {
       return harvestRoomStorage(creep, RESOURCE_ENERGY);
     }
     return false;
@@ -3907,11 +3791,6 @@ var LinkKeeper = class {
     if (!link) return;
     const carrying = creep.store.getUsedCapacity(RESOURCE_ENERGY);
     const inLink = link.store.getUsedCapacity(RESOURCE_ENERGY);
-    if (needsStorageFeed(creep.memory.workroom)) {
-      if (carrying > 0) creep.transfer(link, RESOURCE_ENERGY);
-      else creep.withdraw(storage, RESOURCE_ENERGY);
-      return;
-    }
     if (carrying === 0 && inLink === 0) return;
     if (carrying > 0) creep.transfer(storage, RESOURCE_ENERGY);
     if (inLink > 0) creep.withdraw(link, RESOURCE_ENERGY);
@@ -4495,8 +4374,7 @@ var Upgrader = class {
     if (!this._mayWork(creep)) return;
     creep.checkHarvest();
     if (creep.memory.harvest) {
-      const controllerLink = new LinkList(creep.memory.workroom).controllerLink;
-      if (controllerLink && controllerLink.store[RESOURCE_ENERGY] > 100 && (creep.room.controller.my && creep.room.controller.level >= 5)) {
+      if (!creep.memory.noLink && new LinkList(creep.memory.workroom).controllerLink && (creep.room.controller.my && creep.room.controller.level >= 5)) {
         if (harvestControllerLink(creep, RESOURCE_ENERGY)) return;
       } else {
         if (harvestRoomStorage(creep, RESOURCE_ENERGY))
@@ -4558,36 +4436,20 @@ var Upgrader = class {
     const profil = Game.rooms[workroom].controller.level > 7 ? BODIES.upgraderRcl8 : BODIES.upgrader;
     return profil.build(spawn3.room.energyCapacityAvailable);
   }
-  /**
-   * Spawnt einen Upgrader für `workroom`, falls die konfigurierte Anzahl noch
-   * nicht erreicht ist.
-   *
-   * Ausnahme: läuft der Storage über (`storageIsFull`), steht **mindestens
-   * einer** da — auch bei `upgrader: 0` in der Config und auch dann, wenn das
-   * RCL8-Gate ihn sonst verhinderte. Der Fall ist nicht theoretisch: bei 95
-   * Prozent Belegung mit viel Mineral und 150 000 Energie greift das Gate
-   * `storage < 250000` heute genau dann, wenn man den Upgrader braucht.
-   *
-   * Bewusst `Math.max(1, …)` und keine höhere Zahl: ab RCL8 nimmt der
-   * Controller nur noch `CONTROLLER_MAX_UPGRADE_PER_TICK` (15) Energie je Tick
-   * an — für den ganzen Raum. `BODIES.upgraderRcl8` schöpft das mit 15 WORK
-   * allein aus, ein zweiter Upgrader brächte dort nichts.
-   */
+  /** Spawnt einen Upgrader für `workroom`, falls die konfigurierte Anzahl noch nicht erreicht ist. */
   spawn(spawn3, workroom) {
-    const forced = storageIsFull(workroom);
     var uppis = bot.room[workroom].upgrader;
-    if (!forced && (!uppis || uppis < 1))
+    if (!uppis || uppis < 1)
       return false;
     if (spawn3.room.name != workroom)
       return false;
-    if (!forced && spawn3.room.controller.level > 7 && spawn3.room.controller.ticksToDowngrade > 1e5 && spawn3.room.storage && spawn3.room.storage.store.getUsedCapacity(RESOURCE_ENERGY) < 25e4)
+    if (spawn3.room.controller.level > 7 && spawn3.room.controller.ticksToDowngrade > 1e5 && spawn3.room.storage && spawn3.room.storage.store.getUsedCapacity(RESOURCE_ENERGY) < 25e4)
       return false;
     var count = _.filter(
       Game.creeps,
       (creep) => creep.memory.role == role13 && creep.memory.workroom == workroom && (creep.ticksToLive > 160 || creep.spawning)
     ).length;
-    const target = forced ? Math.max(1, uppis != null ? uppis : 0) : uppis;
-    if (target <= count)
+    if (uppis <= count)
       return false;
     var profil = this.bodyFor(spawn3, workroom);
     return spawn(spawn3, profil, role13 + "_" + Game.time, { role: role13, workroom, home: spawn3.room.name, repairs: 0, noLink: false });

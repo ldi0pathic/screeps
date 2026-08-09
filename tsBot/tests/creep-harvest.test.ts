@@ -195,7 +195,7 @@ test("Storage: eine Ressource, die gar nicht drin liegt, wird nicht geholt", asy
   assert.equal(creep.memory.fromId, undefined);
 });
 
-test("Controller-Link: alle Bedingungen, sonst wird noLink gesetzt", async () => {
+test("Controller-Link: alle Bedingungen, sonst wird nichts geholt", async () => {
   const { harvestControllerLink } = await base();
 
   const link = stubStructure("clink", "link", 20, 20, "E58N6", stubStore(800, { energy: 500 }));
@@ -208,7 +208,9 @@ test("Controller-Link: alle Bedingungen, sonst wird noLink gesetzt", async () =>
   assert.equal(harvestControllerLink(creep, RESOURCE_ENERGY), true);
   assert.equal(creep.memory.fromId, "clink");
 
-  // Leerer Link: der Creep merkt sich, dass es über den Link nicht geht.
+  // Leerer Link: diesmal nichts geholt — ohne bleibende Notiz im Memory. Die
+  // frühere `noLink`-Flagge wurde nie zurückgesetzt und sperrte den Link für
+  // den Rest des Creeplebens; entschieden wird jetzt in jedem Tick neu.
   installCreepWorld();
   const emptyLink = stubStructure("clink", "link", 20, 20, "E58N6", stubStore(800, { energy: 50 }));
   roomMemory("E58N6", { links: { controller: emptyLink.id, sender: [] } });
@@ -217,7 +219,8 @@ test("Controller-Link: alle Bedingungen, sonst wird noLink gesetzt", async () =>
     room: stubRoom("E58N6", { controller: { my: true, level: 6 } }),
   });
   assert.equal(harvestControllerLink(waiting, RESOURCE_ENERGY), false);
-  assert.equal(waiting.memory.noLink, true);
+  assert.equal(actionCalls.length, 0, "am leeren Link wird nichts versucht");
+  assert.equal(waiting.memory.noLink, undefined, "keine Flagge, die den Link dauerhaft sperrt");
 
   // Unter RCL5 gar nicht erst.
   installCreepWorld();
@@ -227,7 +230,7 @@ test("Controller-Link: alle Bedingungen, sonst wird noLink gesetzt", async () =>
     room: stubRoom("E58N6", { controller: { my: true, level: 4 } }),
   });
   assert.equal(harvestControllerLink(early, RESOURCE_ENERGY), false);
-  assert.equal(early.memory.noLink, undefined, "keine Aussage über den Link");
+  assert.equal(actionCalls.length, 0);
 });
 
 test("Notfall: der Speicher mit der meisten Energie zuerst", async () => {

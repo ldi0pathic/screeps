@@ -1123,3 +1123,42 @@ der Aufruf nur einen Zugriff auf `Game.flags` und einen Farbvergleich — kein
 Flankensteuerung ab.
 
 **Commit:** `741b41a`.
+
+## Runde 2026-08-08: Neue Rolle `collector` schließt die Terminal-Lücke (Plan 10, Nachtrag)
+
+Anlass ist eine Regression, kein neuer Wunsch. Seit Plan 10 ersetzen `filler`
+und `hauler` den Heimatraum-Debitor: das Storage-Tor in `Debitor.spawn`
+(`spawn.room.name == workroom && spawn.room.storage`) steigt in Räumen mit
+Storage aus. Damit wurde der Mineralzweig in `Debitor.doJob` — der Block, der
+bei vorhandenem Storage und freiem Terminal Nichtenergie umlagert — dort nie
+mehr ausgeführt: die **einzige** Stelle im Bot, die Mineralien aus dem
+Storage ins Terminal bringt. Kein Fehler, keine Meldung: es passierte
+schlicht nichts. Mitbetroffen waren Tombstones, Drops und Ruinen im
+Heimatraum sowie die Energieversorgung des Terminals, ohne die
+`TerminalMarket.sell` unter 1000 Energie gar nicht erst anläuft.
+
+| Was | Warum | Wirkung |
+| --- | --- | --- |
+| Neue Rolle `collector` (`src/roles/collector.ts`), einer je Raum mit Storage **und** Terminal. Sammelt in sechs Stufen nach Verfallsgeschwindigkeit: Tombstones → Drops → Ruinen → Prüfung auf freien Platz im Terminal → Container am Extractor → erste verkaufbare Ressource aus dem Storage → Energie fürs Terminal. | Vier Aufgaben in einer Rolle, weil es hier **ein** Zweck in **einem** Creep je Raum ist — anders als beim Debitor, den Plan 10 wegen seiner Kaskade aus verschiedenen Zwecken in vielen Creeps zerlegt hat. Die drei verfallenden Quellen stehen bewusst vor der Platzprüfung, sonst wären sie bei vollem Terminal verloren. | Mineralien fließen wieder ab, Gefallenes wird eingesammelt, der Markt kann handeln. |
+| `TERMINAL_ENERGY_TARGET` (20 000) und `TERMINAL_FREE_MIN` (50 000). | Ersteres steuert nur das Holen — abgeliefert wird über `TransportToHomeTerminal`, das seine eigene Grenze (100 000) mitbringt, zwei Regeln für dieselbe Frage wären eine zu viel. Letzteres ist der Überlaufschutz, dieselbe Zahl, die schon der alte Debitor benutzte. | Keine Neuerfindung von Schwellen. |
+| Spawnbedingung abgeleitet statt konfiguriert: eigener Raum, Storage und Terminal vorhanden, höchstens ein Collector. **Kein** neuer Config-Schlüssel. | Storage und Terminal sind Tatsachen über die Welt, keine Absicht — anders als `linkkeeper`, der noch `sendLinkkeeper` trägt. | Räume mit Storage und Terminal bekommen den Collector ohne Konfigurationsschritt. |
+| `roles/index.ts`: `collector` steht zwischen `defender` und `wally`. | Ein Raum unter Beschuss hat andere Sorgen als Aufräumen; Einsammeln bringt mehr als Mauerreparatur. | Verhaltensänderung an der Spawnreihenfolge. |
+| `NEVER_SELL` stand doppelt (`debitor.ts` und `prototypes/terminal-market.ts`), wird jetzt nur noch aus `terminal-market.ts` exportiert. | Kein doppelter Bestand derselben Liste. | Keine. |
+
+Die Abschlussreview derselben Runde brachte sechs Befunde, drei davon mit
+Verhalten:
+
+| Was | Warum | Wirkung |
+| --- | --- | --- |
+| Laufen alle sechs Sammelstufen leer, während der Creep etwas trägt, schaltet `_collect` selbst auf Abliefern um. | `checkHarvest` tut das hier nicht: seine Regel für Nichtenergie hängt an `memory.mineral`, und das steht bei dieser Rolle fest auf `energy`. Der Creep schaltete deshalb nur bei randvoller Ladung um. | Eine Restmenge bleibt nicht mehr bis zum Tod des Creeps liegen. Nebenbei wird der Rückgabewert von `_collectTerminalEnergy` jetzt ausgewertet, und die Platzprüfung ist ein Block statt eines frühen Ausstiegs — bei vollem Terminal soll ein beladener Creep ja gerade abliefern. |
+| Zwei Vorbehalte für die Energiestufe: kein Zugriff bei `aktivPrioSpawn`, und das Storage muss über `STORAGE_ENERGY_RESERVE` (50 000) liegen. | Ohne Vorbehalt zog die Stufe rund 50 Energie je Tick über etwa 400 Ticks aus dem Storage — mehr, als zwei Quellen liefern. Die Zahl ist dieselbe, mit der `roles/wally.ts` seinen Energiezugriff vorbehält. | In der Krise und bei knappem Storage bleibt die Energie im laufenden Betrieb. |
+| `doJob` steigt aus, wenn der Controller unter Stufe 6 liegt oder kein Terminal dasteht. | `TransportToHomeTerminal` weist unter RCL 6 alles ab; in einem heruntergestuften Raum mit noch stehendem Terminal lief die Ladung sonst endlos Storage → Creep → Storage. | Kein Leerlauf in heruntergestuften Räumen. |
+| Ohne Verhalten: die Id des Extractor-Containers kommt jetzt aus `bot.room[<raum>].mineralContainerId`, dann aus `memory.container`, erst danach aus einer Suche. | Dieselbe Id stand schon in der Config und wurde von `creep/transport.ts` von dort gelesen; die Rolle suchte sie in **jedem** Tick neu. Zwei Herleitungen derselben Sache laufen auseinander. | Eine Suche weniger je Tick. |
+
+**Wirkung noch nicht gemessen.** Zum Zeitpunkt der Änderung gab es keinen
+Spielzugriff. Nachzutragen nach dem nächsten Deploy.
+
+**Commits:** `baa9a9a`, `e4138f0`, `7298d5a`, `f5ccd11`, `1b81b3d`, `a24306d`,
+`668b9dc`, `7c14193`, `715989f`, `deffa01`, `42e9cf9`, `dfa4f4b`, `b7d6b56`,
+`a81763d`, `be2c6b3`, `6929cdd` sowie der Commit dieses Eintrags und der
+abschließende Build.

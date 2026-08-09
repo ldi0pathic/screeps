@@ -343,6 +343,12 @@ test("die Rümpfe sind dieselben wie vor dem Zusammenziehen", async () => {
         return [...Array<BodyPartConstant>(affordable).fill(CARRY), MOVE];
       },
     },
+    {
+      name: "collector",
+      from: 0,
+      body: energy =>
+        legacySetBody(energy, 100, 10, [CARRY, MOVE], [[CARRY, 1], [MOVE, 1]]),
+    },
   ];
 
   /**
@@ -412,4 +418,24 @@ test("über den ganzen Energiebereich: bezahlbar und höchstens 50 Teile", async
       );
     }
   }
+});
+
+test("collector: zehn Sätze CARRY+MOVE, Rückfall bei knapper Energie", async () => {
+  const { BODIES } = await load();
+
+  // 10 Sätze à (CARRY 50 + MOVE 50) = 1000 Energie.
+  const full = BODIES.collector.build(2300);
+  assert.equal(full.filter(part => part === CARRY).length, 10);
+  assert.equal(full.filter(part => part === MOVE).length, 10);
+
+  // Genau die Kosten eines Satzes: ein Satz passt.
+  const single = BODIES.collector.build(100);
+  assert.equal(single.filter(part => part === CARRY).length, 1);
+  assert.equal(single.filter(part => part === MOVE).length, 1);
+
+  // Unter einem Satz greift der Rückfall — nie ein leeres Array, sonst
+  // schlägt spawnCreep immer fehl.
+  const fallback = BODIES.collector.build(50);
+  assert.notEqual(fallback.length, 0, "ein leeres Body-Array laesst spawnCreep immer fehlschlagen");
+  assert.deepEqual(fallback, [CARRY, MOVE]);
 });

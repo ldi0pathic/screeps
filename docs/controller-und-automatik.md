@@ -69,6 +69,22 @@ Ob ein Raum überhaupt Links nutzt, beantwortet `usesLinks(raum)`: eigener Contr
 
 Gesendet wird jeden Tick statt getaktet, weil der *empfangende* Link keinen Cooldown hat: es gibt nichts, worauf man warten könnte, und jeder ausgelassene Tick wäre verlorener Durchsatz. Dieselbe Begründung trägt den Linkkeeper, der den Storage-Link jeden Tick prüft.
 
+Der Storage-Link ist dabei nicht mehr nur Empfänger: Braucht der Raum
+Nachschub (`needsStorageFeed(roomName)` in `controller/links.ts`), wird er
+selbst zum Sender — in zwei Fällen. **Rückfall:** der Controller-Link liegt
+unter `SEND_MIN` und kein Quell-Link hält eine Ladung ≥ `SEND_MIN`, sofern der
+Storage mehr als `STORAGE_FEED_RESERVE` (20 000) Energie hält. **Vollpumpen:**
+der Storage läuft über (`storageIsFull` in `controller/storage-pressure.ts`,
+über 90 Prozent Belegung bei mehr als 100 000 Energie) — unabhängig vom
+Zustand der Quell-Links. Der Storage-Link wird dabei **hinten** an die
+Senderliste gehängt, damit geschenkte Quellenergie vor einer Abbuchung aus dem
+Vorrat zum Zug kommt, und fällt für diesen Tick aus der **Empfängerliste** —
+das übersteuert bewusst den oben genannten RCL8-Vorrang „Storage-Link
+zuerst" und erspart der Quellenergie einen zweiten Sprung mit weiteren drei
+Prozent Übertragungsverlust. Denselben Bedarf fragt der Linkkeeper
+(`roles/linkkeeper.ts`), der im selben Tick vor dem Sendenetz handelt und den
+Link bei Bedarf aus dem Storage füllt, statt ihn zu leeren.
+
 ## Linkplaner (`controller/link-planner.ts`)
 
 Baut die beiden Empfängerlinks selbst, ein Aufruf je Tagesdurchlauf und höchstens **eine** Baustelle je Raum. Voraussetzungen: `usesLinks` (Sicht, eigener Controller, RCL ab 5), ein freier Linkplatz laut `CONTROLLER_STRUCTURES` (RCL5 zwei, RCL6 drei, RCL7 vier, RCL8 sechs) und weniger als zehn Baustellen im Raum. Eine laufende Baustelle zählt dabei wie ein fertiger Link.

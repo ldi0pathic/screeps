@@ -177,8 +177,8 @@ export function harvestControllerLink(creep: Creep, type: string): boolean {
         return withdrawFrom(creep, link, type);
     }
 
-    // Kein Link oder leer: der Creep hört auf, es über den Link zu versuchen.
-    creep.memory.noLink = true;
+    // Kein Link oder leer: hier gibt es diesmal nichts zu holen. Der Aufrufer
+    // nimmt seine Ersatzkette und fragt im nächsten Tick wieder.
     return false;
 }
 

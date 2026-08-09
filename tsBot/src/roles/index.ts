@@ -15,6 +15,7 @@
 
 import builder from "./builder";
 import claimer from "./claimer";
+import collector from "./collector";
 import debitor from "./debitor";
 import defender from "./defender";
 import extupgrader from "./extupgrader";
@@ -53,5 +54,9 @@ export const jobs: Record<string, CreepRole> = {
   upgrader,
   extupgrader,
   defender,
+  // Wirtschaft statt Durchsatz: der Collector räumt auf und beliefert das
+  // Terminal. Hinter der Verteidigung, weil ein Raum unter Beschuss andere
+  // Sorgen hat — vor `wally`, weil Einsammeln mehr bringt als Mauerreparatur.
+  collector,
   wally,
 };
