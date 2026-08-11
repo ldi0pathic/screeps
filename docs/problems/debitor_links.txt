@@ -1,0 +1,11 @@
+debitoren, die von extern kommen, ignorieren den link am eingang zu gehen direkt zum storage
+
+  >> mein raum hat nur einen eingang, also zwei links dort
+  >> creeps haben 1100 und 1200 energie geladen
+  >> storage liegt wesentlich weiter entfernt als Links
+  >> links waren bei beobachtung leer, der weg zum storgae führt direkt am link vorbei
+
+    >> vermutung, creep ignoriert link, da seine > 100 energie nicht rein passen?
+      > creep soll lonk voll machen und dann den anderen nehmen.
+      alternativ. creeps soll link voll amchen, kurz warten, und nach abesenden dern rest rein machen.
+      >> selbst 10 ticks warten wäre besser als zum storage zu laufen!   
