@@ -21,6 +21,7 @@
  * dagegen tun kann, ist Energie in den Controller abzubauen.
  */
 export const STORAGE_FULL_RATIO = 0.9;
+export const STORAGE_EMPTY_RATIO = 0.01;
 
 /**
  * Energieboden für den Überlauf.
@@ -35,6 +36,7 @@ export const STORAGE_FULL_RATIO = 0.9;
  * zufällig gleich sind.
  */
 export const STORAGE_FULL_MIN_ENERGY = 100000;
+export const STORAGE_EMPTY_MIN_ENERGY = 10000;
 
 /**
  * Läuft der Storage dieses Raums über?
@@ -59,4 +61,22 @@ export function storageIsFull(roomName: string): boolean {
   // Beide Vergleiche positiv formuliert (siehe CLAUDE.md): fehlt ein Wert, ist
   // der Vergleich falsch, und das ist hier die sichere Seite.
   return used / capacity > STORAGE_FULL_RATIO && storage.store[RESOURCE_ENERGY] > STORAGE_FULL_MIN_ENERGY;
+}
+
+export function storageIsEmpty(roomName: string): boolean {
+  const storage = Game.rooms[roomName]?.storage;
+  if (!storage) {
+    return false;
+  }
+
+  const capacity = storage.store.getCapacity() ?? 0;
+  if (capacity <= 0) {
+    return false;
+  }
+
+  const used = storage.store.getUsedCapacity() ?? 0;
+
+  // Beide Vergleiche positiv formuliert (siehe CLAUDE.md): fehlt ein Wert, ist
+  // der Vergleich falsch, und das ist hier die sichere Seite.
+  return used / capacity < STORAGE_EMPTY_RATIO && storage.store[RESOURCE_ENERGY] < STORAGE_EMPTY_MIN_ENERGY;
 }

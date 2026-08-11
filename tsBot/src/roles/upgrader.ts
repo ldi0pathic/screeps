@@ -10,7 +10,7 @@
 
 import { bot } from "../globals";
 import { LinkList } from "../controller/link-list";
-import { storageIsFull } from "../controller/storage-pressure";
+import {storageIsEmpty, storageIsFull} from "../controller/storage-pressure";
 import * as creepBase from "../creep/base";
 import { BODIES } from "../creep/bodies";
 import type { CreepRole } from "../roles";
@@ -145,9 +145,19 @@ export class Upgrader implements CreepRole {
         if(controller.ticksToDowngrade < DOWNGRADE_ALARM)
             return true;
 
+        const storage = creep.room.storage;
+
+        if(storage && storage.store[RESOURCE_ENERGY] > 900000){
+            return true;
+        }
+
+        if(controller.level == 8 && Game.time % 5 != 1){
+            return false;
+        }
+
         // Positiv formuliert: fehlt der Wert, ist der Vergleich falsch. Eine
         // Negierung verhielte sich hier anders (siehe CLAUDE.md).
-        const storage = creep.room.storage;
+
         return Boolean(storage && storage.store[RESOURCE_ENERGY] > RCL8_WORK_RESERVE);
     }
 
@@ -178,6 +188,10 @@ export class Upgrader implements CreepRole {
      */
     spawn(spawn: StructureSpawn, workroom: string): boolean
     {
+        if(storageIsEmpty(workroom)){
+            return false;
+        }
+
         const forced = storageIsFull(workroom);
 
         var uppis = bot.room[workroom]!.upgrader

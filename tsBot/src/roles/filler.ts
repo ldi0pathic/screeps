@@ -40,7 +40,9 @@ export class Filler implements CreepRole {
         }
 
         if (creepBase.TransportEnergyToHomeSpawn(creep)) return;
-        if (creepBase.TransportEnergyToHomeTower(creep)) return;
+        if (creepBase.TransportEnergyToHomeTower(creep)) return
+
+        if (creepBase.goToCreepFlag(creep)) return;
 
         // Ist nichts zu füllen, bleibt der Filler beladen stehen statt die
         // Ladung ins Storage zurückzugeben: er ist damit sofort bereit, wenn

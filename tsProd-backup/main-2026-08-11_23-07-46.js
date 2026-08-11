@@ -1,4 +1,4 @@
-// Build: 2026-08-11 23:15:08 +02:00
+// Build: 2026-08-11 23:07:46 +02:00
 "use strict";
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
@@ -2190,11 +2190,11 @@ function goToRoomFlag(creep) {
 }
 function goToCreepFlag(creep) {
   const flagName = creep.room.name + creep.memory.role;
+  creep.say(flagName);
   const flag = Game.flags[flagName];
-  if (flag) {
+  if (flag && !creep.pos.inRangeTo(flag.pos, 2)) {
     return moveByMemory(creep, flag.pos);
   }
-  creep.say(flagName);
   return false;
 }
 function goToWorkroom(creep) {
@@ -3280,7 +3280,6 @@ var Collector = class {
       return;
     }
     this._deliver(creep);
-    if (goToCreepFlag2(creep)) return;
   }
   /**
    * Sammeln, sortiert nach Verfallsgeschwindigkeit: was zuerst verschwindet,
@@ -3300,7 +3299,6 @@ var Collector = class {
     if (creep.store.getUsedCapacity() > 0) {
       creep.memory.harvest = false;
     }
-    if (goToCreepFlag2(creep)) return;
   }
   /**
    * Hat das Terminal überhaupt noch Platz?

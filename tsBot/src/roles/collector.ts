@@ -88,6 +88,9 @@ export class Collector implements CreepRole {
         }
 
         this._deliver(creep);
+
+        if (creepBase.goToCreepFlag(creep)) return;
+
     }
 
     /**
@@ -122,6 +125,9 @@ export class Collector implements CreepRole {
         if (creep.store.getUsedCapacity() > 0) {
             creep.memory.harvest = false;
         }
+
+        if (creepBase.goToCreepFlag(creep)) return;
+
     }
 
     /**

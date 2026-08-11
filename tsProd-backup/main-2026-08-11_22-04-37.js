@@ -1,4 +1,4 @@
-// Build: 2026-08-11 23:15:08 +02:00
+// Build: 2026-08-11 22:04:37 +02:00
 "use strict";
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
@@ -1739,9 +1739,7 @@ function planReceiverLinks(onlyRoom) {
 
 // src/controller/storage-pressure.ts
 var STORAGE_FULL_RATIO = 0.9;
-var STORAGE_EMPTY_RATIO = 0.01;
 var STORAGE_FULL_MIN_ENERGY = 1e5;
-var STORAGE_EMPTY_MIN_ENERGY = 1e4;
 function storageIsFull(roomName) {
   var _a, _b, _c;
   const storage = (_a = Game.rooms[roomName]) == null ? void 0 : _a.storage;
@@ -1754,19 +1752,6 @@ function storageIsFull(roomName) {
   }
   const used = (_c = storage.store.getUsedCapacity()) != null ? _c : 0;
   return used / capacity > STORAGE_FULL_RATIO && storage.store[RESOURCE_ENERGY] > STORAGE_FULL_MIN_ENERGY;
-}
-function storageIsEmpty(roomName) {
-  var _a, _b, _c;
-  const storage = (_a = Game.rooms[roomName]) == null ? void 0 : _a.storage;
-  if (!storage) {
-    return false;
-  }
-  const capacity = (_b = storage.store.getCapacity()) != null ? _b : 0;
-  if (capacity <= 0) {
-    return false;
-  }
-  const used = (_c = storage.store.getUsedCapacity()) != null ? _c : 0;
-  return used / capacity < STORAGE_EMPTY_RATIO && storage.store[RESOURCE_ENERGY] < STORAGE_EMPTY_MIN_ENERGY;
 }
 
 // src/controller/links.ts
@@ -2188,15 +2173,6 @@ function goToRoomFlag(creep) {
   }
   return false;
 }
-function goToCreepFlag(creep) {
-  const flagName = creep.room.name + creep.memory.role;
-  const flag = Game.flags[flagName];
-  if (flag) {
-    return moveByMemory(creep, flag.pos);
-  }
-  creep.say(flagName);
-  return false;
-}
 function goToWorkroom(creep) {
   if (creep.memory.workroom && creep.memory.workroom != creep.room.name) {
     var room = new RoomPosition(25, 25, creep.memory.workroom);
@@ -2399,9 +2375,6 @@ function TransportToHomeEntranceLink(creep) {
   let nearest;
   let nearestDistance = Infinity;
   for (const link of entranceLinks) {
-    if (link.store[RESOURCE_ENERGY] > 700) {
-      continue;
-    }
     const distance = link.pos.getRangeTo(creep.pos);
     if (distance <= 10 && distance < nearestDistance) {
       nearestDistance = distance;
@@ -2670,9 +2643,6 @@ function goToMyHome2(creep) {
 }
 function goToRoomFlag2(creep) {
   return goToRoomFlag(creep);
-}
-function goToCreepFlag2(creep) {
-  return goToCreepFlag(creep);
 }
 function goToWorkroom2(creep) {
   return goToWorkroom(creep);
@@ -3280,7 +3250,6 @@ var Collector = class {
       return;
     }
     this._deliver(creep);
-    if (goToCreepFlag2(creep)) return;
   }
   /**
    * Sammeln, sortiert nach Verfallsgeschwindigkeit: was zuerst verschwindet,
@@ -3300,7 +3269,6 @@ var Collector = class {
     if (creep.store.getUsedCapacity() > 0) {
       creep.memory.harvest = false;
     }
-    if (goToCreepFlag2(creep)) return;
   }
   /**
    * Hat das Terminal überhaupt noch Platz?
@@ -3895,7 +3863,6 @@ var Filler = class {
     }
     if (TransportEnergyToHomeSpawn2(creep)) return;
     if (TransportEnergyToHomeTower2(creep)) return;
-    if (goToCreepFlag2(creep)) return;
   }
   /** Spawnt Filler für `workroom`, solange dort ein Storage steht und Logistik gewünscht ist. */
   spawn(spawn3, workroom) {
@@ -4666,12 +4633,6 @@ var Upgrader = class {
     if (controller.ticksToDowngrade < DOWNGRADE_ALARM)
       return true;
     const storage = creep.room.storage;
-    if (storage && storage.store[RESOURCE_ENERGY] > 9e5) {
-      return true;
-    }
-    if (controller.level == 8 && Game.time % 5 != 1) {
-      return false;
-    }
     return Boolean(storage && storage.store[RESOURCE_ENERGY] > RCL8_WORK_RESERVE);
   }
   /**
@@ -4698,9 +4659,6 @@ var Upgrader = class {
    * allein aus, ein zweiter Upgrader brächte dort nichts.
    */
   spawn(spawn3, workroom) {
-    if (storageIsEmpty(workroom)) {
-      return false;
-    }
     const forced = storageIsFull(workroom);
     var uppis = bot.room[workroom].upgrader;
     if (!forced && (!uppis || uppis < 1))

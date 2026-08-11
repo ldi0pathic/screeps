@@ -21,6 +21,7 @@ import { bot } from "../globals";
 import { ContainerList } from "./containers";
 import { moveByMemory } from "./goto";
 import { RememberedTarget, deliverTo, transferTo } from "./target";
+import {EntranceLinks, linksDeliver} from "../controller/link-list";
 
 /**
  * Nächstes eigenes Bauwerk eines der Typen, das `accepts` erfüllt und **nicht**
@@ -119,6 +120,37 @@ export function TransportToHomeContainer(creep: Creep, type: string, mul?: numbe
     }
 
     remembered.forget();
+    return false;
+}
+
+export function TransportToHomeEntranceLink(creep: Creep): boolean {
+    if(creep.store[RESOURCE_ENERGY] == 0 || !creep.room.controller!.my || creep.room.controller!.level < 8)
+        return false;
+
+
+    const entranceLinks = EntranceLinks(creep.room.name);
+    if(entranceLinks.length == 0){
+
+        return false;
+    }
+
+    let nearest: StructureLink | undefined;
+    let nearestDistance = Infinity;
+
+    for (const link of entranceLinks){
+        if(link.store[RESOURCE_ENERGY] > 700){
+            continue;
+        }
+        const distance = link.pos.getRangeTo(creep.pos);
+        if (distance <= 10 && distance < nearestDistance) {
+            nearestDistance = distance;
+            nearest = link;
+        }
+    }
+
+    if(nearest){
+        return transferTo(creep, nearest, RESOURCE_ENERGY);
+    }
     return false;
 }
 

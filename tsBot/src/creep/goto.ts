@@ -78,6 +78,18 @@ export function goToRoomFlag(creep: Creep): boolean {
     return false;
 }
 
+export function goToCreepFlag(creep: Creep): boolean {
+        const flagName = creep.room.name + creep.memory.role;
+        const flag = Game.flags[flagName];
+        if (flag)
+        {
+            return moveByMemory(creep, flag.pos);
+        }
+        creep.say(flagName);
+    return false;
+}
+
+
 export function goToWorkroom(creep: Creep): boolean {
     if(creep.memory.workroom && creep.memory.workroom != creep.room.name)
     {

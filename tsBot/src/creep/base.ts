@@ -264,12 +264,15 @@ export function calcProfil(creepProfile: BodyPartConstant[]): number {
 
 export function goToMyHome(creep: Creep) { return creepBaseGoTo.goToMyHome(creep) }
 export function goToRoomFlag(creep: Creep) { return creepBaseGoTo.goToRoomFlag(creep) }
+export function goToCreepFlag(creep: Creep) { return creepBaseGoTo.goToCreepFlag(creep) }
 export function goToWorkroom(creep: Creep) { return creepBaseGoTo.goToWorkroom(creep) }
 export function moveByMemory(creep: Creep, target: RoomPosition, range?: number) { return creepBaseGoTo.moveByMemory(creep, target, range) }
 
 export function TransportEnergyToHomeSpawn(creep: Creep) { return creepBaseTransport.TransportEnergyToHomeSpawn(creep); }
 export function TransportEnergyToHomeTower(creep: Creep) { return creepBaseTransport.TransportEnergyToHomeTower(creep); }
 export function TransportToHomeTerminal(creep: Creep) { return creepBaseTransport.TransportToHomeTerminal(creep); }
+export function TransportToHomeEntranceLink(creep: Creep) { return creepBaseTransport.TransportToHomeEntranceLink(creep); }
+
 export function TransportToHomeStorage(creep: Creep) { return creepBaseTransport.TransportToHomeStorage(creep); }
 export function TransportToHomeContainer(creep: Creep, type: string, mul?: number) { return creepBaseTransport.TransportToHomeContainer(creep, type, mul); }
 export function TransportToHomeLab(creep: Creep, type: string) { return creepBaseTransport.TransportToHomeLab(creep, type); }

@@ -1,4 +1,4 @@
-// Build: 2026-08-11 23:15:08 +02:00
+// Build: 2026-08-11 22:40:20 +02:00
 "use strict";
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
@@ -2188,15 +2188,6 @@ function goToRoomFlag(creep) {
   }
   return false;
 }
-function goToCreepFlag(creep) {
-  const flagName = creep.room.name + creep.memory.role;
-  const flag = Game.flags[flagName];
-  if (flag) {
-    return moveByMemory(creep, flag.pos);
-  }
-  creep.say(flagName);
-  return false;
-}
 function goToWorkroom(creep) {
   if (creep.memory.workroom && creep.memory.workroom != creep.room.name) {
     var room = new RoomPosition(25, 25, creep.memory.workroom);
@@ -2394,14 +2385,14 @@ function TransportToHomeEntranceLink(creep) {
     return false;
   const entranceLinks = EntranceLinks(creep.room.name);
   if (entranceLinks.length == 0) {
+    creep.say("no");
     return false;
   }
   let nearest;
   let nearestDistance = Infinity;
-  for (const link of entranceLinks) {
-    if (link.store[RESOURCE_ENERGY] > 700) {
-      continue;
-    }
+  for (const link of entranceLinks.filter((structure) => {
+    return structure.store.getFreeCapacity() > 0;
+  })) {
     const distance = link.pos.getRangeTo(creep.pos);
     if (distance <= 10 && distance < nearestDistance) {
       nearestDistance = distance;
@@ -2670,9 +2661,6 @@ function goToMyHome2(creep) {
 }
 function goToRoomFlag2(creep) {
   return goToRoomFlag(creep);
-}
-function goToCreepFlag2(creep) {
-  return goToCreepFlag(creep);
 }
 function goToWorkroom2(creep) {
   return goToWorkroom(creep);
@@ -3280,7 +3268,6 @@ var Collector = class {
       return;
     }
     this._deliver(creep);
-    if (goToCreepFlag2(creep)) return;
   }
   /**
    * Sammeln, sortiert nach Verfallsgeschwindigkeit: was zuerst verschwindet,
@@ -3300,7 +3287,6 @@ var Collector = class {
     if (creep.store.getUsedCapacity() > 0) {
       creep.memory.harvest = false;
     }
-    if (goToCreepFlag2(creep)) return;
   }
   /**
    * Hat das Terminal überhaupt noch Platz?
@@ -3895,7 +3881,6 @@ var Filler = class {
     }
     if (TransportEnergyToHomeSpawn2(creep)) return;
     if (TransportEnergyToHomeTower2(creep)) return;
-    if (goToCreepFlag2(creep)) return;
   }
   /** Spawnt Filler für `workroom`, solange dort ein Storage steht und Logistik gewünscht ist. */
   spawn(spawn3, workroom) {

@@ -62,6 +62,11 @@ export class LinkNetwork {
 
     const senders = this.readySenders();
 
+    const sourceSenders = this.readySourceSenders();
+    if(sourceSenders.length > 0) {
+      senders.push(...sourceSenders);
+    }
+
     // Der Storage-Link wird im Bedarfsfall vom Empfänger zum Sender — und zwar
     // **hinten** angehängt, damit geschenkte Quellenergie vor einer Abbuchung
     // aus dem Vorrat zum Zug kommt.
@@ -103,7 +108,12 @@ export class LinkNetwork {
 
   /** Sendende Links mit abgelaufenem Cooldown und ausreichend Ladung. */
   private readySenders(): StructureLink[] {
-    return this.list.senders().filter(link => link.cooldown === 0 && link.store[RESOURCE_ENERGY] >= SEND_MIN);
+    return this.list.senders.filter(link => link.cooldown === 0 && link.store[RESOURCE_ENERGY] >= SEND_MIN);
+  }
+
+  /** Sendende SourceLinks mit abgelaufenem Cooldown und ausreichend Ladung. */
+  private readySourceSenders(): StructureLink[] {
+    return this.list.sourceLinks().filter(link => link.cooldown === 0 && link.store[RESOURCE_ENERGY] >= SEND_MIN);
   }
 
   /**
@@ -219,7 +229,11 @@ export function needsStorageFeed(roomName: string): boolean {
   // verschwindet von selbst. Zählte der Cooldown mit, feuerte der Rückfall in
   // jedem Cooldown-Tick, und der Storage bezahlte, was die Quellen ohnehin
   // liefern.
-  if (list.senders().some(link => link.store[RESOURCE_ENERGY] >= SEND_MIN)) {
+  if (list.senders.some(link => link.store[RESOURCE_ENERGY] >= SEND_MIN)) {
+    return false;
+  }
+
+  if (list.sourceLinks().some(link => link.store[RESOURCE_ENERGY] >= SEND_MIN)) {
     return false;
   }
 

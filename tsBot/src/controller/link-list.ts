@@ -47,6 +47,8 @@ export interface RoomLinks {
   spawn?: string;
   /** Alle übrigen Links des Raums — sie senden. */
   sender: string[];
+  /** Alle Source Links des Raums. */
+  source: string[];
 }
 
 /** Raum-Memory, soweit es hier interessiert. */
@@ -115,10 +117,18 @@ export class LinkList {
       remaining.delete(spawnId);
     }
 
+    const sourceIds = this.resolveSources(room,links, remaining);
+    if(sourceIds && sourceIds?.length > 0){
+      for (const sourceId of sourceIds) {
+        remaining.delete(sourceId)
+      }
+    }
+
     const previous = memory.links;
     memory.links = {
       controller: controllerId,
       spawn: spawnId,
+      source: sourceIds,
       sender: [...remaining],
     };
 
@@ -139,6 +149,8 @@ export class LinkList {
       previous !== undefined &&
       previous.controller === current.controller &&
       previous.spawn === current.spawn &&
+      previous.source.length === current.source.length &&
+      previous.source.every((id, index) => id === current.source[index]) &&
       previous.sender.length === current.sender.length &&
       previous.sender.every((id, index) => id === current.sender[index]);
 
@@ -149,6 +161,7 @@ export class LinkList {
     console.log(
       `[${roomName}] Links: Controller=${current.controller ?? "-"}` +
         ` Storage=${current.spawn ?? "-"}` +
+        ` Source=${current.source.length}`+
         ` Sender=${current.sender.length}`,
     );
   }
@@ -176,6 +189,25 @@ export class LinkList {
 
     const remainingLinks = links.filter(link => candidates.has(link.id));
     return this.nearestWithinRange(remainingLinks, storage.pos, 2)?.id;
+  }
+
+  private resolveSources(  room: Room,
+                          links: StructureLink[],
+                          candidates: Set<Id<StructureLink>>) : Id<StructureLink>[]  {
+    const sources = room.find(FIND_SOURCES);
+    if(!sources){
+      return [];
+    }
+
+    let sourceLinks: Id<StructureLink>[] = [];
+    const remainingLinks = links.filter(link => candidates.has(link.id));
+    for (const source of sources) {
+      let link = this.nearestWithinRange(remainingLinks, source.pos, 2);
+      if(link){
+        sourceLinks.join(link?.id)
+      }
+    }
+    return sourceLinks;
   }
 
   /** Der nächstgelegene Link zu `pos`, sofern innerhalb von `range`. */
@@ -235,9 +267,26 @@ export class LinkList {
   get spawnLink(): StructureLink | null {
     return this.resolve(this.roomMemory?.links?.spawn);
   }
+  /** Alle sendenden Links, aufgelöst. */
+  sourceLinks(): StructureLink[] {
+    const ids = this.roomMemory?.links?.source;
+    if (!ids) {
+      return [];
+    }
+
+    const result: StructureLink[] = [];
+    for (const id of ids) {
+      const link = this.resolve(id);
+      if (link) {
+        result.push(link);
+      }
+    }
+
+    return result;
+  }
 
   /** Alle sendenden Links, aufgelöst. */
-  senders(): StructureLink[] {
+  get senders(): StructureLink[] {
     const ids = this.roomMemory?.links?.sender;
     if (!ids) {
       return [];
@@ -268,4 +317,11 @@ export class LinkList {
  */
 export function linksDeliver(roomName: string): boolean {
   return usesLinks(roomName) && new LinkList(roomName).spawnLink !== null;
+}
+
+export function EntranceLinks(roomName: string) : StructureLink[] {
+  if(!linksDeliver(roomName)){
+    return [];
+  }
+  return new LinkList(roomName).senders;
 }

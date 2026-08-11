@@ -10,7 +10,7 @@
 
 import { bot } from "../globals";
 import { energySources } from "../controller/room-inventory";
-import { linksDeliver } from "../controller/link-list";
+import {linksDeliver, usesLinks} from "../controller/link-list";
 import * as creepBase from "../creep/base";
 import { BODIES } from "../creep/bodies";
 import { carryMove } from "../creep/body";
@@ -149,6 +149,8 @@ export class Debitor implements CreepRole {
 
         }
         else {
+
+            if (creepBase.TransportToHomeEntranceLink(creep)) return;
             if (creepBase.TransportToHomeTerminal(creep)) return;
             if (creepBase.TransportToHomeStorage(creep)) return;
             if (creepBase.TransportEnergyToHomeSpawn(creep)) return;
