@@ -279,13 +279,18 @@ export class DefenceController {
             return damageShareB - damageShareA;
           });
 
-          for (const t of this.resolveTowers(name)) {
-            // `[RESOURCE_ENERGY]` statt `RESOURCE_ENERGY` steht schon so in der
-            // Vorlage (prod/controller.defence.js) — unverändert übernommen,
-            // `as any` bedient hier nur die jetzt strengere Typisierung von
-            // `resolveTowers()`, ohne den Aufruf selbst zu ändern.
+          // Tower reparieren verschiedene Strukturen, damit nicht alle dieselbe heilen.
+          // Index modulo Anzahl sorgt für Verteilung auf alle verfügbaren Strukturen.
+          const structureCount = damagedStructures.length;
+          const towers = this.resolveTowers(name);
+          for (let i = 0; i < towers.length; i++) {
+            const t = towers[i];
+            if (!t) continue;
+            // Jeder Turm repariert eine andere Struktur (i % structureCount),
+            // damit die Reparaturlast verteilt wird.
+            const targetIndex = i % structureCount;
             if ((t.store as any).getUsedCapacity([RESOURCE_ENERGY]) * 0.5 > (t.store as any).getFreeCapacity([RESOURCE_ENERGY]))
-              t.repair(damagedStructures[0]!);
+              t.repair(damagedStructures[targetIndex]!);
           }
         }
       }

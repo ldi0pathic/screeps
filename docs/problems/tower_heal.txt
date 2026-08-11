@@ -1,5 +1,0 @@
-aktuell reparieren alle tower gleichzeitig die selbe straße.
-1) nur ein tower pro gebäude
-2) entsprechend 3 tower 3 verschiedene gebäude heilen
-oder
-2) nur der tower mit ammeisten  energie heilt bbbbbbbbbbbzw der der am nächsten ist, damit mehr ankommt?

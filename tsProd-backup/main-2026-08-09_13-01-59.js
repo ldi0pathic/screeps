@@ -1,4 +1,4 @@
-// Build: 2026-08-11 20:24:35 +02:00
+// Build: 2026-08-09 13:01:59 +02:00
 "use strict";
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
@@ -1259,14 +1259,9 @@ var DefenceController = class {
             const damageShareB = 1 - b.hits / b.hitsMax;
             return damageShareB - damageShareA;
           });
-          const structureCount = damagedStructures.length;
-          const towers = this.resolveTowers(name);
-          for (let i = 0; i < towers.length; i++) {
-            const t = towers[i];
-            if (!t) continue;
-            const targetIndex = i % structureCount;
+          for (const t of this.resolveTowers(name)) {
             if (t.store.getUsedCapacity([RESOURCE_ENERGY]) * 0.5 > t.store.getFreeCapacity([RESOURCE_ENERGY]))
-              t.repair(damagedStructures[targetIndex]);
+              t.repair(damagedStructures[0]);
           }
         }
       }
