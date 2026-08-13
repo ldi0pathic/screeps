@@ -207,12 +207,12 @@ bot.room = {
 
     //structures
     repairer: 0,
-    maxwallRepairer: 2,
-    maxbuilder: 2,
+    maxwallRepairer: 1,
+    maxbuilder: 1,
     prioBuildings: [],
 
     //controller
-    upgrader: 2,
+    upgrader: 1,
   },
   E59N7: {
     room: "E59N7",

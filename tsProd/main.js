@@ -1,4 +1,4 @@
-// Build: 2026-08-11 23:15:08 +02:00
+// Build: 2026-08-13 20:10:36 +02:00
 "use strict";
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
@@ -211,11 +211,11 @@ bot.room = {
     mineralContainerId: null,
     //structures
     repairer: 0,
-    maxwallRepairer: 2,
-    maxbuilder: 2,
+    maxwallRepairer: 1,
+    maxbuilder: 1,
     prioBuildings: [],
     //controller
-    upgrader: 2
+    upgrader: 1
   },
   E59N7: {
     room: "E59N7",

@@ -1,4 +1,4 @@
-// Build: 2026-08-11 20:24:35 +02:00
+// Build: 2026-08-11 23:15:08 +02:00
 "use strict";
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
@@ -1358,10 +1358,17 @@ var LinkList = class _LinkList {
     if (spawnId) {
       remaining.delete(spawnId);
     }
+    const sourceIds = this.resolveSources(room, links, remaining);
+    if (sourceIds && (sourceIds == null ? void 0 : sourceIds.length) > 0) {
+      for (const sourceId of sourceIds) {
+        remaining.delete(sourceId);
+      }
+    }
     const previous = memory.links;
     memory.links = {
       controller: controllerId,
       spawn: spawnId,
+      source: sourceIds,
       sender: [...remaining]
     };
     this.reportChange(room.name, previous, memory.links);
@@ -1377,12 +1384,12 @@ var LinkList = class _LinkList {
    */
   reportChange(roomName, previous, current) {
     var _a, _b;
-    const unchanged = previous !== void 0 && previous.controller === current.controller && previous.spawn === current.spawn && previous.sender.length === current.sender.length && previous.sender.every((id, index) => id === current.sender[index]);
+    const unchanged = previous !== void 0 && previous.controller === current.controller && previous.spawn === current.spawn && previous.source.length === current.source.length && previous.source.every((id, index) => id === current.source[index]) && previous.sender.length === current.sender.length && previous.sender.every((id, index) => id === current.sender[index]);
     if (unchanged) {
       return;
     }
     console.log(
-      `[${roomName}] Links: Controller=${(_a = current.controller) != null ? _a : "-"} Storage=${(_b = current.spawn) != null ? _b : "-"} Sender=${current.sender.length}`
+      `[${roomName}] Links: Controller=${(_a = current.controller) != null ? _a : "-"} Storage=${(_b = current.spawn) != null ? _b : "-"} Source=${current.source.length} Sender=${current.sender.length}`
     );
   }
   /** Der Empfänger am Controller: der nächste Link in Reichweite 3. */
@@ -1403,6 +1410,21 @@ var LinkList = class _LinkList {
     }
     const remainingLinks = links.filter((link) => candidates.has(link.id));
     return (_a = this.nearestWithinRange(remainingLinks, storage.pos, 2)) == null ? void 0 : _a.id;
+  }
+  resolveSources(room, links, candidates) {
+    const sources = room.find(FIND_SOURCES);
+    if (!sources) {
+      return [];
+    }
+    let sourceLinks = [];
+    const remainingLinks = links.filter((link) => candidates.has(link.id));
+    for (const source of sources) {
+      let link = this.nearestWithinRange(remainingLinks, source.pos, 2);
+      if (link) {
+        sourceLinks.join(link == null ? void 0 : link.id);
+      }
+    }
+    return sourceLinks;
   }
   /** Der nächstgelegene Link zu `pos`, sofern innerhalb von `range`. */
   nearestWithinRange(links, pos, range) {
@@ -1452,7 +1474,23 @@ var LinkList = class _LinkList {
     return this.resolve((_b = (_a = this.roomMemory) == null ? void 0 : _a.links) == null ? void 0 : _b.spawn);
   }
   /** Alle sendenden Links, aufgelöst. */
-  senders() {
+  sourceLinks() {
+    var _a, _b;
+    const ids = (_b = (_a = this.roomMemory) == null ? void 0 : _a.links) == null ? void 0 : _b.source;
+    if (!ids) {
+      return [];
+    }
+    const result = [];
+    for (const id of ids) {
+      const link = this.resolve(id);
+      if (link) {
+        result.push(link);
+      }
+    }
+    return result;
+  }
+  /** Alle sendenden Links, aufgelöst. */
+  get senders() {
     var _a, _b;
     const ids = (_b = (_a = this.roomMemory) == null ? void 0 : _a.links) == null ? void 0 : _b.sender;
     if (!ids) {
@@ -1470,6 +1508,12 @@ var LinkList = class _LinkList {
 };
 function linksDeliver(roomName) {
   return usesLinks(roomName) && new LinkList(roomName).spawnLink !== null;
+}
+function EntranceLinks(roomName) {
+  if (!linksDeliver(roomName)) {
+    return [];
+  }
+  return new LinkList(roomName).senders;
 }
 
 // src/controller/link-planner.ts
@@ -1695,7 +1739,9 @@ function planReceiverLinks(onlyRoom) {
 
 // src/controller/storage-pressure.ts
 var STORAGE_FULL_RATIO = 0.9;
+var STORAGE_EMPTY_RATIO = 0.01;
 var STORAGE_FULL_MIN_ENERGY = 1e5;
+var STORAGE_EMPTY_MIN_ENERGY = 1e4;
 function storageIsFull(roomName) {
   var _a, _b, _c;
   const storage = (_a = Game.rooms[roomName]) == null ? void 0 : _a.storage;
@@ -1708,6 +1754,19 @@ function storageIsFull(roomName) {
   }
   const used = (_c = storage.store.getUsedCapacity()) != null ? _c : 0;
   return used / capacity > STORAGE_FULL_RATIO && storage.store[RESOURCE_ENERGY] > STORAGE_FULL_MIN_ENERGY;
+}
+function storageIsEmpty(roomName) {
+  var _a, _b, _c;
+  const storage = (_a = Game.rooms[roomName]) == null ? void 0 : _a.storage;
+  if (!storage) {
+    return false;
+  }
+  const capacity = (_b = storage.store.getCapacity()) != null ? _b : 0;
+  if (capacity <= 0) {
+    return false;
+  }
+  const used = (_c = storage.store.getUsedCapacity()) != null ? _c : 0;
+  return used / capacity < STORAGE_EMPTY_RATIO && storage.store[RESOURCE_ENERGY] < STORAGE_EMPTY_MIN_ENERGY;
 }
 
 // src/controller/links.ts
@@ -1733,6 +1792,10 @@ var LinkNetwork = class {
       return;
     }
     const senders = this.readySenders();
+    const sourceSenders = this.readySourceSenders();
+    if (sourceSenders.length > 0) {
+      senders.push(...sourceSenders);
+    }
     const feed = this.feedSender();
     if (feed) {
       senders.push(feed);
@@ -1755,7 +1818,11 @@ var LinkNetwork = class {
   }
   /** Sendende Links mit abgelaufenem Cooldown und ausreichend Ladung. */
   readySenders() {
-    return this.list.senders().filter((link) => link.cooldown === 0 && link.store[RESOURCE_ENERGY] >= SEND_MIN);
+    return this.list.senders.filter((link) => link.cooldown === 0 && link.store[RESOURCE_ENERGY] >= SEND_MIN);
+  }
+  /** Sendende SourceLinks mit abgelaufenem Cooldown und ausreichend Ladung. */
+  readySourceSenders() {
+    return this.list.sourceLinks().filter((link) => link.cooldown === 0 && link.store[RESOURCE_ENERGY] >= SEND_MIN);
   }
   /**
    * Der Storage-Link als Sender, wenn der Raum nachschieben muss — sonst `null`.
@@ -1832,7 +1899,10 @@ function needsStorageFeed(roomName) {
   if (controllerLink.store[RESOURCE_ENERGY] >= SEND_MIN) {
     return false;
   }
-  if (list.senders().some((link) => link.store[RESOURCE_ENERGY] >= SEND_MIN)) {
+  if (list.senders.some((link) => link.store[RESOURCE_ENERGY] >= SEND_MIN)) {
+    return false;
+  }
+  if (list.sourceLinks().some((link) => link.store[RESOURCE_ENERGY] >= SEND_MIN)) {
     return false;
   }
   return storage.store[RESOURCE_ENERGY] > STORAGE_FEED_RESERVE;
@@ -2118,6 +2188,15 @@ function goToRoomFlag(creep) {
   }
   return false;
 }
+function goToCreepFlag(creep) {
+  const flagName = creep.room.name + creep.memory.role;
+  const flag = Game.flags[flagName];
+  if (flag) {
+    return moveByMemory(creep, flag.pos);
+  }
+  creep.say(flagName);
+  return false;
+}
 function goToWorkroom(creep) {
   if (creep.memory.workroom && creep.memory.workroom != creep.room.name) {
     var room = new RoomPosition(25, 25, creep.memory.workroom);
@@ -2308,6 +2387,30 @@ function TransportToHomeContainer(creep, type, mul) {
     }
   }
   remembered.forget();
+  return false;
+}
+function TransportToHomeEntranceLink(creep) {
+  if (creep.store[RESOURCE_ENERGY] == 0 || !creep.room.controller.my || creep.room.controller.level < 8)
+    return false;
+  const entranceLinks = EntranceLinks(creep.room.name);
+  if (entranceLinks.length == 0) {
+    return false;
+  }
+  let nearest;
+  let nearestDistance = Infinity;
+  for (const link of entranceLinks) {
+    if (link.store[RESOURCE_ENERGY] > 700) {
+      continue;
+    }
+    const distance = link.pos.getRangeTo(creep.pos);
+    if (distance <= 10 && distance < nearestDistance) {
+      nearestDistance = distance;
+      nearest = link;
+    }
+  }
+  if (nearest) {
+    return transferTo(creep, nearest, RESOURCE_ENERGY);
+  }
   return false;
 }
 function TransportToHomeTerminal(creep) {
@@ -2568,6 +2671,9 @@ function goToMyHome2(creep) {
 function goToRoomFlag2(creep) {
   return goToRoomFlag(creep);
 }
+function goToCreepFlag2(creep) {
+  return goToCreepFlag(creep);
+}
 function goToWorkroom2(creep) {
   return goToWorkroom(creep);
 }
@@ -2582,6 +2688,9 @@ function TransportEnergyToHomeTower2(creep) {
 }
 function TransportToHomeTerminal2(creep) {
   return TransportToHomeTerminal(creep);
+}
+function TransportToHomeEntranceLink2(creep) {
+  return TransportToHomeEntranceLink(creep);
 }
 function TransportToHomeStorage2(creep) {
   return TransportToHomeStorage(creep);
@@ -3171,6 +3280,7 @@ var Collector = class {
       return;
     }
     this._deliver(creep);
+    if (goToCreepFlag2(creep)) return;
   }
   /**
    * Sammeln, sortiert nach Verfallsgeschwindigkeit: was zuerst verschwindet,
@@ -3190,6 +3300,7 @@ var Collector = class {
     if (creep.store.getUsedCapacity() > 0) {
       creep.memory.harvest = false;
     }
+    if (goToCreepFlag2(creep)) return;
   }
   /**
    * Hat das Terminal überhaupt noch Platz?
@@ -3502,6 +3613,7 @@ var Debitor = class {
       if (TransportToHomeStorage2(creep)) return;
       if (TransportToHomeLab2(creep, RESOURCE_ENERGY)) return;
     } else {
+      if (TransportToHomeEntranceLink2(creep)) return;
       if (TransportToHomeTerminal2(creep)) return;
       if (TransportToHomeStorage2(creep)) return;
       if (TransportEnergyToHomeSpawn2(creep)) return;
@@ -3783,6 +3895,7 @@ var Filler = class {
     }
     if (TransportEnergyToHomeSpawn2(creep)) return;
     if (TransportEnergyToHomeTower2(creep)) return;
+    if (goToCreepFlag2(creep)) return;
   }
   /** Spawnt Filler für `workroom`, solange dort ein Storage steht und Logistik gewünscht ist. */
   spawn(spawn3, workroom) {
@@ -4553,6 +4666,12 @@ var Upgrader = class {
     if (controller.ticksToDowngrade < DOWNGRADE_ALARM)
       return true;
     const storage = creep.room.storage;
+    if (storage && storage.store[RESOURCE_ENERGY] > 9e5) {
+      return true;
+    }
+    if (controller.level == 8 && Game.time % 5 != 1) {
+      return false;
+    }
     return Boolean(storage && storage.store[RESOURCE_ENERGY] > RCL8_WORK_RESERVE);
   }
   /**
@@ -4579,6 +4698,9 @@ var Upgrader = class {
    * allein aus, ein zweiter Upgrader brächte dort nichts.
    */
   spawn(spawn3, workroom) {
+    if (storageIsEmpty(workroom)) {
+      return false;
+    }
     const forced = storageIsFull(workroom);
     var uppis = bot.room[workroom].upgrader;
     if (!forced && (!uppis || uppis < 1))
