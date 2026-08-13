@@ -1,0 +1,66 @@
+name: opencode-pr-review
+
+on:
+  pull_request:
+    types: [ opened, synchronize, reopened ]
+
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  opencode-review:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Run OpenCode PR review
+        uses: anomalyco/opencode/github@latest
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        with:
+          model: openrouter/openrouter/free
+          prompt: |
+            Review the current pull request thoroughly.
+
+            Focus on:
+            - bugs and logic errors
+            - security vulnerabilities
+            - regressions
+            - incorrect error handling
+            - race conditions
+            - breaking changes
+            - missing edge cases
+            - problematic API or database changes
+
+            Do NOT report:
+            - formatting issues
+            - stylistic preferences
+            - minor refactoring suggestions
+            - speculative problems without evidence
+
+            For every confirmed or highly probable bug:
+
+            1. Add a review comment to the relevant line in the PR.
+            2. Create a GitHub Issue describing the bug.
+            3. The issue must contain:
+               - a clear title
+               - what is wrong
+               - why it is a bug
+               - how it can be reproduced
+               - the affected file/function
+               - a suggested fix, if applicable
+
+            Add the label "bug" to the issue if that label exists.
+
+            If you find no actual bugs, do not create an issue.
+
+            Do not modify the repository.
+            Do not commit or push anything.
