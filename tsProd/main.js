@@ -1,4 +1,4 @@
-// Build: 2026-08-13 20:10:36 +02:00
+// Build: 2026-08-13 20:44:51 +02:00
 "use strict";
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
@@ -3279,7 +3279,8 @@ var Collector = class {
       this._collect(creep);
       return;
     }
-    this._deliver(creep);
+    if (TransportToHomeTerminal2(creep)) return;
+    if (TransportToHomeStorage2(creep)) return;
     if (goToCreepFlag2(creep)) return;
   }
   /**
@@ -3300,7 +3301,6 @@ var Collector = class {
     if (creep.store.getUsedCapacity() > 0) {
       creep.memory.harvest = false;
     }
-    if (goToCreepFlag2(creep)) return;
   }
   /**
    * Hat das Terminal überhaupt noch Platz?
@@ -3397,21 +3397,6 @@ var Collector = class {
       return harvestRoomStorage(creep, RESOURCE_ENERGY);
     }
     return false;
-  }
-  /**
-   * Abliefern: erst das Terminal, dann das Storage als Rückfall.
-   *
-   * `fromId` wird vor dem Rückfall geräumt: nach `harvestRoomStorage` zeigt es
-   * auf das Storage, und `TransportToHomeStorage` liefert grundsätzlich nicht
-   * dorthin zurück, woher gerade geholt wurde. Ohne das Räumen bliebe der
-   * Creep beladen stehen, sobald das Terminal einmal nichts annimmt — bis zu
-   * seinem Tod. `null` wie in `checkHarvest()` (`prototypes/creep-checks.ts`),
-   * der einzigen bestehenden Stelle, die `fromId` räumt.
-   */
-  _deliver(creep) {
-    if (TransportToHomeTerminal2(creep)) return;
-    creep.memory.fromId = null;
-    TransportToHomeStorage2(creep);
   }
   /**
    * Spawnt den einzigen Collector für `workroom`.

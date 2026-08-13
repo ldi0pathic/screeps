@@ -19,13 +19,13 @@
  * Zahl ihrer Zweige.
  */
 
-import { bot } from "../globals";
-import { mineralSources } from "../controller/room-inventory";
+import {bot} from "../globals";
+import {mineralSources} from "../controller/room-inventory";
 import * as creepBase from "../creep/base";
-import { BODIES } from "../creep/bodies";
-import { NEVER_SELL } from "../prototypes/terminal-market";
-import type { CreepRole } from "../roles";
-import { profile } from "../profiler/decorator";
+import {BODIES} from "../creep/bodies";
+import {NEVER_SELL} from "../prototypes/terminal-market";
+import type {CreepRole} from "../roles";
+import {profile} from "../profiler/decorator";
 
 /**
  * Rollenname. Steht im Creep-Memory des laufenden Spiels und darf sich
@@ -69,16 +69,9 @@ export const STORAGE_ENERGY_RESERVE = 50000;
 export class Collector implements CreepRole {
     /** Sammelt oder liefert ab, je nach `memory.harvest`. */
     doJob(creep: Creep): void {
-        // `TransportToHomeTerminal` (`creep/transport.ts`) steigt unter
-        // Controllerstufe 6 aus. Ohne diesen Ausstieg legte `_deliver` die
-        // Ladung über den Rückfall ins Storage zurück, aus dem
-        // `_collectSellable` sie im nächsten Tick wieder holt — Storage → Creep
-        // → Storage, endlos. Betrifft heruntergestufte Räume, in denen das
-        // Terminal noch steht; ohne Terminal hat die Rolle ohnehin nichts zu
-        // tun.
+
         const controller = creep.room.controller;
         if (!controller || controller.level < 6) return;
-        if (!creep.room.terminal) return;
 
         creep.checkHarvest();
 
@@ -87,10 +80,10 @@ export class Collector implements CreepRole {
             return;
         }
 
-        this._deliver(creep);
+        if (creepBase.TransportToHomeTerminal(creep)) return;
+        if (creepBase.TransportToHomeStorage(creep)) return;
 
         if (creepBase.goToCreepFlag(creep)) return;
-
     }
 
     /**
@@ -125,8 +118,6 @@ export class Collector implements CreepRole {
         if (creep.store.getUsedCapacity() > 0) {
             creep.memory.harvest = false;
         }
-
-        if (creepBase.goToCreepFlag(creep)) return;
 
     }
 
@@ -192,7 +183,7 @@ export class Collector implements CreepRole {
             if (!mineral) continue;
 
             const containers = mineral.pos.findInRange(FIND_STRUCTURES, 1, {
-                filter: { structureType: STRUCTURE_CONTAINER },
+                filter: {structureType: STRUCTURE_CONTAINER},
             });
 
             if (containers.length > 0) return containers[0].id;
@@ -257,22 +248,6 @@ export class Collector implements CreepRole {
         return false;
     }
 
-    /**
-     * Abliefern: erst das Terminal, dann das Storage als Rückfall.
-     *
-     * `fromId` wird vor dem Rückfall geräumt: nach `harvestRoomStorage` zeigt es
-     * auf das Storage, und `TransportToHomeStorage` liefert grundsätzlich nicht
-     * dorthin zurück, woher gerade geholt wurde. Ohne das Räumen bliebe der
-     * Creep beladen stehen, sobald das Terminal einmal nichts annimmt — bis zu
-     * seinem Tod. `null` wie in `checkHarvest()` (`prototypes/creep-checks.ts`),
-     * der einzigen bestehenden Stelle, die `fromId` räumt.
-     */
-    private _deliver(creep: Creep): void {
-        if (creepBase.TransportToHomeTerminal(creep)) return;
-
-        creep.memory.fromId = null;
-        creepBase.TransportToHomeStorage(creep);
-    }
 
     /**
      * Spawnt den einzigen Collector für `workroom`.
@@ -304,7 +279,14 @@ export class Collector implements CreepRole {
             // `mineral` wie bei Filler und Hauler: fehlt der Schlüssel, ist er
             // `undefined`, `checkHarvest` liest ihn als "nicht Energie" und
             // kippt den Creep bei jeder Teilladung sofort zurück ins Abliefern.
-            { role: role, workroom: workroom, home: spawn.room.name, harvest: true, container: '', mineral: RESOURCE_ENERGY },
+            {
+                role: role,
+                workroom: workroom,
+                home: spawn.room.name,
+                harvest: true,
+                container: '',
+                mineral: RESOURCE_ENERGY
+            },
         );
     }
 }
